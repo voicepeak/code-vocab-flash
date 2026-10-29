@@ -607,5 +607,8 @@
   "alloc": "unknown",
   "allocate": "unknown",
   "allocated": "unknown",
-  "allocation": "unknown"
+  "allocation": "unknown",
+  "allocator": "unknown",
+  "allow": "known",
+  "allowed": "known"
 }
