@@ -602,5 +602,6 @@
   "alignment": "unknown",
   "alive": "known",
   "aliyuncs": "unknown",
-  "all": "known"
+  "all": "known",
+  "allclose": "unknown"
 }
