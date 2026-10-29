@@ -596,5 +596,8 @@
   "workspace": "known",
   "wrap": "unknown",
   "zero": "known",
-  "zn": "unknown"
+  "zn": "unknown",
+  "align": "unknown",
+  "aligning": "unknown",
+  "alignment": "unknown"
 }
