@@ -611,5 +611,6 @@
   "allocator": "unknown",
   "allow": "known",
   "allowed": "known",
-  "alone": "known"
+  "alone": "known",
+  "along": "known"
 }
