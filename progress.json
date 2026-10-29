@@ -604,5 +604,8 @@
   "aliyuncs": "unknown",
   "all": "known",
   "allclose": "unknown",
-  "alloc": "unknown"
+  "alloc": "unknown",
+  "allocate": "unknown",
+  "allocated": "unknown",
+  "allocation": "unknown"
 }
