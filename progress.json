@@ -599,5 +599,6 @@
   "zn": "unknown",
   "align": "unknown",
   "aligning": "unknown",
-  "alignment": "unknown"
+  "alignment": "unknown",
+  "alive": "known"
 }
