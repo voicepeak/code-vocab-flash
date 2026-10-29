@@ -1,0 +1,304 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tools/diagnostics/bridge_probe.cpp · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tools/diagnostics/bridge_probe.cpp</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> // Local diagnostic interposition for ROS command interfaces only.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> // Default variants pass opaque arguments. Native-input additionally snapshots</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> // only 16 bytes of identified PWM storage using /proc/self/mem. No game queries,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> // physics APIs or publishers. All variants change timing and are diagnostic.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> #include &lt;atomic&gt;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> #include &lt;cstdint&gt;</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> #include &lt;cstdio&gt;</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> #include &lt;cstdlib&gt;</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> #include &lt;cstring&gt;</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> #include &lt;dlfcn.h&gt;</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> #include &lt;fcntl.h&gt;</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> #include &lt;memory&gt;</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> #include &lt;mutex&gt;</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> #include &lt;sys/syscall.h&gt;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> #include &lt;time.h&gt;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> #include &lt;unistd.h&gt;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> namespace boost { template&lt;class T&gt; class shared_ptr; }</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> namespace ros { struct TimerEvent; }</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> namespace airsim_ros {</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> template&lt;class Allocator&gt; struct RotorPWM_;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> namespace commands_impl {</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> void ROTOR_PWM_Callback(const boost::shared_ptr&lt;const RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt;&amp;);</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> }</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> void PublishAsyncCommands(const ros::TimerEvent&amp;);</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> }</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> // Exact pinned Itanium ABI symbols. Opaque arguments are forwarded unchanged;</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> // no payload, shared_ptr layout, Command layout or game object is dereferenced.</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> extern &quot;C&quot; void* lifetime_get(const void*) asm(&quot;_ZNKSt12__shared_ptrIN10airsim_ros16ROTOR_PWM_ParamsELN9__gnu_cxx12_Lock_policyE2EE3getEv&quot;);</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> extern &quot;C&quot; void* lifetime_command_get(const void*) asm(&quot;_ZNKSt12__shared_ptrIN10airsim_ros7CommandELN9__gnu_cxx12_Lock_policyE2EE3getEv&quot;);</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> extern &quot;C&quot; void lifetime_free(void*) asm(&quot;_ZNSt23_Sp_counted_ptr_inplaceIN10airsim_ros16ROTOR_PWM_ParamsESaIS1_ELN9__gnu_cxx12_Lock_policyE2EE10_M_destroyEv&quot;);</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> extern &quot;C&quot; void lifetime_ctor1(void*,const char*,void*) asm(&quot;_ZN10airsim_ros7CommandC1EPKcPv&quot;);</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> extern &quot;C&quot; void lifetime_ctor2(void*,const char*,void*) asm(&quot;_ZN10airsim_ros7CommandC2EPKcPv&quot;);</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> #endif</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> using NativeCallback=void(*)(void*,void*);</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> extern &quot;C&quot; void native_input_init(int,char**,NativeCallback,bool,bool,int,const char*,const char*,const char*,int)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     asm(&quot;_ZN10airsim_ros13InitAirSimROSEiPPcPFvPvS2_EbbNS_17AirSimROSGameTypeEPKcS7_S7_i&quot;);</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> #endif</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> namespace {</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> using Message=boost::shared_ptr&lt;const airsim_ros::RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt;;</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> using RotorFunction=void(*)(const Message&amp;);</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> using BridgeFunction=void(*)(const ros::TimerEvent&amp;);</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> RotorFunction original_rotor=nullptr;</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> BridgeFunction original_bridge=nullptr;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> std::once_flag initialized;</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> std::recursive_mutex serialized;</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> std::atomic&lt;unsigned&gt; active[2]{};</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a> std::atomic&lt;long&gt; active_thread[2]{};</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> std::atomic&lt;std::uint64_t&gt; calls[2]{},overlaps{},write_errors{};</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> bool locking=false;</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> const char* mode_name=&quot;observe&quot;;</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> int output=-1;</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> using Getter=void*(*)(const void*);</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> using Destroy=void(*)(void*);</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> using Constructor=void(*)(void*,const char*,void*);</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> Getter original_get=nullptr,original_command_get=nullptr,original_parameter_from_owner=nullptr;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> Destroy original_free=nullptr;</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> Constructor original_ctor1=nullptr,original_ctor2=nullptr;</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> struct Context {std::uint64_t span=0;std::uintptr_t parameter=0,command=0;};</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> thread_local Context context;</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> std::atomic&lt;std::uint64_t&gt; span_counter{};</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> #endif</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a> using InitFunction=void(*)(int,char**,NativeCallback,bool,bool,int,const char*,const char*,const char*,int);</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a> InitFunction original_init=nullptr;</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> std::atomic&lt;NativeCallback&gt; native_callback{};</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> int self_memory=-1;</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> #endif</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> [[noreturn]] void fatal(const char* message) {</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     const char prefix[]=&quot;RMUA diagnostic bridge probe: &quot;;</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     (void)!write(STDERR_FILENO,prefix,sizeof(prefix)-1);</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     (void)!write(STDERR_FILENO,message,std::strlen(message));</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     (void)!write(STDERR_FILENO,&quot;\n&quot;,1);</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     _exit(86);</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> }</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> std::uint64_t now_ns() {</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     timespec value{};</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     if(clock_gettime(CLOCK_MONOTONIC,&amp;value)!=0)fatal(&quot;monotonic clock unavailable&quot;);</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     return std::uint64_t(value.tv_sec)*1000000000ULL+value.tv_nsec;</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> }</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a> </span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a> void record(const char* event,int function,std::uint64_t begin,std::uint64_t end,long other_thread=0,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             std::uintptr_t parameter=0,std::uintptr_t command=0,std::uint64_t span=0,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             const char* pwm_hex=&quot;&quot;,bool read_ok=false,bool call_interval=false) {</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     if(output&lt;0)return;</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     char line[768];</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     const int length=std::snprintf(line,sizeof(line),</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &quot;{\&quot;event\&quot;:\&quot;%s\&quot;,\&quot;mode\&quot;:\&quot;%s\&quot;,\&quot;function\&quot;:\&quot;%s\&quot;,&quot;</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &quot;\&quot;start_monotonic_ns\&quot;:%llu,\&quot;end_monotonic_ns\&quot;:%llu,\&quot;thread_id\&quot;:%ld,\&quot;other_thread_id\&quot;:%ld,&quot;</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         &quot;\&quot;pwm_calls\&quot;:%llu,\&quot;bridge_calls\&quot;:%llu,\&quot;overlap_entries\&quot;:%llu,\&quot;write_errors\&quot;:%llu,&quot;</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         &quot;\&quot;parameter_address\&quot;:\&quot;0x%llx\&quot;,\&quot;command_address\&quot;:\&quot;0x%llx\&quot;,\&quot;bridge_span\&quot;:%llu,&quot;</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         &quot;\&quot;parameter_read_ok\&quot;:%s,\&quot;parameter_float32_hex\&quot;:\&quot;%s\&quot;,\&quot;native_call_interval_measured\&quot;:%s}\n&quot;,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         event,mode_name,function==0?&quot;pwm&quot;:&quot;bridge&quot;,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         static_cast&lt;unsigned long long&gt;(begin),static_cast&lt;unsigned long long&gt;(end),syscall(SYS_gettid),other_thread,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         static_cast&lt;unsigned long long&gt;(calls[0].load()),static_cast&lt;unsigned long long&gt;(calls[1].load()),</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         static_cast&lt;unsigned long long&gt;(overlaps.load()),static_cast&lt;unsigned long long&gt;(write_errors.load()),</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         static_cast&lt;unsigned long long&gt;(parameter),static_cast&lt;unsigned long long&gt;(command),</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         static_cast&lt;unsigned long long&gt;(span),read_ok?&quot;true&quot;:&quot;false&quot;,pwm_hex,call_interval?&quot;true&quot;:&quot;false&quot;);</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     if(length&lt;=0 || length&gt;=int(sizeof(line)) || write(output,line,length)!=length)++write_errors;</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a> }</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> </span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a> void initialize() {</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     const char* library=std::getenv(&quot;RMUA_BRIDGE_PROBE_ORIGINAL&quot;);</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     const char* path=std::getenv(&quot;RMUA_BRIDGE_PROBE_OUTPUT&quot;);</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     const char* mode=std::getenv(&quot;RMUA_BRIDGE_PROBE_MODE&quot;);</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     if(!library || !path || !mode)fatal(&quot;missing explicit diagnostic configuration&quot;);</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     mode_name=mode;</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>     if(std::strcmp(mode,&quot;native-input&quot;)!=0)fatal(&quot;native input build requires native-input mode&quot;);</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> #else</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     if(std::strcmp(mode,&quot;lifetime&quot;)!=0)fatal(&quot;lifetime build requires lifetime mode&quot;);</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a> #endif</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a> #else</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     if(std::strcmp(mode,&quot;serialize&quot;)==0)locking=true;</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     else if(std::strcmp(mode,&quot;observe&quot;)!=0)fatal(&quot;invalid probe mode&quot;);</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a> #endif</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     // Resolve definitions in the already-loaded, unmodified pinned library.</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     // Keeping this handle also prevents unloading an in-use original function.</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     void* handle=dlopen(library,RTLD_NOW|RTLD_NOLOAD);</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     if(!handle)fatal(&quot;original bridge library is not loaded&quot;);</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     original_rotor=reinterpret_cast&lt;RotorFunction&gt;(dlsym(handle,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;_ZN10airsim_ros13commands_impl18ROTOR_PWM_CallbackERKN5boost10shared_ptrIKNS_9RotorPWM_ISaIvEEEEE&quot;));</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     original_bridge=reinterpret_cast&lt;BridgeFunction&gt;(dlsym(handle,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         &quot;_ZN10airsim_ros20PublishAsyncCommandsERKN3ros10TimerEventE&quot;));</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     if(!original_rotor || !original_bridge</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>             || original_rotor==&amp;airsim_ros::commands_impl::ROTOR_PWM_Callback</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             || original_bridge==&amp;airsim_ros::PublishAsyncCommands)fatal(&quot;original symbols unavailable or recursive&quot;);</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     original_get=reinterpret_cast&lt;Getter&gt;(dlsym(handle,&quot;_ZNKSt12__shared_ptrIN10airsim_ros16ROTOR_PWM_ParamsELN9__gnu_cxx12_Lock_policyE2EE3getEv&quot;));</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     original_command_get=reinterpret_cast&lt;Getter&gt;(dlsym(handle,&quot;_ZNKSt12__shared_ptrIN10airsim_ros7CommandELN9__gnu_cxx12_Lock_policyE2EE3getEv&quot;));</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     original_parameter_from_owner=reinterpret_cast&lt;Getter&gt;(dlsym(handle,&quot;_ZNSt23_Sp_counted_ptr_inplaceIN10airsim_ros16ROTOR_PWM_ParamsESaIS1_ELN9__gnu_cxx12_Lock_policyE2EE6_M_ptrEv&quot;));</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     original_free=reinterpret_cast&lt;Destroy&gt;(dlsym(handle,&quot;_ZNSt23_Sp_counted_ptr_inplaceIN10airsim_ros16ROTOR_PWM_ParamsESaIS1_ELN9__gnu_cxx12_Lock_policyE2EE10_M_destroyEv&quot;));</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     original_ctor1=reinterpret_cast&lt;Constructor&gt;(dlsym(handle,&quot;_ZN10airsim_ros7CommandC1EPKcPv&quot;));</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     original_ctor2=reinterpret_cast&lt;Constructor&gt;(dlsym(handle,&quot;_ZN10airsim_ros7CommandC2EPKcPv&quot;));</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     if(!original_get || !original_command_get || !original_parameter_from_owner || !original_free</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>             || !original_ctor1 || !original_ctor2 || original_get==&amp;lifetime_get</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             || original_command_get==&amp;lifetime_command_get || original_free==&amp;lifetime_free</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>             || original_ctor1==&amp;lifetime_ctor1 || original_ctor2==&amp;lifetime_ctor2)</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         fatal(&quot;lifetime symbols unavailable or recursive&quot;);</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a> #endif</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     original_init=reinterpret_cast&lt;InitFunction&gt;(dlsym(handle,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         &quot;_ZN10airsim_ros13InitAirSimROSEiPPcPFvPvS2_EbbNS_17AirSimROSGameTypeEPKcS7_S7_i&quot;));</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>     if(!original_init || original_init==&amp;native_input_init)fatal(&quot;native initialization symbol unavailable&quot;);</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>     self_memory=open(&quot;/proc/self/mem&quot;,O_RDONLY|O_CLOEXEC);</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>     if(self_memory&lt;0)fatal(&quot;self-memory snapshot unavailable&quot;);</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a> #endif</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     output=open(path,O_WRONLY|O_CREAT|O_EXCL|O_APPEND|O_CLOEXEC,0600);</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>     if(output&lt;0)fatal(&quot;exclusive probe output unavailable&quot;);</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>     const auto stamp=now_ns();record(&quot;initialized&quot;,0,stamp,stamp);</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a> }</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a> </span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a> class Scope {</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>     const int index;</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>     const std::uint64_t begin;</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>     long other_thread=0;</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>     bool overlap=false;</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     Context previous;</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a> #endif</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a> public:</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>     explicit Scope(int value):index(value),begin(now_ns()) {</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         const long own_thread=syscall(SYS_gettid);</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>         active_thread[index]=own_thread;</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         ++active[index];++calls[index];</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         other_thread=active_thread[1-index].load();</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         overlap=active[1-index].load()!=0 &amp;&amp; other_thread!=0 &amp;&amp; other_thread!=own_thread;</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>         if(overlap)++overlaps;</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         if(index==1){previous=context;context=Context{};context.span=++span_counter;</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>             record(&quot;bridge_begin&quot;,1,begin,begin,0,0,0,context.span);}</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a> #endif</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>     }</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>     ~Scope() {</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>         const auto end=now_ns();</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>         if(index==1){record(&quot;bridge_end&quot;,1,end,end,0,context.parameter,context.command,context.span);</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>             context=previous;}</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a> #endif</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         if(--active[index]==0)active_thread[index]=0;</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         if(overlap || calls[index].load()==1 || calls[index].load()%128==0)</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>             record(overlap?&quot;overlap&quot;:&quot;periodic&quot;,index,begin,end,other_thread);</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>     }</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a> };</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a> </span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a> __attribute__((destructor)) void finish() {</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>     if(output&gt;=0){const auto stamp=now_ns();record(&quot;exit&quot;,0,stamp,stamp);close(output);output=-1;}</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>     if(self_memory&gt;=0){close(self_memory);self_memory=-1;}</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a> #endif</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a> }</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a> }</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a> </span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a> void airsim_ros::commands_impl::ROTOR_PWM_Callback(const Message&amp; message) {</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>     std::unique_lock&lt;std::recursive_mutex&gt; lock(serialized,std::defer_lock);</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>     if(locking)lock.lock();</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>     Scope scope(0);</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>     original_rotor(message);</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a> }</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a> </span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a> void airsim_ros::PublishAsyncCommands(const ros::TimerEvent&amp; event) {</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>     std::unique_lock&lt;std::recursive_mutex&gt; lock(serialized,std::defer_lock);</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>     if(locking)lock.lock();</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>     Scope scope(1);</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>     original_bridge(event);</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a> }</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a> </span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a> #ifdef RMUA_LIFETIME_PROBE</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a> extern &quot;C&quot; void* lifetime_get(const void* owner) {</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>     const auto begin=now_ns();</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>     void* parameter=original_get(owner);</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>     if(context.span){context.parameter=reinterpret_cast&lt;std::uintptr_t&gt;(parameter);</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>         record(&quot;parameter_borrow&quot;,1,begin,now_ns(),0,context.parameter,0,context.span);}</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>     return parameter;</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a> }</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a> </span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a> extern &quot;C&quot; void* lifetime_command_get(const void* owner) {</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>     const auto begin=now_ns();</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>     void* command=original_command_get(owner);</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>     if(context.span &amp;&amp; context.command &amp;&amp; reinterpret_cast&lt;std::uintptr_t&gt;(command)==context.command)</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>         record(&quot;command_handoff&quot;,1,begin,now_ns(),0,context.parameter,context.command,context.span);</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>     return command;</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a> }</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a> </span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a> extern &quot;C&quot; void lifetime_free(void* owner) {</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>     // Ask the original type-specific accessor for its parameter address before</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>     // destruction. Never read the parameter or the owner layout ourselves.</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>     const auto parameter=reinterpret_cast&lt;std::uintptr_t&gt;(original_parameter_from_owner(owner));</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>     const auto begin=now_ns();</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>     record(&quot;parameter_free_begin&quot;,1,begin,begin,0,parameter,0,context.span);</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>     original_free(owner);</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>     record(&quot;parameter_free_end&quot;,1,begin,now_ns(),0,parameter,0,context.span);</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a> }</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a> </span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a> namespace {</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a> void construct(Constructor original,void* self,const char* type,void* parameter) {</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>     const auto begin=now_ns();</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>     original(self,type,parameter);</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>     if(context.span &amp;&amp; context.parameter &amp;&amp; reinterpret_cast&lt;std::uintptr_t&gt;(parameter)==context.parameter){</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>         context.command=reinterpret_cast&lt;std::uintptr_t&gt;(self);</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         record(&quot;command_constructed&quot;,1,begin,now_ns(),0,context.parameter,context.command,context.span);}</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a> }</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a> }</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a> extern &quot;C&quot; void lifetime_ctor1(void* self,const char* type,void* parameter) {</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>     std::call_once(initialized,initialize);construct(original_ctor1,self,type,parameter);</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a> }</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a> extern &quot;C&quot; void lifetime_ctor2(void* self,const char* type,void* parameter) {</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>     std::call_once(initialized,initialize);construct(original_ctor2,self,type,parameter);</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a> }</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a> #endif</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a> </span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a> #ifdef RMUA_NATIVE_INPUT_PROBE</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a> namespace {</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a> void native_input_callback(void* command,void* result) {</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>     const auto original=native_callback.load();</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>     if(!original)fatal(&quot;native callback not bound&quot;);</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>     // This TLS context identifies a PWM Command constructed by the original</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>     // bridge. Unknown commands/sensor callbacks are passed through unread.</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>     const Context current=context;</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>     const bool identified=current.span &amp;&amp; current.parameter &amp;&amp; current.command</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &amp;&amp; reinterpret_cast&lt;std::uintptr_t&gt;(command)==current.command;</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>     if(!identified){original(command,result);return;}</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>     const auto begin=now_ns();</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>     unsigned char payload[16]{};</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>     // Kernel-mediated bounded read avoids dereferencing potentially freed or</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>     // unmapped storage in this diagnostic. This is a snapshot, not an owning</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>     // copy, lock, or claim about the consumer&#x27;s eventual read.</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>     const bool read_ok=pread(self_memory,payload,sizeof(payload),static_cast&lt;off_t&gt;(current.parameter))==ssize_t(sizeof(payload));</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>     char encoded[33]{};</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>     if(read_ok)for(unsigned i=0;i&lt;sizeof(payload);++i)std::snprintf(encoded+2*i,3,&quot;%02x&quot;,unsigned(payload[i]));</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>     record(&quot;native_pwm_entry&quot;,1,begin,now_ns(),0,current.parameter,current.command,current.span,encoded,read_ok);</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>     const auto call_begin=now_ns();</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>     original(command,result);</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>     const auto end=now_ns();</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>     record(&quot;native_pwm_exit&quot;,1,call_begin,end,0,current.parameter,current.command,current.span,&quot;&quot;,false,true);</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>     const auto post_begin=now_ns();</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>     const bool post_ok=pread(self_memory,payload,sizeof(payload),static_cast&lt;off_t&gt;(current.parameter))==ssize_t(sizeof(payload));</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>     encoded[0]=&#x27;\0&#x27;;</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>     if(post_ok)for(unsigned i=0;i&lt;sizeof(payload);++i)std::snprintf(encoded+2*i,3,&quot;%02x&quot;,unsigned(payload[i]));</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>     record(&quot;native_pwm_post&quot;,1,post_begin,now_ns(),0,current.parameter,current.command,current.span,encoded,post_ok);</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a> }</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a> }</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a> extern &quot;C&quot; void native_input_init(int argc,char** argv,NativeCallback callback,bool a,bool b,int game,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>                                   const char* c,const char* d,const char* e,int f) {</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>     std::call_once(initialized,initialize);</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>     NativeCallback empty=nullptr;</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>     if(!callback || !native_callback.compare_exchange_strong(empty,callback))fatal(&quot;unexpected native callback binding&quot;);</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>     const auto stamp=now_ns();record(&quot;native_callback_bound&quot;,1,stamp,stamp);</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>     original_init(argc,argv,native_input_callback,a,b,game,c,d,e,f);</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a> }</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a> #endif</span></pre></body></html>

@@ -1,0 +1,100 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/onnx_layer_probe.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/onnx_layer_probe.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Extract marked ONNX subgraphs and compare TensorRT/ORT intermediates.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import shutil</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from evaluation.metrics.onnx_stereo_probe import normalized_input</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> def difference(a,b):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     values=np.abs(a.astype(np.float64)-b.astype(np.float64))</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     return {&#x27;mean_abs&#x27;:float(values.mean()),&#x27;p99_abs&#x27;:float(np.percentile(values,99)),</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &#x27;max_abs&#x27;:float(values.max()),&#x27;reference_abs_max&#x27;:float(np.abs(b).max()),</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &#x27;finite&#x27;:bool(np.isfinite(a).all() and np.isfinite(b).all())}</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> def main():</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     import torch</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     import onnx</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     import onnxruntime as ort</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     import tensorrt as trt</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     args=parser.parse_args();run=args.run_dir;root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     manifest=json.loads((run/&#x27;manifest.json&#x27;).read_text());cfg=manifest[&#x27;config&#x27;][&#x27;onnx_probe&#x27;]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     source=root/cfg[&#x27;source_run&#x27;];onnx_path=root/cfg[&#x27;onnx_run&#x27;]/&#x27;stereo.onnx&#x27;;layers=cfg[&#x27;layers&#x27;]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     if file_hash(onnx_path)!=cfg[&#x27;onnx_sha256&#x27;]:raise ValueError(&#x27;original graph changed&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     started=time.monotonic()</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     logger=trt.Logger(trt.Logger.INFO)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     if cfg.get(&#x27;reuse_subgraph_run&#x27;):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         reused=root/cfg[&#x27;reuse_subgraph_run&#x27;]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         for name in (&#x27;subgraph.onnx&#x27;,&#x27;subgraph.engine&#x27;):shutil.copyfile(reused/name,run/name)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     else:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         onnx.utils.extract_model(str(onnx_path),str(run/&#x27;subgraph.onnx&#x27;),[&#x27;left_image&#x27;,&#x27;right_image&#x27;],layers)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         builder=trt.Builder(logger);network=builder.create_network(1&lt;&lt;int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         parser_trt=trt.OnnxParser(network,logger)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         if not parser_trt.parse((run/&#x27;subgraph.onnx&#x27;).read_bytes()):raise RuntimeError(&#x27;subgraph parse failed&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         config=builder.create_builder_config();config.clear_flag(trt.BuilderFlag.TF32);config.max_aux_streams=0</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE,512*1024*1024)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         config.profiling_verbosity=trt.ProfilingVerbosity.DETAILED</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         serialized=builder.build_serialized_network(network,config)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         if serialized is None:raise RuntimeError(&#x27;subgraph build failed&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         (run/&#x27;subgraph.engine&#x27;).write_bytes(bytes(serialized))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         del serialized,parser_trt,network,config,builder</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     build_s=time.monotonic()-started</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     options=ort.SessionOptions();options.intra_op_num_threads=1;options.inter_op_num_threads=1</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     options.graph_optimization_level=ort.GraphOptimizationLevel.ORT_DISABLE_ALL</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     session=ort.InferenceSession(str(run/&#x27;subgraph.onnx&#x27;),sess_options=options,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         providers=[(&#x27;CUDAExecutionProvider&#x27;,{&#x27;use_tf32&#x27;:&#x27;0&#x27;,&#x27;cudnn_conv_algo_search&#x27;:&#x27;HEURISTIC&#x27;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             &#x27;cudnn_conv_use_max_workspace&#x27;:&#x27;0&#x27;}),&#x27;CPUExecutionProvider&#x27;])</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     if session.get_providers()[0]!=&#x27;CUDAExecutionProvider&#x27;:raise RuntimeError(&#x27;CUDA provider unavailable&#x27;)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     torch.set_num_threads(1);results=[];feeds={};references={}</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     # ORT&#x27;s expanded cost volume and TRT&#x27;s context do not fit concurrently on 6GiB.</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     # Retain CPU references first, release ORT, then allocate the TRT context.</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     for key in cfg[&#x27;keys&#x27;]:</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         with np.load(source/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;),allow_pickle=False) as saved:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             feed={&#x27;left_image&#x27;:normalized_input(saved[&#x27;left&#x27;]),&#x27;right_image&#x27;:normalized_input(saved[&#x27;right&#x27;])}</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         feeds[key]=feed;references[key]=session.run(layers,feed)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     del session</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     import gc</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     gc.collect();torch.cuda.empty_cache()</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     runtime=trt.Runtime(logger);engine=runtime.deserialize_cuda_engine((run/&#x27;subgraph.engine&#x27;).read_bytes())</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     context=engine.create_execution_context()</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     if context is None:raise RuntimeError(&#x27;subgraph context creation failed&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     inspector=engine.create_engine_inspector()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     (run/&#x27;engine_inspector.json&#x27;).write_text(inspector.get_engine_information(trt.LayerInformationFormat.JSON))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     for key in cfg[&#x27;keys&#x27;]:</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         feed=feeds[key];expected=references[key]</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         stream=torch.cuda.Stream();holders={}</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         with torch.cuda.stream(stream):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             for i in range(engine.num_io_tensors):</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 name=engine.get_tensor_name(i)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 if engine.get_tensor_dtype(name)!=trt.float32:raise ValueError(&#x27;subgraph probe expects FP32 tensors&#x27;)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                 shape=tuple(engine.get_tensor_shape(name))</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 if any(v&lt;=0 for v in shape):raise ValueError(&#x27;static subgraph tensor required&#x27;)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                 holders[name]=(torch.as_tensor(feed[name],device=&#x27;cuda&#x27;) if engine.get_tensor_mode(name)==trt.TensorIOMode.INPUT</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                     else torch.empty(shape,device=&#x27;cuda&#x27;,dtype=torch.float32))</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                 context.set_tensor_address(name,int(holders[name].data_ptr()))</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             if not context.execute_async_v3(stream.cuda_stream):raise RuntimeError(&#x27;subgraph execute failed&#x27;)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         stream.synchronize();arrays={};comparisons=[]</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         for i,(name,reference) in enumerate(zip(layers,expected)):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             actual=holders[name].cpu().numpy();arrays[&#x27;ort_%02d&#x27;%i]=reference;arrays[&#x27;trt_%02d&#x27;%i]=actual</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             comparisons.append({&#x27;tensor&#x27;:name,&#x27;shape&#x27;:list(reference.shape),&#x27;difference&#x27;:difference(actual,reference)})</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         np.savez_compressed(run/(key+&#x27;_layers.npz&#x27;),**arrays)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         results.append({&#x27;key&#x27;:key,&#x27;normalized_input_sha256&#x27;:hashlib.sha256(feed[&#x27;left_image&#x27;].tobytes()+feed[&#x27;right_image&#x27;].tobytes()).hexdigest(),</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             &#x27;layers&#x27;:comparisons});print(json.dumps(results[-1]),flush=True)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     report={&#x27;results&#x27;:results,&#x27;build_s&#x27;:None if cfg.get(&#x27;reuse_subgraph_run&#x27;) else build_s,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &#x27;reused_from&#x27;:cfg.get(&#x27;reuse_subgraph_run&#x27;),&#x27;subgraph_sha256&#x27;:file_hash(run/&#x27;subgraph.onnx&#x27;),</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &#x27;engine_sha256&#x27;:file_hash(run/&#x27;subgraph.engine&#x27;),&#x27;ort&#x27;:ort.__version__,&#x27;tensorrt&#x27;:trt.__version__,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &#x27;global_tf32_override&#x27;:&#x27;0&#x27;,&#x27;marking_outputs_changes_optimization&#x27;:True,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &#x27;control_published&#x27;:False,&#x27;current_control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False}</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     (run/&#x27;layer_probe.json&#x27;).write_text(json.dumps(report,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> </span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

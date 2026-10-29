@@ -1,0 +1,103 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/command_trace.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/command_trace.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Compare the independent ROS subscriber record with the sender&#x27;s command log.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Wire agreement proves serialization/observation, not consumption by a motor.</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> Debug PWM is checked for observability; it is not assumed to be actual force.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import argparse</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import json</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import hashlib</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from pathlib import Path</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import struct</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from collections import Counter</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import numpy as np</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> MD5=&#x27;4967432b608c06d70b17be20124fa258&#x27;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> def decode(row):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     if row.get(&#x27;md5sum&#x27;)!=MD5:return None</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     try:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         data=row[&#x27;data&#x27;];header=data[&#x27;header&#x27;];stamp=header[&#x27;stamp&#x27;]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         return {&#x27;sequence&#x27;:header[&#x27;seq&#x27;],&#x27;stamp&#x27;:stamp[&#x27;secs&#x27;]+stamp[&#x27;nsecs&#x27;]*1e-9,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                 &#x27;values&#x27;:tuple(data[&#x27;rotorPWM&#x27;+str(i)] for i in range(4))}</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     except (KeyError,TypeError):return None</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> def packed(values):return struct.pack(&#x27;&lt;4d&#x27;,*values)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> def evaluate(telemetry,wire,debug):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     decoded=[decode(x) for x in wire]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     invalid=sum(x is None for x in decoded)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     expected={r[&#x27;command&#x27;][&#x27;sequence&#x27;]:r[&#x27;command&#x27;] for r in telemetry}</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     # rospy assigns Header.seq during serialization; it is distinct from the</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     # sender&#x27;s logical guard counter. Infer a single offset only from matching</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     # measurement stamps AND bit-exact official float64 payloads, then audit every row.</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     offsets=Counter(remote[&#x27;sequence&#x27;]-seq for remote in decoded if remote is not None</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         for seq,command in expected.items() if abs(remote[&#x27;stamp&#x27;]-command[&#x27;stamp&#x27;])&lt;=1e-6</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         and packed(remote[&#x27;values&#x27;])==packed(command[&#x27;values&#x27;]))</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     best=offsets.most_common(2)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     offset=best[0][0] if best and (len(best)==1 or best[0][1]&gt;best[1][1]) else None</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     observed={}</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     duplicates=0</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     for row in decoded:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         if row is None:continue</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         seq=row[&#x27;sequence&#x27;]-(offset if offset is not None else 0)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         if seq in observed:duplicates+=1</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         else:observed[seq]=row</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     matched=0;missing=[];mismatch=[]</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     for seq,command in expected.items():</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         remote=observed.get(seq)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         if remote is None:missing.append(seq)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         elif (abs(remote[&#x27;stamp&#x27;]-command[&#x27;stamp&#x27;])&gt;1e-6</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                 or packed(remote[&#x27;values&#x27;])!=packed(command[&#x27;values&#x27;])):mismatch.append(seq)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         else:matched+=1</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     extra=sorted(set(observed)-set(expected))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     result={&#x27;sender_commands&#x27;:len(telemetry),&#x27;wire_records&#x27;:len(wire),&#x27;matched_commands&#x27;:matched,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             &#x27;wire_match_fraction&#x27;:matched/len(telemetry) if telemetry else 0.,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &#x27;missing_sequences&#x27;:missing,&#x27;mismatched_sequences&#x27;:mismatch,&#x27;unexpected_sequences&#x27;:extra,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &#x27;invalid_records&#x27;:invalid,&#x27;duplicate_sequences&#x27;:duplicates,&#x27;actuator_consumption_verified&#x27;:False,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &#x27;debug_pwm_is_verified_actual_motor_output&#x27;:False,&#x27;official_result&#x27;:&#x27;UNKNOWN&#x27;}</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     result[&#x27;ros_header_sequence_offset&#x27;]=offset</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     result[&#x27;wire_trace_valid&#x27;]=(bool(telemetry) and matched==len(telemetry)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                                 and offset is not None and not (invalid or duplicates or extra))</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     debug_rows=sorted((r for r in (decode(x) for x in debug) if r is not None),key=lambda r:r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     stamps=np.array(sorted(set(x[&#x27;stamp&#x27;] for x in debug_rows)))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     if len(stamps)&gt;1:result[&#x27;debug_message_stamp_interval_median_s&#x27;]=float(np.median(np.diff(stamps)))</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     changes=[];previous=None</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     for row in debug_rows:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         if previous is None or np.max(np.abs(np.array(row[&#x27;values&#x27;])-previous))&gt;1e-7:</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             changes.append(row[&#x27;stamp&#x27;]);previous=np.array(row[&#x27;values&#x27;])</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     if len(changes)&gt;1:result[&#x27;observed_debug_value_change_interval_p10_p50_p90_s&#x27;]=np.percentile(np.diff(changes),[10,50,90]).tolist()</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     pulses=[]</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     for i,row in enumerate(telemetry):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         if not (row.get(&#x27;collective_pulse_applied&#x27;) or row.get(&#x27;angular_pulse_applied&#x27;)):continue</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         command=row[&#x27;command&#x27;];end=telemetry[i+1][&#x27;command&#x27;][&#x27;stamp&#x27;] if i+1&lt;len(telemetry) else command[&#x27;stamp&#x27;]+.02</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         candidates=[r for r in debug_rows if command[&#x27;stamp&#x27;]-1e-6&lt;=r[&#x27;stamp&#x27;]&lt;=end+.08]</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         pulses.append({&#x27;sequence&#x27;:command[&#x27;sequence&#x27;],&#x27;stamp&#x27;:command[&#x27;stamp&#x27;],&#x27;values&#x27;:command[&#x27;values&#x27;],</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             &#x27;next_command_after_sensor_s&#x27;:end-command[&#x27;stamp&#x27;],&#x27;debug_samples_in_window&#x27;:len(candidates),</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             # Debug values may be float32 internally before their float64 wire</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             # serialization. Do not confuse quantization with a missed pulse.</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             &#x27;debug_samples_matching_pulse&#x27;:int(sum(np.max(np.abs(np.array(r[&#x27;values&#x27;])-command[&#x27;values&#x27;]))&lt;=1e-6</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                                               for r in candidates))})</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     result[&#x27;experiment_pulses&#x27;]=pulses</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     return result</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a> </span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a> </span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> def main():</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;run&#x27;,type=Path)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     args=parser.parse_args()</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     def rows(name):return [json.loads(x) for x in (args.run/name).read_text().splitlines()]</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     report=evaluate(rows(&#x27;pwm_telemetry.jsonl&#x27;),rows(&#x27;evaluation_pwm_commands.jsonl&#x27;),rows(&#x27;evaluation_actuation.jsonl&#x27;))</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     analysis_hash=hashlib.sha256(Path(__file__).read_bytes()).hexdigest()</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     report[&#x27;analysis_code_sha256&#x27;]=analysis_hash</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     manifest=args.run/&#x27;manifest.json&#x27;</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     if manifest.exists():</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         original=json.loads(manifest.read_text()).get(&#x27;source_sha256_before&#x27;,{}).get(&#x27;evaluation/metrics/command_trace.py&#x27;)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         report[&#x27;analysis_matches_run_source_snapshot&#x27;]=original==analysis_hash</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     (args.run/&#x27;command_trace_audit.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     print(json.dumps(report,indent=2))</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     return 0 if report[&#x27;wire_trace_valid&#x27;] else 2</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a> </span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a> </span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

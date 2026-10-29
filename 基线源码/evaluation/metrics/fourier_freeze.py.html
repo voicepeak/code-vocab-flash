@@ -1,0 +1,50 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/fourier_freeze.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/fourier_freeze.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Freeze shape-only Fourier grids, preserving the original learned projection.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import hashlib</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> def freeze_fourier_inputs(model,left,right):</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     import torch</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     selected=[(name,module) for name,module in model.named_modules()</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>         if type(module).__name__==&#x27;PositionalEncodingFourier&#x27; and hasattr(module,&#x27;token_projection&#x27;)]</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     if not selected:raise ValueError(&#x27;no supported shape-only Fourier modules in checkpoint&#x27;)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     captured={};hooks=[]</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     for name,module in selected:</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         def shape_hook(_,args,key=name):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>             captured.setdefault(key,{})[&#x27;shape&#x27;]=tuple(int(v) for v in args[0])</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         def grid_hook(_,args,key=name):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             captured.setdefault(key,{})[&#x27;grid&#x27;]=args[0].detach().clone()</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         hooks.append(module.register_forward_pre_hook(shape_hook))</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         hooks.append(module.token_projection.register_forward_pre_hook(grid_hook))</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     try:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         original=model.forward(left,right,iters=4,test_mode=True,optimize_build_volume=&#x27;pytorch1&#x27;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     finally:</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         for hook in hooks:hook.remove()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     class FrozenFourierInput(torch.nn.Module):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         def __init__(self,projection,shape,grid):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             super().__init__();self.token_projection=projection;self.expected_shape=shape</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             # clone() preserves the original channels-last strides and dtype.</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             self.register_buffer(&#x27;fourier_input&#x27;,grid)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         def forward(self,shape):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             if not torch.jit.is_tracing() and tuple(int(v) for v in shape)!=self.expected_shape:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 raise ValueError(&#x27;frozen Fourier input shape changed&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             return self.token_projection(self.fourier_input)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     records=[]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     for name,module in selected:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         data=captured[name];grid=data[&#x27;grid&#x27;];shape=data[&#x27;shape&#x27;]</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         replacement=FrozenFourierInput(module.token_projection,shape,grid)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         parent,attribute=name.rsplit(&#x27;.&#x27;,1);setattr(model.get_submodule(parent),attribute,replacement)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         try:replacement((shape[0],shape[1]+1,shape[2]))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         except ValueError:shape_rejected=True</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         else:shape_rejected=False</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         if not shape_rejected:raise RuntimeError(&#x27;frozen shape guard did not reject a different height&#x27;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         records.append({&#x27;module&#x27;:name,&#x27;shape&#x27;:list(shape),&#x27;input_shape&#x27;:list(grid.shape),</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             &#x27;input_stride&#x27;:list(grid.stride()),&#x27;input_dtype&#x27;:str(grid.dtype),</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &#x27;input_sha256&#x27;:hashlib.sha256(grid.cpu().numpy().tobytes()).hexdigest(),</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &#x27;original_projection_preserved&#x27;:replacement.token_projection is module.token_projection,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             &#x27;shape_mismatch_rejected&#x27;:True})</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     model.eval()</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     return original,records</span></pre></body></html>

@@ -1,0 +1,187 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/geometry.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/geometry.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Versioned nominal camera/LiDAR geometry from public simulator settings.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Body/sensor axes are FRD; image optical axes are right/down/forward.</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> This is a configuration model, not a completed metric calibration.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import hashlib</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import json</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import math</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from pathlib import Path</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import numpy as np</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from interfaces.contracts import finite_vec3</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> def points(value, columns):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     array = np.asarray(value, dtype=float)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if array.ndim != 2 or array.shape[1] != columns:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         raise ValueError(&#x27;invalid point array shape&#x27;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     return array</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> @dataclass(frozen=True)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> class SensorPose:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     translation_body_frd: tuple</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     rotation_body_from_sensor_frd: tuple</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     def __post_init__(self):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         finite_vec3(self.translation_body_frd)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         rows = self.rotation_body_from_sensor_frd</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if not isinstance(rows, tuple) or len(rows) != 3:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             raise ValueError(&#x27;immutable rotation rows required&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         for row in rows:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             finite_vec3(row)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         rotation = np.array(rows)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if not np.allclose(rotation.T @ rotation, np.eye(3), atol=1e-10, rtol=0) or abs(np.linalg.det(rotation) - 1) &gt; 1e-10:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             raise ValueError(&#x27;proper sensor rotation required&#x27;)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     def to_body(self, sensor_points):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         return points(sensor_points, 3) @ np.array(self.rotation_body_from_sensor_frd).T + self.translation_body_frd</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def from_body(self, body_points):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         return (points(body_points, 3) - self.translation_body_frd) @ np.array(self.rotation_body_from_sensor_frd)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> def sensor_pose(settings):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     translation = tuple(float(settings.get(k, 0.)) for k in (&#x27;X&#x27;, &#x27;Y&#x27;, &#x27;Z&#x27;))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     roll, pitch, yaw = (math.radians(float(settings.get(k, 0.))) for k in (&#x27;Roll&#x27;, &#x27;Pitch&#x27;, &#x27;Yaw&#x27;))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     if not all(math.isfinite(v) for v in (roll, pitch, yaw)):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         raise ValueError(&#x27;nonfinite sensor angle&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     cr, sr, cp, sp, cy, sy = math.cos(roll), math.sin(roll), math.cos(pitch), math.sin(pitch), math.cos(yaw), math.sin(yaw)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     rotation = ((cy*cp, cy*sp*sr-sy*cr, cy*sp*cr+sy*sr),</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                 (sy*cp, sy*sp*sr+cy*cr, sy*sp*cr-cy*sr),</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 (-sp, cp*sr, cp*cr))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     return SensorPose(translation, rotation)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> @dataclass(frozen=True)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> class NominalCamera:</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     name: str</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     width: int</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     height: int</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     fx: float</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     fy: float</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     cx: float</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     cy: float</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     pose: SensorPose</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a> </span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     def __post_init__(self):</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         if (not self.name or not isinstance(self.width, int) or not 1 &lt;= self.width &lt;= 3840</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                 or not isinstance(self.height, int) or not 1 &lt;= self.height &lt;= 2160</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                 or not all(math.isfinite(v) for v in (self.fx, self.fy, self.cx, self.cy))</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                 or min(self.fx, self.fy) &lt;= 0 or not 0 &lt;= self.cx &lt; self.width or not 0 &lt;= self.cy &lt; self.height):</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             raise ValueError(&#x27;invalid nominal camera&#x27;)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     def body_to_optical(self, body_points):</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         frd = self.pose.from_body(body_points)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         return frd[:, (1, 2, 0)]</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> </span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     def optical_to_body(self, optical_points):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         return self.pose.to_body(points(optical_points, 3)[:, (2, 0, 1)])</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     def project_body(self, body_points):</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         body_points = points(body_points, 3)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         finite = np.isfinite(body_points).all(axis=1)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         optical = np.full(body_points.shape, np.nan)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         optical[finite] = self.body_to_optical(body_points[finite])</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         z = optical[:, 2]</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         valid = np.zeros(len(z), dtype=bool)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         valid[finite] = z[finite] &gt; 0</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         uv = np.full((len(z), 2), np.nan)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         uv[valid, 0] = self.fx * optical[valid, 0] / z[valid] + self.cx</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         uv[valid, 1] = self.fy * optical[valid, 1] / z[valid] + self.cy</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         valid[valid] = ((uv[valid, 0] &gt;= 0) &amp; (uv[valid, 0] &lt; self.width)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                        &amp; (uv[valid, 1] &gt;= 0) &amp; (uv[valid, 1] &lt; self.height))</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         uv[~valid] = np.nan</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         return uv, z, valid</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> </span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a> @dataclass(frozen=True)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a> class NominalStereoRig:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     left: NominalCamera</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     right: NominalCamera</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     lidar_pose: SensorPose</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     settings_sha256: str</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     metric_calibration_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>     current_control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a> </span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     def __post_init__(self):</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         a, b = self.left, self.right</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         ra = np.array(a.pose.rotation_body_from_sensor_frd)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         rb = np.array(b.pose.rotation_body_from_sensor_frd)</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         offset = ra.T @ (np.array(b.pose.translation_body_frd) - a.pose.translation_body_frd)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         if (not np.allclose(ra, rb, atol=1e-10, rtol=0)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                 or abs(offset[0]) &gt; 1e-10 or abs(offset[2]) &gt; 1e-10 or offset[1] &lt;= 0</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                 or (a.width, a.height, a.fx, a.fy, a.cx, a.cy) != (b.width, b.height, b.fx, b.fy, b.cx, b.cy)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                 or len(self.settings_sha256) != 64</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>                 or any(c not in &#x27;0123456789abcdef&#x27; for c in self.settings_sha256)):</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             raise ValueError(&#x27;nominal stereo requires parallel matched cameras and a positive right baseline&#x27;)</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a> </span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     @property</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     def baseline_m(self):</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         rotation = np.array(self.left.pose.rotation_body_from_sensor_frd)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         offset = np.array(self.right.pose.translation_body_frd) - self.left.pose.translation_body_frd</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         return float((rotation.T @ offset)[1])</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a> </span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     def triangulate_body(self, left_uv, right_uv, max_depth_m=30., max_vertical_px=1.):</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &quot;&quot;&quot;Nominal points and |dZ/dd|, not calibrated uncertainty or safe space.</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a> </span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         Depth is optical forward Z, not Euclidean distance. Invalid/too distant</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         correspondences stay NaN. Range and vertical limits are explicit.</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         &quot;&quot;&quot;</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         left_uv, right_uv = points(left_uv, 2), points(right_uv, 2)</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         if (left_uv.shape != right_uv.shape or not math.isfinite(max_depth_m) or not 0 &lt; max_depth_m &lt;= 100</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>                 or not math.isfinite(max_vertical_px) or not 0 &lt;= max_vertical_px &lt;= 2):</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             raise ValueError(&#x27;invalid nominal triangulation limits&#x27;)</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         valid = np.isfinite(left_uv).all(axis=1) &amp; np.isfinite(right_uv).all(axis=1)</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         for uv, camera in ((left_uv, self.left), (right_uv, self.right)):</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>             valid[valid] = ((uv[valid, 0] &gt;= 0) &amp; (uv[valid, 0] &lt; camera.width)</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>                             &amp; (uv[valid, 1] &gt;= 0) &amp; (uv[valid, 1] &lt; camera.height))</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         disparity = np.full(len(left_uv), np.nan)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         disparity[valid] = left_uv[valid, 0] - right_uv[valid, 0]</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         valid[valid] = ((disparity[valid] &gt; 0)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>                        &amp; (np.abs(left_uv[valid, 1] - right_uv[valid, 1]) &lt;= max_vertical_px))</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         z = np.full(len(left_uv), np.nan)</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         z[valid] = self.left.fx * self.baseline_m / disparity[valid]</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         valid[valid] = np.isfinite(z[valid]) &amp; (z[valid] &lt;= max_depth_m)</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         optical = np.full((len(z), 3), np.nan)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         optical[valid, 2] = z[valid]</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         optical[valid, 0] = (left_uv[valid, 0] - self.left.cx) * z[valid] / self.left.fx</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         optical[valid, 1] = (left_uv[valid, 1] - self.left.cy) * z[valid] / self.left.fy</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         sensitivity = np.full(len(z), np.nan)</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>         sensitivity[valid] = z[valid] ** 2 / (self.left.fx * self.baseline_m)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>         body = np.full(optical.shape, np.nan)</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>         body[valid] = self.left.optical_to_body(optical[valid])</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>         return body, valid, sensitivity</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a> </span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a> </span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a> def load_nominal_rig(path, direction=&#x27;front&#x27;):</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>     if direction not in (&#x27;front&#x27;, &#x27;back&#x27;):</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>         raise ValueError(&#x27;unsupported stereo direction&#x27;)</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>     data = Path(path).read_bytes()</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>     settings = json.loads(data)</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>     vehicle = settings[&#x27;Vehicles&#x27;][&#x27;drone_1&#x27;]</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a> </span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     def scene(entries):</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         matches = [s for s in entries if s[&#x27;ImageType&#x27;] == 0]</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         if len(matches) != 1:</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>             raise ValueError(&#x27;exactly one Scene capture setting required&#x27;)</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         return matches[0]</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a> </span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>     defaults = scene(settings[&#x27;CameraDefaults&#x27;][&#x27;CaptureSettings&#x27;])</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>     def camera(side):</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         name = direction + &#x27;_&#x27; + side</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>         entry = vehicle[&#x27;Cameras&#x27;][name]</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         capture = {**defaults, **scene(entry[&#x27;CaptureSettings&#x27;])}</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         width, height, fov = capture[&#x27;Width&#x27;], capture[&#x27;Height&#x27;], float(capture[&#x27;FOV_Degrees&#x27;])</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         if not math.isfinite(fov) or not 5 &lt; fov &lt; 175:</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             raise ValueError(&#x27;invalid camera horizontal FOV&#x27;)</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         focal = width / (2 * math.tan(math.radians(fov) / 2))</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         return NominalCamera(name, width, height, focal, focal, width / 2, height / 2, sensor_pose(entry))</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a> </span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>     lidar = vehicle[&#x27;Sensors&#x27;][&#x27;lidar&#x27;]</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>     if lidar[&#x27;DataFrame&#x27;] != &#x27;SensorLocalFrame&#x27;:</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>         raise ValueError(&#x27;nominal lidar transform requires SensorLocalFrame&#x27;)</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>     return NominalStereoRig(camera(&#x27;left&#x27;), camera(&#x27;right&#x27;), sensor_pose(lidar), hashlib.sha256(data).hexdigest())</span></pre></body></html>

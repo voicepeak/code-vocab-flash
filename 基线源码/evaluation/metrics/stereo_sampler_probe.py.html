@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/stereo_sampler_probe.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/stereo_sampler_probe.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Controlled single-row GridSample comparison with the actual geometry shapes.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import time</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import numpy as np</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> def reference_1d(image,grid):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     &quot;&quot;&quot;Float64 analytic zero-padded bilinear interpolation for H=1, y=0.&quot;&quot;&quot;</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     if (image.ndim!=4 or image.shape[2]!=1 or min(image.shape[:2])&lt;1 or image.shape[3]&lt;2</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>             or grid.ndim!=4 or grid.shape[0]!=image.shape[0] or grid.shape[1]!=1 or grid.shape[2]&lt;1 or grid.shape[3]!=2</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>             or not np.isfinite(image).all() or not np.isfinite(grid).all() or np.any(grid[:,:,:,1]!=0)):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         raise ValueError(&#x27;finite single-row, zero-y geometry sampler inputs required&#x27;)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     n,c,_,width=image.shape</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     x=(grid[:,0,:,0].astype(np.float64)+1)*(width-1)/2</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     floor=np.floor(x).astype(np.int64);fraction=x-floor</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     rows=np.arange(n)[:,None,None];channels=np.arange(c)[None,:,None]</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     low=image[rows,channels,0,np.clip(floor,0,width-1)[:,None,:]].astype(np.float64)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     high=image[rows,channels,0,np.clip(floor+1,0,width-1)[:,None,:]].astype(np.float64)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     low*=((floor&gt;=0)&amp;(floor&lt;width))[:,None,:]</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     high*=((floor+1&gt;=0)&amp;(floor+1&lt;width))[:,None,:]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     return ((1-fraction[:,None,:])*low+fraction[:,None,:]*high)[:,:,None,:]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> def errors(value,expected):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     if not np.isfinite(value).all() or not np.isfinite(expected).all():</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         return {&#x27;mean_abs&#x27;:None,&#x27;p99_abs&#x27;:None,&#x27;max_abs&#x27;:None,&#x27;finite&#x27;:False,&#x27;absolute_gate&#x27;:.0005,&#x27;passed&#x27;:False}</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     error=np.abs(value.astype(np.float64)-expected)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     return {&#x27;mean_abs&#x27;:float(error.mean()),&#x27;p99_abs&#x27;:float(np.percentile(error,99)),</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         &#x27;max_abs&#x27;:float(error.max()),&#x27;finite&#x27;:bool(np.isfinite(value).all()),</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         &#x27;absolute_gate&#x27;:.0005,&#x27;passed&#x27;:bool(np.isfinite(value).all() and error.max()&lt;=.0005)}</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> def main():</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     import torch</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     import onnx</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     import onnxruntime as ort</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     import tensorrt as trt</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     from onnx import helper,TensorProto</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     args=parser.parse_args();run=args.run_dir</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     torch.backends.cuda.matmul.allow_tf32=False;torch.backends.cudnn.allow_tf32=False</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     torch.set_num_threads(1);random=np.random.RandomState(4097);results=[]</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     logger=trt.Logger(trt.Logger.WARNING)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     for batch in (1,11520):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         for channels,width in ((28,48),(28,24),(1,120),(1,60)):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             key=&#x27;n%d_c%d_w%d&#x27;%(batch,channels,width);started=time.monotonic()</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             image=random.normal(size=(batch,channels,1,width)).astype(np.float32)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             grid=np.zeros((batch,1,9,2),np.float32);grid[:,:,:,0]=random.uniform(-1.5,1.5,(batch,1,9))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             expected=reference_1d(image,grid)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             node=helper.make_node(&#x27;GridSample&#x27;,[&#x27;image&#x27;,&#x27;grid&#x27;],[&#x27;result&#x27;],mode=&#x27;bilinear&#x27;,padding_mode=&#x27;zeros&#x27;,align_corners=1)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             graph=helper.make_graph([node],key,[helper.make_tensor_value_info(&#x27;image&#x27;,TensorProto.FLOAT,list(image.shape)),</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 helper.make_tensor_value_info(&#x27;grid&#x27;,TensorProto.FLOAT,list(grid.shape))],</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 [helper.make_tensor_value_info(&#x27;result&#x27;,TensorProto.FLOAT,[batch,channels,1,9])])</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             model=helper.make_model(graph,opset_imports=[helper.make_opsetid(&#x27;&#x27;,17)]);model.ir_version=8</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             onnx.checker.check_model(model);onnx.save(model,str(run/(key+&#x27;.onnx&#x27;)))</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             options=ort.SessionOptions();options.intra_op_num_threads=1;options.inter_op_num_threads=1</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             options.graph_optimization_level=ort.GraphOptimizationLevel.ORT_DISABLE_ALL</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             session=ort.InferenceSession(model.SerializeToString(),sess_options=options,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 providers=[(&#x27;CUDAExecutionProvider&#x27;,{&#x27;use_tf32&#x27;:&#x27;0&#x27;}),&#x27;CPUExecutionProvider&#x27;])</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             if session.get_providers()[0]!=&#x27;CUDAExecutionProvider&#x27;:raise RuntimeError(&#x27;CUDA provider unavailable&#x27;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             ort_value=session.run(None,{&#x27;image&#x27;:image,&#x27;grid&#x27;:grid})[0]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             a=torch.as_tensor(image,device=&#x27;cuda&#x27;);b=torch.as_tensor(grid,device=&#x27;cuda&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             torch_value=torch.nn.functional.grid_sample(a,b,align_corners=True).cpu().numpy()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             builder=trt.Builder(logger);network=builder.create_network(1&lt;&lt;int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             parser_trt=trt.OnnxParser(network,logger)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             if not parser_trt.parse(model.SerializeToString()):raise RuntimeError(&#x27;GridSample parse failed&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             config=builder.create_builder_config();config.clear_flag(trt.BuilderFlag.TF32);config.max_aux_streams=0</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE,128*1024*1024)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             serialized=builder.build_serialized_network(network,config)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             if serialized is None:raise RuntimeError(&#x27;GridSample engine build failed&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             (run/(key+&#x27;.engine&#x27;)).write_bytes(bytes(serialized))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             runtime=trt.Runtime(logger);engine=runtime.deserialize_cuda_engine(serialized);context=engine.create_execution_context()</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             if context is None:raise RuntimeError(&#x27;GridSample context creation failed&#x27;)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             out=torch.empty((batch,channels,1,9),device=&#x27;cuda&#x27;,dtype=torch.float32)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             stream=torch.cuda.Stream();stream.wait_stream(torch.cuda.current_stream())</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             context.set_tensor_address(&#x27;image&#x27;,int(a.data_ptr()));context.set_tensor_address(&#x27;grid&#x27;,int(b.data_ptr()))</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             context.set_tensor_address(&#x27;result&#x27;,int(out.data_ptr()))</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             if not context.execute_async_v3(stream.cuda_stream):raise RuntimeError(&#x27;GridSample execute failed&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             stream.synchronize();trt_value=out.cpu().numpy()</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             row={&#x27;key&#x27;:key,&#x27;shape&#x27;:list(image.shape),&#x27;torch&#x27;:errors(torch_value,expected),</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 &#x27;onnxruntime&#x27;:errors(ort_value,expected),&#x27;tensorrt&#x27;:errors(trt_value,expected),</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 &#x27;tensorrt_vs_torch&#x27;:errors(trt_value,torch_value.astype(np.float64)),</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 &#x27;elapsed_s&#x27;:time.monotonic()-started}</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             np.savez_compressed(run/(key+&#x27;.npz&#x27;),image=image,grid=grid,expected=expected,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 pytorch=torch_value,onnxruntime=ort_value,tensorrt=trt_value)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             results.append(row);print(json.dumps(row),flush=True)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             del context,engine,runtime,serialized,parser_trt,network,config,builder,session,a,b,out</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     (run/&#x27;sampler_probe.json&#x27;).write_text(json.dumps({&#x27;results&#x27;:results,&#x27;torch&#x27;:torch.__version__,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &#x27;onnxruntime&#x27;:ort.__version__,&#x27;tensorrt&#x27;:trt.__version__,&#x27;seed&#x27;:4097,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &#x27;control_published&#x27;:False,&#x27;acceptance_eligible&#x27;:False,&#x27;current_control_eligible&#x27;:False},indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a> </span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> </span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

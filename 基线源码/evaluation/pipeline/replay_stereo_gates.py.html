@@ -1,0 +1,75 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/replay_stereo_gates.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/replay_stereo_gates.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline gate proposals from retained official flight stereo images.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import hashlib</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import cv2</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from perception.gate_geometry.stereo_gate import stereo_gate_candidates, prepare_gate_edges</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.gate_geometry.roi_disparity import gate_region_disparity</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from perception.stereo_depth.sgbm import compute_diagnostic_disparity</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def replay(source, settings, stride=5, depth_method=&quot;full&quot;, reuse_edges=False):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     source = Path(source); directory = source / &#x27;scene_trace&#x27;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     index = json.loads((directory / &#x27;index.json&#x27;).read_text())</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     rig = load_nominal_rig(settings)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     manifest = json.loads((source / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     if manifest[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;] != rig.settings_sha256:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         raise ValueError(&#x27;settings do not match recorded capture&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if index[&#x27;fault&#x27;] is not None: raise ValueError(&#x27;scene recorder failed&#x27;)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     sides = {side: sorted((r for r in index[&#x27;frames&#x27;] if r[&#x27;sensor&#x27;] == &#x27;front_&#x27; + side),</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>                           key=lambda row: row[&#x27;stamp&#x27;]) for side in (&#x27;left&#x27;, &#x27;right&#x27;)}</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     used = set(); rows = []</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     for left in sides[&#x27;left&#x27;][::stride]:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         choices = [(abs(left[&#x27;stamp&#x27;] - r[&#x27;stamp&#x27;]), i, r) for i, r in enumerate(sides[&#x27;right&#x27;]) if i not in used]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if not choices: continue</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         skew, index_right, right = min(choices, key=lambda v:v[0])</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if skew &gt; .005:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             rows.append({&#x27;left&#x27;: left[&#x27;file&#x27;], &#x27;status&#x27;: &#x27;UNPAIRED&#x27;, &#x27;skew_s&#x27;: skew}); continue</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         used.add(index_right); frames=[]; hashes={}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         for side, row in ((&#x27;left&#x27;, left), (&#x27;right&#x27;, right)):</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             path = directory / row[&#x27;file&#x27;]</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             if path.parent != directory or path.suffix != &#x27;.png&#x27;: raise ValueError(&#x27;invalid image path&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             image=cv2.imread(str(path), cv2.IMREAD_COLOR)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             if image is None: raise ValueError(&#x27;image read failed&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             hashes[side]=hashlib.sha256(path.read_bytes()).hexdigest()</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             meta=Metadata(row[&#x27;stamp&#x27;],row[&#x27;stamp&#x27;]+.2,0,&#x27;retained_&#x27;+side,&#x27;front_&#x27;+side+&#x27;_image&#x27;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             frames.append(ImageFrame(meta,&#x27;bgr8&#x27;,image))</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         stamp=max(x.metadata.stamp for x in frames)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         pair=StereoPair(Metadata(stamp,min(x.metadata.valid_until for x in frames),0,&#x27;offline_pair&#x27;,&#x27;front_stereo&#x27;),</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                         frames[0],frames[1],skew)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         started=time.monotonic(); prepared=prepare_gate_edges(pair) if reuse_edges else None</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         depth=(gate_region_disparity(pair,prepared=prepared) if depth_method==&quot;roi&quot; else compute_diagnostic_disparity(pair))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         # Query at capture time solely to test geometry; do not claim real-time output.</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         gates=stereo_gate_candidates(pair,depth,rig,stamp,0,prepared=prepared)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         rows.append({&#x27;left&#x27;:left[&#x27;file&#x27;],&#x27;right&#x27;:right[&#x27;file&#x27;],&#x27;input_sha256&#x27;:hashes,&#x27;skew_s&#x27;:skew,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                      &#x27;status&#x27;:&#x27;PROCESSED&#x27;,&#x27;gate_count&#x27;:len(gates),&#x27;candidates&#x27;:[asdict(g) for g in gates],</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                      &#x27;valid_disparity_fraction&#x27;:float(depth.valid.mean()),&#x27;elapsed_s&#x27;:time.monotonic()-started,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                      &#x27;query_at_capture_time_not_output_time&#x27;:True})</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     return {&#x27;source&#x27;:str(source),&#x27;depth_method&#x27;:depth_method,&#x27;reuse_edges&#x27;:reuse_edges,&#x27;role&#x27;:&#x27;offline_nominal_gate_proposal&#x27;,&#x27;settings_sha256&#x27;:rig.settings_sha256,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             &#x27;index_sha256&#x27;:hashlib.sha256((directory/&#x27;index.json&#x27;).read_bytes()).hexdigest(),</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &#x27;control_published&#x27;:False,&#x27;acceptance_eligible&#x27;:False,&#x27;results&#x27;:rows}</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> </span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> def main():</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;source&#x27;);parser.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     parser.add_argument(&#x27;--settings&#x27;,default=&#x27;configs/simulator_settings.json&#x27;);parser.add_argument(&#x27;--stride&#x27;,type=int,default=5)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     parser.add_argument(&#x27;--depth-method&#x27;,choices=(&#x27;full&#x27;,&#x27;roi&#x27;),default=&#x27;full&#x27;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     parser.add_argument(&#x27;--reuse-edges&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     args=parser.parse_args()</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     if not 1 &lt;= args.stride &lt;= 20: parser.error(&#x27;stride must be 1..20&#x27;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     cv2.setNumThreads(1)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     result=replay(args.source,args.settings,args.stride,args.depth_method,args.reuse_edges)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     with Path(args.output).open(&#x27;x&#x27;) as out:json.dump(result,out,indent=2,allow_nan=False);out.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     print(json.dumps({&#x27;output&#x27;:args.output,&#x27;frames&#x27;:len(result[&#x27;results&#x27;]),</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                       &#x27;candidate_counts&#x27;:[r.get(&#x27;gate_count&#x27;) for r in result[&#x27;results&#x27;]]}))</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> if __name__ == &#x27;__main__&#x27;:main()</span></pre></body></html>

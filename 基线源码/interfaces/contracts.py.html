@@ -1,0 +1,94 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>interfaces/contracts.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>interfaces/contracts.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;ROS-independent immutable contracts. Time is simulator time, coordinates NED.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from enum import Enum</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from typing import Tuple</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> Vec3 = Tuple[float, float, float]</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> class Health(str, Enum):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     OK = &quot;OK&quot;</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     DEGRADED = &quot;DEGRADED&quot;</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     LOST = &quot;LOST&quot;</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> @dataclass(frozen=True)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> class Metadata:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     stamp: float</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     valid_until: float</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     epoch: int</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     source: str</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     frame_id: str = &quot;world_ned&quot;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     covariance_or_bounds: Tuple[float, ...] = ()</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     def __post_init__(self):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         if not all(math.isfinite(v) for v in (self.stamp, self.valid_until)):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             raise ValueError(&quot;timestamps must be finite&quot;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         if self.stamp &lt; 0 or self.valid_until &lt; self.stamp or self.epoch &lt; 0:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             raise ValueError(&quot;invalid validity interval or epoch&quot;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if not self.source or not self.frame_id:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             raise ValueError(&quot;source and frame required&quot;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if not isinstance(self.covariance_or_bounds, tuple) or not all(</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 math.isfinite(v) for v in self.covariance_or_bounds):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             raise ValueError(&quot;bounds must be an immutable finite tuple&quot;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def current(self, now: float, epoch: int) -&gt; bool:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         return (math.isfinite(now) and self.epoch == epoch</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 and self.stamp &lt;= now &lt; self.valid_until)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> def finite_vec3(value):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     if not isinstance(value, tuple) or len(value) != 3 or not all(math.isfinite(v) for v in value):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         raise ValueError(&quot;expected immutable finite Vec3&quot;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> @dataclass(frozen=True)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> class StateEstimate:</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     metadata: Metadata</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     position_ned: Vec3</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     velocity_ned: Vec3</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     orientation_wxyz: Tuple[float, float, float, float]</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     angular_velocity_body: Vec3</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     health: Health</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     def __post_init__(self):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         finite_vec3(self.position_ned)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         finite_vec3(self.velocity_ned)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         finite_vec3(self.angular_velocity_body)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         q = self.orientation_wxyz</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         if (not isinstance(q, tuple) or len(q) != 4 or not all(math.isfinite(v) for v in q)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 or abs(sum(v * v for v in q) - 1.0) &gt; 1e-6):</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             raise ValueError(&quot;orientation must be an immutable unit quaternion (w,x,y,z)&quot;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         if not isinstance(self.health, Health):</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             raise ValueError(&quot;invalid health&quot;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> </span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> @dataclass(frozen=True)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> class TrajectorySample:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     stamp: float</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     position_ned: Vec3</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     velocity_ned: Vec3</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     acceleration_ned: Vec3</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     yaw: float</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     def __post_init__(self):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         for value in (self.position_ned, self.velocity_ned, self.acceleration_ned):</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             finite_vec3(value)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         if not math.isfinite(self.stamp) or not math.isfinite(self.yaw):</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             raise ValueError(&quot;nonfinite trajectory&quot;)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> </span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> </span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> @dataclass(frozen=True)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> class Trajectory:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     metadata: Metadata</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     samples: Tuple[TrajectorySample, ...]</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a> </span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     def __post_init__(self):</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         if not isinstance(self.samples, tuple) or len(self.samples) &lt; 2:</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             raise ValueError(&quot;trajectory needs at least two immutable samples&quot;)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         times = tuple(s.stamp for s in self.samples)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         if any(a &gt;= b for a, b in zip(times, times[1:])):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             raise ValueError(&quot;trajectory timestamps must increase&quot;)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         if times[0] &gt; self.metadata.stamp or times[-1] &lt; self.metadata.valid_until:</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             raise ValueError(&quot;samples must cover the validity interval&quot;)</span></pre></body></html>

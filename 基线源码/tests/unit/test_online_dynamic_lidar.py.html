@@ -1,0 +1,77 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_online_dynamic_lidar.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_online_dynamic_lidar.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from adapters.ros_noetic.lidar_cloud import LidarCloud</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from adapters.ros_noetic.dynamic_lidar_observer import wait_for_imu</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from estimation.history import PoseHistory</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from interfaces.contracts import Health, Metadata, StateEstimate</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from perception.object_motion.online import OnlineDynamicLidar</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from perception.stereo_depth.geometry import SensorPose</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from planning.mission.goal_tracker import GoalSnapshot</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class OnlineDynamicLidarTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     def setUp(self):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         self.history = PoseHistory()</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         for stamp in (10., 10.01):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>             self.state = StateEstimate(Metadata(stamp, stamp + .05, 0, &#x27;test&#x27;,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 covariance_or_bounds=tuple(np.eye(15).flatten())), (0., 0., 0.), (0., 0., 0.),</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>                 (1., 0., 0., 0.), (0., 0., 0.), Health.OK)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             self.history.append(self.state, 20. + stamp - 10.)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         mount = SensorPose((0., 0., 0.), ((1., 0., 0.), (0., 1., 0.), (0., 0., 1.)))</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.pipeline = OnlineDynamicLidar(self.history, mount)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         points = np.array([(5. + .01*i, .1, .1) for i in range(10)])</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.cloud = LidarCloud(Metadata(10.005, 10.205, 0, &#x27;test&#x27;, &#x27;lidar&#x27;), points, 10, 0)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     def test_live_candidate_is_diagnostic_only(self):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         row = self.pipeline.process(self.cloud, 20.01, lambda: (10.01, 0, True, self.state), lambda: 20.011)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertEqual(row[&#x27;status&#x27;], &#x27;PROCESSED&#x27;, row)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertGreater(len(row[&#x27;tracks&#x27;]), 0)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.assertFalse(row[&#x27;dynamic_check&#x27;][&#x27;safety_certified&#x27;])</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.assertFalse(row[&#x27;control_eligible&#x27;])</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def test_joint_planner_keeps_uncertified_space_unusable(self):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         pipeline = OnlineDynamicLidar(self.history, self.pipeline.sensor_pose, planning_diagnostic=True)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         goal = GoalSnapshot(&#x27;OBSERVED&#x27;, (10., 0., 0.), 0, 3, 20.01, 0., &#x27;&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         row = pipeline.process(self.cloud, 20.01, lambda: (10.01, 0, True, self.state),</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                                lambda: 20.011, lambda: goal)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertEqual(row[&#x27;status&#x27;], &#x27;PROCESSED&#x27;, row)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertEqual(row[&#x27;planner&#x27;][&#x27;reason&#x27;], &#x27;NO_STATIC_CANDIDATE&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self.assertFalse(row[&#x27;planner&#x27;][&#x27;trajectory_produced&#x27;])</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         self.assertFalse(row[&#x27;planner&#x27;][&#x27;short_probe&#x27;][&#x27;trajectory_produced&#x27;])</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         self.assertIn(&#x27;UNKNOWN_SPACE&#x27;, [c[&#x27;reason&#x27;] for c in row[&#x27;planner&#x27;][&#x27;short_probe&#x27;][&#x27;attempts&#x27;]])</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         self.assertFalse(row[&#x27;planner&#x27;][&#x27;control_eligible&#x27;])</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     def test_expired_source_is_rejected_before_tracking(self):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         row = self.pipeline.process(self.cloud, 20.01, lambda: (10.21, 0, True, self.state), lambda: 20.02)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertEqual(row[&#x27;reason&#x27;], &#x27;INPUT_SOURCE_LEASE_NOT_CURRENT&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         self.assertEqual(self.pipeline.tracker.snapshot(10.21, 0), ())</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     def test_expiry_during_clustering_rejects_without_committing(self):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         snapshots = iter([(10.01, 0, True, self.state), (10.21, 0, True, self.state)])</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         row = self.pipeline.process(self.cloud, 20.01, lambda: next(snapshots), lambda: 20.02)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertEqual(row[&#x27;reason&#x27;], &#x27;AFTER_CLUSTER_SOURCE_LEASE_NOT_CURRENT&#x27;)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         self.assertEqual(self.pipeline.tracker.snapshot(10.21, 0), ())</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     def test_wait_for_imu_is_bounded_and_causal(self):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         wall = [20.01]</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         def sleep(dt): wall[0] += dt</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         wait_for_imu(self.cloud, 20.01, lambda: (10., 0, True, self.state),</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                      lambda: wall[0], sleep, lambda: False)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         self.assertGreaterEqual(wall[0] - 20.01, .03)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         self.assertLess(wall[0] - 20.01, .031)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         wall[0] = 20.01</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         def snapshot():</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             return (10.01 if wall[0] &gt;= 20.014 else 10., 0, True, self.state)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         wait_for_imu(self.cloud, 20.01, snapshot, lambda: wall[0], sleep, lambda: False)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         self.assertLess(wall[0] - 20.01, .01)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         row = self.pipeline.process(self.cloud, 20.01, snapshot, lambda: wall[0])</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         self.assertEqual(row[&#x27;status&#x27;], &#x27;PROCESSED&#x27;, row)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a> </span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     def test_wait_stops_for_clock_fault_or_epoch_change(self):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         for snapshot in (lambda: (10., 1, True, self.state), lambda: (10., 0, False, self.state)):</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             wait_for_imu(self.cloud, 20.01, snapshot, lambda: 20.01,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                          lambda _: self.fail(&#x27;unexpected wait&#x27;), lambda: False)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> </span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> if __name__ == &#x27;__main__&#x27;: unittest.main()</span></pre></body></html>

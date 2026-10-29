@@ -1,0 +1,111 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/state_reader.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/state_reader.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Read-only ESKF observer. Subscribes to official initial pose, GPS and IMU only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import threading</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from estimation.clock import SensorClock</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from estimation.imu_gps import ImuGpsEstimator</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> def pose_values(pose):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     p, q = pose.position, pose.orientation</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return (p.x, p.y, p.z), (q.w, q.x, q.y, q.z)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def observe(run, duration):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     import rospy</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     from geometry_msgs.msg import PoseStamped</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     from sensor_msgs.msg import Imu</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     rospy.init_node(&quot;rmua_next_state_reader&quot;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     lock = threading.RLock()</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     clock = SensorClock()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     estimator = ImuGpsEstimator()</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     events = Counter()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     initial = None</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     health = Counter()</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     count = 0</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     with (run / &quot;state.jsonl&quot;).open(&quot;x&quot;) as output:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         def initial_pose(msg):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             nonlocal initial</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             with lock:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                 try:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                     initial = pose_values(msg.pose)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 except ValueError:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                     events[&quot;INVALID_INITIAL&quot;] += 1</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         def imu(msg):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             nonlocal estimator, initial, count</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             with lock:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 try:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                     stamp = msg.header.stamp.to_sec()</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                     previous = clock.stamp</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                     if clock.observe(stamp, time.monotonic()):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                         estimator = ImuGpsEstimator(clock.epoch)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                         initial = None  # Require a newly received initial pose after reset.</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                         events[&quot;CLOCK_RESET&quot;] += 1</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                     elif previous == stamp:</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                         events[&quot;IMU_DUPLICATE&quot;] += 1</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                         return</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                     if initial is not None and not estimator.initialized:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                         estimator.initialize(*initial)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     a, w = msg.linear_acceleration, msg.angular_velocity</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                     estimator.propagate(stamp, (a.x, a.y, a.z), (w.x, w.y, w.z))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                     if estimator.initialized:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                         state = estimator.snapshot()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                         output.write(json.dumps(asdict(state), allow_nan=False)+&quot;\n&quot;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                         health[state.health.value] += 1</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                         count += 1</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                     events[&quot;INVALID_IMU:&quot;+str(error)] += 1</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         def gps(msg):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             with lock:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 try:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                     stamp = msg.header.stamp.to_sec()</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                     if stamp &lt;= 0 or not clock.fresh(time.monotonic()):</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                         events[&quot;GPS_NO_VALID_CLOCK&quot;] += 1</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                         return</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                     estimator.update_gps(stamp, *pose_values(msg.pose))</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                 except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                     events[&quot;INVALID_GPS:&quot;+str(error)] += 1</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         subscribers = [</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             rospy.Subscriber(&quot;/airsim_node/initial_pose&quot;, PoseStamped, initial_pose, queue_size=1),</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             rospy.Subscriber(&quot;/airsim_node/drone_1/imu/imu&quot;, Imu, imu, queue_size=1),</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             rospy.Subscriber(&quot;/airsim_node/drone_1/gps&quot;, PoseStamped, gps, queue_size=1),</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         ]</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         deadline = time.monotonic()+duration</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         try:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             while time.monotonic() &lt; deadline and not rospy.is_shutdown():</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 time.sleep(.02)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         finally:</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             for subscriber in subscribers:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                 subscriber.unregister()</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         with lock:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             result = {&quot;state_count&quot;: count, &quot;health_counts&quot;: dict(health),</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                       &quot;events&quot;: dict(events), &quot;gps_rejections&quot;: estimator.rejections,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                       &quot;epoch&quot;: clock.epoch, &quot;control_published&quot;: False,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                       &quot;noise_calibrated&quot;: False, &quot;official_result&quot;: &quot;UNKNOWN&quot;}</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             if count:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                 result[&quot;last_state&quot;] = asdict(estimator.snapshot())</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             (run / &quot;state_summary.json&quot;).write_text(json.dumps(result, indent=2)+&quot;\n&quot;)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     return 0 if count else 2</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> </span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> def main():</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     parser.add_argument(&quot;--run-dir&quot;, required=True, type=Path)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     parser.add_argument(&quot;--duration&quot;, type=float, default=10.)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     args = parser.parse_args()</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     if not 0 &lt; args.duration &lt;= 120:</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         parser.error(&quot;duration must be in (0,120]&quot;)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     return observe(args.run_dir, args.duration)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> </span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a> </span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     raise SystemExit(main())</span></pre></body></html>

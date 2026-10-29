@@ -1,0 +1,85 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/stereo_disparity.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/stereo_disparity.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline pixel-disparity benchmark on retained official-camera input only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import hashlib</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.stereo_depth.sgbm import SgbmConfig, compute_diagnostic_disparity</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def digest(path):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     return hashlib.sha256(path.read_bytes()).hexdigest()</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> def benchmark(run):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     import cv2</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     manifest = json.loads((run / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     config = manifest[&#x27;config&#x27;][&#x27;disparity_experiment&#x27;]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     source = Path(&#x27;/workspace/main&#x27;) / config[&#x27;source_run&#x27;]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     before = {name: digest(source / name) for name in config[&#x27;input_sha256&#x27;]}</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     if before != config[&#x27;input_sha256&#x27;]:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         raise ValueError(&#x27;retained stereo input changed&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     summary = json.loads((source / &#x27;stereo_summary.json&#x27;).read_text())</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     with (source / &#x27;stereo_pairs.jsonl&#x27;).open() as stream:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         row = json.loads(stream.readline())</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     lifetime = summary.get(&#x27;image_age_budget_s&#x27;, .15)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     with np.load(source / &#x27;stereo_first_pair.npz&#x27;, allow_pickle=False) as saved:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         def image(side):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             stamp = row[side + &#x27;_stamp&#x27;]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             return ImageFrame(Metadata(stamp, stamp + lifetime, row[&#x27;epoch&#x27;],</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                     &#x27;retained_official_front_&#x27; + side, &#x27;front_&#x27; + side + &#x27;_image&#x27;),</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                     row[&#x27;encoding&#x27;], saved[side])</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         pair = StereoPair(Metadata(row[&#x27;pair_stamp&#x27;], row[&#x27;valid_until&#x27;], row[&#x27;epoch&#x27;],</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                           &#x27;retained_stereo_pair&#x27;, &#x27;front_stereo&#x27;), image(&#x27;left&#x27;), image(&#x27;right&#x27;), row[&#x27;header_skew_s&#x27;])</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     settings = SgbmConfig()</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     cv2.setNumThreads(1)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     compute_diagnostic_disparity(pair, settings)  # Separate warmup, not timed.</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     durations, hashes = [], []</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     for _ in range(3):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         begin = time.monotonic()</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         result = compute_diagnostic_disparity(pair, settings)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         durations.append(time.monotonic() - begin)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         hashes.append(hashlib.sha256(result.disparity_px.tobytes() + result.valid.tobytes()).hexdigest())</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     after = {name: digest(source / name) for name in before}</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     if after != before:</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         raise ValueError(&#x27;retained stereo input changed during benchmark&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     np.savez_compressed(run / &#x27;diagnostic_disparity.npz&#x27;, disparity_px=result.disparity_px, valid=result.valid)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     values = result.disparity_px[result.valid]</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     report = {&#x27;computed&#x27;: True, &#x27;historical_input_only&#x27;: True, &#x27;opencv_version&#x27;: cv2.__version__,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>               &#x27;opencv_threads&#x27;: cv2.getNumThreads(), &#x27;settings&#x27;: asdict(settings),</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>               &#x27;input_shape&#x27;: list(pair.left.pixels.shape), &#x27;source_run&#x27;: config[&#x27;source_run&#x27;],</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>               &#x27;input_sha256&#x27;: before, &#x27;input_unchanged&#x27;: before == after,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>               &#x27;warmup_runs&#x27;: 1, &#x27;measured_runs&#x27;: 3, &#x27;compute_durations_s&#x27;: durations,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>               &#x27;compute_median_s&#x27;: float(np.median(durations)), &#x27;compute_max_s&#x27;: max(durations),</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>               &#x27;output_sha256_per_repeat&#x27;: hashes, &#x27;repeat_deterministic&#x27;: len(set(hashes)) == 1,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>               &#x27;valid_pixels&#x27;: int(result.valid.sum()), &#x27;pixels&#x27;: int(result.valid.size),</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>               &#x27;valid_fraction&#x27;: float(result.valid.mean()),</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>               &#x27;disparity_p10_p50_p90_px&#x27;: [float(v) for v in np.percentile(values, (10, 50, 90))] if len(values) else None,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>               &#x27;source_metadata&#x27;: asdict(result.metadata),</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>               &#x27;left_measurement_stamp&#x27;: result.left_measurement_stamp,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>               &#x27;right_measurement_stamp&#x27;: result.right_measurement_stamp,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>               &#x27;unknown_pixels_are_nan&#x27;: bool(np.isnan(result.disparity_px[~result.valid]).all()),</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>               &#x27;rectification_verified&#x27;: False, &#x27;exposure_sync_verified&#x27;: False,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>               &#x27;metric_depth_verified&#x27;: False, &#x27;real_scene_accuracy_measured&#x27;: False,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>               &#x27;online_latency_verified&#x27;: False, &#x27;acceptance_eligible&#x27;: False,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>               &#x27;interpretation&#x27;: &#x27;Pixel disparity under unverified rectification. Coverage is not accuracy. Compute timing excludes input decoding/transport, simulator contention and GPU inference. Original validity is preserved, not refreshed by offline processing.&#x27;}</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     (run / &#x27;stereo_disparity_report.json&#x27;).write_text(json.dumps(report, indent=2, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     return 0 if report[&#x27;repeat_deterministic&#x27;] and report[&#x27;unknown_pixels_are_nan&#x27;] else 2</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> </span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> def main():</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     parser.add_argument(&#x27;--run-dir&#x27;, type=Path, required=True)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     args = parser.parse_args()</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     return benchmark(args.run_dir)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     raise SystemExit(main())</span></pre></body></html>

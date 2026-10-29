@@ -1,0 +1,181 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_lidar_static_probe.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_lidar_static_probe.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 44,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;date&quot;: &quot;2026-10-27&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;rules_pdf_sha256_match_baseline&quot;: true,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;host_replay_first_attempt&quot;: &quot;FAILED: host Python has no rospy; reran in Noetic&quot;,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     {</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;source&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>       &quot;role&quot;: &quot;read_only_diagnostic&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>       &quot;control_published&quot;: false,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>       &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>       &quot;captures&quot;: [</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         {</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>           &quot;capture&quot;: &quot;joint/0000&quot;,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>           &quot;scan_stamp&quot;: 1792738505.861849,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>           &quot;query_now&quot;: 1792738506.0328526,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>           &quot;result&quot;: {</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             &quot;map_cells&quot;: 4668,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             ],</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>           }</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         },</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         {</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>           &quot;capture&quot;: &quot;joint/0001&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>           &quot;scan_stamp&quot;: 1792738507.4608831,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>           &quot;query_now&quot;: 1792738507.631887,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;result&quot;: {</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             &quot;map_cells&quot;: 4650,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             ],</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>           }</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         },</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         {</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>           &quot;capture&quot;: &quot;joint/0002&quot;,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           &quot;scan_stamp&quot;: 1792738509.0719175,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>           &quot;query_now&quot;: 1792738509.2219207,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>           &quot;result&quot;: {</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &quot;map_cells&quot;: 4611,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             ],</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>           }</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         },</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         {</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>           &quot;capture&quot;: &quot;joint/0003&quot;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>           &quot;scan_stamp&quot;: 1792738510.8599558,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>           &quot;query_now&quot;: 1792738511.006959,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>           &quot;result&quot;: {</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &quot;map_cells&quot;: 4617,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             ],</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>           }</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         },</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         {</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>           &quot;capture&quot;: &quot;joint/0004&quot;,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>           &quot;scan_stamp&quot;: 1792738512.7649963,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>           &quot;query_now&quot;: 1792738512.8999991,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>           &quot;result&quot;: {</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             &quot;map_cells&quot;: 4852,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             ],</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           }</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         },</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         {</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>           &quot;capture&quot;: &quot;joint/0005&quot;,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;scan_stamp&quot;: 1792738514.3730307,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>           &quot;query_now&quot;: 1792738514.5170338,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>           &quot;result&quot;: {</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             &quot;map_cells&quot;: 4768,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             ],</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           }</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         }</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>       ]</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     },</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     {</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>       &quot;source&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>       &quot;role&quot;: &quot;read_only_diagnostic&quot;,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>       &quot;control_published&quot;: false,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>       &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>       &quot;captures&quot;: [</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         {</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           &quot;capture&quot;: &quot;joint/0000&quot;,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           &quot;scan_stamp&quot;: 1792738723.2652512,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>           &quot;query_now&quot;: 1792738723.406254,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>           &quot;result&quot;: {</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             &quot;map_cells&quot;: 4688,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             ],</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>           }</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         },</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         {</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>           &quot;capture&quot;: &quot;joint/0001&quot;,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>           &quot;scan_stamp&quot;: 1792738724.855285,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>           &quot;query_now&quot;: 1792738725.0112884,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>           &quot;result&quot;: {</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             &quot;map_cells&quot;: 4675,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             ],</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>           }</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         },</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         {</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>           &quot;capture&quot;: &quot;joint/0002&quot;,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>           &quot;scan_stamp&quot;: 1792738726.448319,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>           &quot;query_now&quot;: 1792738726.6223228,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>           &quot;result&quot;: {</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             &quot;map_cells&quot;: 4528,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             ],</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>           }</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         },</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         {</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>           &quot;capture&quot;: &quot;joint/0003&quot;,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>           &quot;scan_stamp&quot;: 1792738728.035353,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>           &quot;query_now&quot;: 1792738728.1823559,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>           &quot;result&quot;: {</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             &quot;map_cells&quot;: 4672,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>             ],</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>           }</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         },</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         {</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>           &quot;capture&quot;: &quot;joint/0004&quot;,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           &quot;scan_stamp&quot;: 1792738729.6283867,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           &quot;query_now&quot;: 1792738729.7663898,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           &quot;result&quot;: {</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>             &quot;map_cells&quot;: 4673,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>               &quot;KINEMATIC_LIMIT&quot;</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>             ],</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           }</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         },</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         {</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>           &quot;capture&quot;: &quot;joint/0005&quot;,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>           &quot;scan_stamp&quot;: 1792738731.2184207,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>           &quot;query_now&quot;: 1792738731.3894243,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>           &quot;result&quot;: {</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>             &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>             &quot;map_cells&quot;: 4677,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>             &quot;candidate_reasons&quot;: [</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>               &quot;MAP_STOP_HORIZON&quot;</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>             ],</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>             &quot;control_eligible&quot;: false</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>           }</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         }</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>       ]</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>     }</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>   ]</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a> }</span></pre></body></html>

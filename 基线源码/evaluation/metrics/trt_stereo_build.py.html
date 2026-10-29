@@ -1,0 +1,153 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/trt_stereo_build.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/trt_stereo_build.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Pinned upstream single-ONNX export and bounded TensorRT engine construction.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import importlib.util</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import os</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def load_exporter(vendor):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     spec=importlib.util.spec_from_file_location(&#x27;official_single_onnx&#x27;,vendor/&#x27;scripts/make_single_onnx.py&#x27;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     return module</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> def export(run,vendor,checkpoint,sample,freeze_fourier=False,reference_run=None):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     os.environ[&#x27;TORCH_COMPILE_DISABLE&#x27;]=&#x27;1&#x27;;os.environ[&#x27;TORCHDYNAMO_DISABLE&#x27;]=&#x27;1&#x27;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     import numpy as np</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     import torch</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     import onnx</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     from perception.stereo_depth.learned import FastFoundationStereo</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     profile=json.loads((run/&#x27;profile.json&#x27;).read_text())</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     official=load_exporter(vendor)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     backend=FastFoundationStereo(vendor,checkpoint,profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;])</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     model=backend.model;model.args.mixed_precision=False</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     torch.backends.cuda.matmul.allow_tf32=False;torch.backends.cudnn.allow_tf32=False</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     import cv2</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     cv2.setNumThreads(1);torch.set_num_threads(1)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     with np.load(sample,allow_pickle=False) as saved:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         images=[cv2.resize(saved[side],(480,360),interpolation=cv2.INTER_AREA) for side in (&#x27;left&#x27;,&#x27;right&#x27;)]</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     raw=[torch.as_tensor(image.copy(),device=&#x27;cuda&#x27;).float()[None].permute(0,3,1,2).contiguous() for image in images]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     padder=backend.padder(raw[0].shape,divis_by=32,force_square=False);left,right=padder.pad(*raw)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     import core.foundation_stereo as core</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     normalize=core.normalize_image</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     start=time.monotonic()</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     with torch.inference_mode():</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         if freeze_fourier:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             from evaluation.metrics.fourier_freeze import freeze_fourier_inputs</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             original,fourier_records=freeze_fourier_inputs(model,left,right)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             original=original.float()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             if reference_run is None:raise ValueError(&#x27;freezing Fourier inputs requires complete FP32 reference&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             reference_manifest=json.loads((reference_run/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             source=Path(__file__).resolve().parents[2]/reference_manifest[&#x27;config&#x27;][&#x27;precision_reference&#x27;][&#x27;source_run&#x27;]</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             rows=json.loads((source/&#x27;inputs/index.json&#x27;).read_text());checks=[];backend.mixed_precision=False</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             from perception.stereo_depth.learned import filter_learned_disparity</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             for row in rows:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 image_path=source/&#x27;inputs&#x27;/(row[&#x27;key&#x27;]+&#x27;.npz&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 if file_hash(image_path)!=row[&#x27;image_sha256&#x27;]:raise ValueError(&#x27;Fourier parity image changed&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 with np.load(image_path,allow_pickle=False) as saved:</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                     f,r,_=backend.predict(saved[&#x27;left&#x27;],saved[&#x27;right&#x27;])</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                     _,valid,_=filter_learned_disparity(f,r,cv2.cvtColor(saved[&#x27;left&#x27;],cv2.COLOR_RGB2GRAY),cv2.cvtColor(saved[&#x27;right&#x27;],cv2.COLOR_RGB2GRAY))</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 with np.load(reference_run/&#x27;fp32_predictions&#x27;/(row[&#x27;key&#x27;]+&#x27;.npz&#x27;),allow_pickle=False) as baseline:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     maximum=max(float(np.abs(f-baseline[&#x27;forward&#x27;]).max()),float(np.abs(r-baseline[&#x27;reverse&#x27;]).max()))</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                     same_mask=bool(np.array_equal(valid,baseline[&#x27;valid&#x27;]))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 checks.append({&#x27;key&#x27;:row[&#x27;key&#x27;],&#x27;max_raw_absolute_original_px&#x27;:maximum,&#x27;valid_mask_identical&#x27;:same_mask,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                     &#x27;passed&#x27;:maximum&lt;=.0001 and same_mask})</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             freeze_report={&#x27;modules&#x27;:fourier_records,&#x27;packets&#x27;:checks,&#x27;max_raw_gate_original_px&#x27;:.0001,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 &#x27;source_fp32_reference&#x27;:str(reference_run),&#x27;passed&#x27;:bool(checks) and all(c[&#x27;passed&#x27;] for c in checks)}</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             (run/&#x27;fourier_parity.json&#x27;).write_text(json.dumps(freeze_report,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             if not freeze_report[&#x27;passed&#x27;]:raise RuntimeError(&#x27;shape-only Fourier freezing changes FP32 reference&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         else:</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             original=model.forward(left,right,iters=4,test_mode=True,optimize_build_volume=&#x27;pytorch1&#x27;).float()</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         normalized_left,normalized_right=normalize(left),normalize(right)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         core.normalize_image=lambda image:image</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         core.build_gwc_volume_optimized_pytorch1=official._build_gwc_volume_onnx</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         core.build_concat_volume_optimized_pytorch1=official._build_concat_volume_onnx</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         wrapper=official.FastFoundationStereoSingleOnnx(model).cuda().eval()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         patched=wrapper(normalized_left,normalized_right).float()</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     error=(patched-original).abs().cpu().numpy()</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     comparison={&#x27;mean_abs_model_px&#x27;:float(error.mean()),&#x27;p99_abs_model_px&#x27;:float(np.percentile(error,99)),</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &#x27;max_abs_model_px&#x27;:float(error.max()),&#x27;finite&#x27;:bool(np.isfinite(error).all()),</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &#x27;p99_gate_model_px&#x27;:.05,&#x27;max_gate_model_px&#x27;:.5}</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     comparison[&#x27;passed&#x27;]=comparison[&#x27;finite&#x27;] and comparison[&#x27;p99_abs_model_px&#x27;]&lt;=.05 and comparison[&#x27;max_abs_model_px&#x27;]&lt;=.5</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     (run/&#x27;export_parity.json&#x27;).write_text(json.dumps(comparison,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     if not comparison[&#x27;passed&#x27;]:raise RuntimeError(&#x27;upstream ONNX-compatible replacement differs from FP32 reference&#x27;)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     # Upstream wrapper replaces unsupported volume construction and strips normalization.</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     # Inputs are already normalized FP32. No original vendor bytes are modified.</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     torch.onnx.export(wrapper,(normalized_left,normalized_right),str(run/&#x27;stereo.onnx&#x27;),</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         opset_version=17,input_names=[&#x27;left_image&#x27;,&#x27;right_image&#x27;],output_names=[&#x27;disparity&#x27;],</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         do_constant_folding=True,dynamo=False)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     graph=onnx.load(str(run/&#x27;stereo.onnx&#x27;));onnx.checker.check_model(graph)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     report={&#x27;onnx_sha256&#x27;:file_hash(run/&#x27;stereo.onnx&#x27;),&#x27;opset&#x27;:17,&#x27;image_shape&#x27;:[1,3,384,480],</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &#x27;external_imagenet_normalization&#x27;:True,&#x27;volume_normalize&#x27;:bool(model.args.normalize),</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &#x27;mixed_precision_at_export&#x27;:False,&#x27;valid_iters&#x27;:4,&#x27;max_disp&#x27;:192,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         &#x27;sample_sha256&#x27;:file_hash(sample),&#x27;exporter_sha256&#x27;:file_hash(vendor/&#x27;scripts/make_single_onnx.py&#x27;),</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         &#x27;export_s&#x27;:time.monotonic()-start,&#x27;torch&#x27;:torch.__version__,&#x27;onnx&#x27;:onnx.__version__,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         &#x27;normalization_compatibility_default_applied&#x27;:backend.normalization_compatibility_default_applied,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &#x27;fourier_inputs_frozen&#x27;:freeze_fourier,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         &#x27;source_weights_sha256&#x27;:profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;],&#x27;acceptance_eligible&#x27;:False}</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     (run/&#x27;export.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a> </span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a> </span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> def build(run,precision,precision_policy=&#x27;default&#x27;):</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     import tensorrt as trt</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     import torch</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     logger=trt.Logger(trt.Logger.INFO);start=time.monotonic()</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     builder=trt.Builder(logger);network=builder.create_network(1&lt;&lt;int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     parser=trt.OnnxParser(network,logger)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     if not parser.parse((run/&#x27;stereo.onnx&#x27;).read_bytes()):</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         raise RuntimeError(&#x27;ONNX parse failed: &#x27;+str([str(parser.get_error(i)) for i in range(parser.num_errors)]))</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     config=builder.create_builder_config();config.set_memory_pool_limit(trt.MemoryPoolType.WORKSPACE,512*1024*1024)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     config.clear_flag(trt.BuilderFlag.TF32);config.max_aux_streams=0</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     if precision==&#x27;fp16&#x27;:config.set_flag(trt.BuilderFlag.FP16)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>     from evaluation.metrics.trt_precision_policy import apply_precision_policy</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     constraints=apply_precision_policy(network,config,trt,precision_policy,precision)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     (run/&#x27;precision_constraints.json&#x27;).write_text(json.dumps({&#x27;policy&#x27;:precision_policy,&#x27;layers&#x27;:constraints,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         &#x27;obey_precision_constraints&#x27;:bool(constraints),&#x27;selection_is_experimental_not_cause_proof&#x27;:True},indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     serialized=builder.build_serialized_network(network,config)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     if serialized is None:raise RuntimeError(&#x27;TensorRT engine construction failed&#x27;)</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     engine_path=run/(&#x27;stereo_&#x27;+precision+&#x27;.engine&#x27;);engine_path.write_bytes(bytes(serialized))</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     report={&#x27;engine_sha256&#x27;:file_hash(engine_path),&#x27;engine_file&#x27;:engine_path.name,&#x27;onnx_sha256&#x27;:file_hash(run/&#x27;stereo.onnx&#x27;),</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &#x27;tensorrt&#x27;:trt.__version__,&#x27;precision&#x27;:precision,&#x27;tf32_enabled&#x27;:False,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &#x27;precision_policy&#x27;:precision_policy,&#x27;fp32_constrained_layers&#x27;:len(constraints),</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &#x27;precision_constraints_sha256&#x27;:file_hash(run/&#x27;precision_constraints.json&#x27;),</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &#x27;global_tf32_override&#x27;:os.environ.get(&#x27;NVIDIA_TF32_OVERRIDE&#x27;),&#x27;max_aux_streams&#x27;:0,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &#x27;workspace_limit_bytes&#x27;:512*1024*1024,&#x27;build_s&#x27;:time.monotonic()-start,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         &#x27;gpu&#x27;:torch.cuda.get_device_name(0),&#x27;compute_capability&#x27;:list(torch.cuda.get_device_capability(0)),</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         &#x27;cuda_runtime&#x27;:torch.version.cuda,&#x27;acceptance_eligible&#x27;:False,&#x27;current_control_eligible&#x27;:False}</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     (run/(&#x27;build_&#x27;+precision+&#x27;.json&#x27;)).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>     if constraints:</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         runtime=trt.Runtime(logger);engine=runtime.deserialize_cuda_engine(serialized)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         if engine is None:raise RuntimeError(&#x27;built engine cannot be inspected&#x27;)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         inspector=engine.create_engine_inspector()</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         information=inspector.get_engine_information(trt.LayerInformationFormat.JSON)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         (run/&#x27;engine_inspector.json&#x27;).write_text(information+&#x27;\n&#x27;)</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         if precision_policy==&#x27;sensitive_geometry_fp32&#x27;:</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             from evaluation.metrics.trt_precision_inspection import inspect_geometry_precision</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             inspection=inspect_geometry_precision(json.loads(information),constraints)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             (run/&#x27;geometry_precision_inspection.json&#x27;).write_text(json.dumps(inspection,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>             if inspection[&#x27;non_fp32_coordinates&#x27;]:</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>                 raise RuntimeError(&#x27;visible geometry coordinates still use reduced precision&#x27;)</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a> </span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a> </span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a> def main():</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     parser.add_argument(&#x27;--stage&#x27;,choices=(&#x27;export&#x27;,&#x27;build&#x27;),required=True)</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     parser.add_argument(&#x27;--vendor&#x27;,type=Path);parser.add_argument(&#x27;--checkpoint&#x27;,type=Path);parser.add_argument(&#x27;--sample&#x27;,type=Path)</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     parser.add_argument(&#x27;--precision&#x27;,choices=(&#x27;fp16&#x27;,&#x27;fp32&#x27;),default=&#x27;fp16&#x27;)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     from evaluation.metrics.trt_precision_policy import POLICIES</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>     parser.add_argument(&#x27;--precision-policy&#x27;,choices=POLICIES,default=&#x27;default&#x27;)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     parser.add_argument(&#x27;--freeze-fourier-inputs&#x27;,action=&#x27;store_true&#x27;);parser.add_argument(&#x27;--fp32-reference-run&#x27;,type=Path)</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>     args=parser.parse_args()</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     if args.stage==&#x27;export&#x27;:</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         if any(x is None for x in (args.vendor,args.checkpoint,args.sample)):parser.error(&#x27;export requires vendor, checkpoint and sample&#x27;)</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         export(args.run_dir,args.vendor,args.checkpoint,args.sample,args.freeze_fourier_inputs,args.fp32_reference_run)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     else:build(args.run_dir,args.precision,args.precision_policy)</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a> </span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a> </span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

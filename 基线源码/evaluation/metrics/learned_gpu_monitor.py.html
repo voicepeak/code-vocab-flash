@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/learned_gpu_monitor.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/learned_gpu_monitor.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded diagnostic GPU/system CPU sampling, separate from the sensor node.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import signal</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import threading</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def main():</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     args=parser.parse_args();stop=threading.Event()</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     signal.signal(signal.SIGTERM,lambda *_:stop.set())</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     started=time.monotonic()</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     with (args.run_dir/&#x27;gpu_system_usage.jsonl&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         while not stop.is_set() and time.monotonic()-started&lt;150:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>             sample=subprocess.run([&#x27;nvidia-smi&#x27;,&#x27;--query-gpu=timestamp,utilization.gpu,memory.used,power.draw&#x27;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>                 &#x27;--format=csv,noheader,nounits&#x27;],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=3)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             cpu=[int(x) for x in Path(&#x27;/proc/stat&#x27;).read_text().splitlines()[0].split()[1:9]]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             output.write(json.dumps({&#x27;wall&#x27;:time.monotonic(),&#x27;gpu_csv&#x27;:sample.stdout.strip(),</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                 &#x27;gpu_exit_code&#x27;:sample.returncode,&#x27;gpu_error&#x27;:sample.stderr.strip(),&#x27;system_cpu_ticks&#x27;:cpu})+&#x27;\n&#x27;)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             output.flush();stop.wait(.5)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

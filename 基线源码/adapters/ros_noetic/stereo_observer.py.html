@@ -1,0 +1,151 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/stereo_observer.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/stereo_observer.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Read-only front stereo header pairing; no depth or exposure-sync claim.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import math</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import threading</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import numpy as np</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from adapters.ros_noetic.stereo_images import decode_image</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from estimation.clock import SensorClock</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from perception.stereo_depth.pairing import StereoPairBuffer</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> TOPICS = {&#x27;left&#x27;: &#x27;/airsim_node/drone_1/front_left/Scene&#x27;,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>           &#x27;right&#x27;: &#x27;/airsim_node/drone_1/front_right/Scene&#x27;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>           &#x27;imu&#x27;: &#x27;/airsim_node/drone_1/imu/imu&#x27;}</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> def observe(run, duration, image_ttl_s=.15):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     import rosgraph</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     import rospy</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     from sensor_msgs.msg import Image, Imu</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     rospy.init_node(&#x27;rmua_stereo_pairing&#x27;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     pending = {}</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     lock = threading.Lock()</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     received = Counter()</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     latest_received_imu_stamp = None</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def receive(side, message):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         nonlocal latest_received_imu_stamp</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         with lock:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             if side == &#x27;imu&#x27;:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 latest_received_imu_stamp = message.header.stamp.to_sec()</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             pending[side] = (message, time.monotonic(), latest_received_imu_stamp)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             received[side] += 1</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     listeners = [rospy.Subscriber(topic, Imu if side == &#x27;imu&#x27; else Image,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                  lambda msg, s=side: receive(s, msg), queue_size=1, buff_size=4000000)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                  for side, topic in TOPICS.items()]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     clock = SensorClock()</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     buffer = StereoPairBuffer()</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     started = time.monotonic()</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     last_pair = None</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     count = 0</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     decoded = Counter()</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     headers = {}</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     fault = None</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     graph = None</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     try:</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         with (run / &#x27;stereo_pairs.jsonl&#x27;).open(&#x27;x&#x27;) as output, (run / &#x27;stereo_image_timing.jsonl&#x27;).open(&#x27;x&#x27;) as timing:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             while time.monotonic() - started &lt; duration and not rospy.is_shutdown():</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 begin = time.monotonic()</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 with lock:</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                     batch = dict(pending)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                     pending.clear()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                 if &#x27;imu&#x27; in batch:</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                     message, arrival, _ = batch[&#x27;imu&#x27;]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                     if clock.observe(message.header.stamp.to_sec(), arrival):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                         raise RuntimeError(&#x27;IMU_CLOCK_RESET&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 if clock.stamp is None:</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                     if begin - started &gt; 5:</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                         raise RuntimeError(&#x27;NO_IMU_CLOCK&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                     time.sleep(.002)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                     continue</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 if not clock.fresh(time.monotonic()):</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                     raise RuntimeError(&#x27;STALE_IMU_CLOCK&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                 for side in (&#x27;left&#x27;, &#x27;right&#x27;):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                     if side not in batch:</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                         continue</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                     message, arrival, arrival_imu_stamp = batch[side]</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                     decode_begin = time.monotonic()</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                     frame = decode_image(message, side, clock.epoch, ttl_s=image_ttl_s)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                     accepted = buffer.add(side, frame, arrival)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                     timing.write(json.dumps({&#x27;side&#x27;: side, &#x27;stamp&#x27;: frame.metadata.stamp,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                         &#x27;imu_stamp_at_callback&#x27;: arrival_imu_stamp, &#x27;imu_stamp_at_processing&#x27;: clock.stamp,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                         &#x27;arrival_wall_monotonic&#x27;: arrival, &#x27;decode_begin_wall_monotonic&#x27;: decode_begin,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                         &#x27;decode_end_wall_monotonic&#x27;: time.monotonic(), &#x27;epoch&#x27;: clock.epoch,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                         &#x27;buffer_accepted&#x27;: accepted}, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                     decoded[side] += 1</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                     if side not in headers:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                         header = {&#x27;stamp&#x27;: message.header.stamp.to_sec(),</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                                   &#x27;frame_id&#x27;: message.header.frame_id, &#x27;encoding&#x27;: message.encoding,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                                   &#x27;width&#x27;: message.width, &#x27;height&#x27;: message.height,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                                   &#x27;step&#x27;: message.step, &#x27;is_bigendian&#x27;: message.is_bigendian}</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                         headers[side] = header</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                         (run / (&#x27;stereo_first_&#x27; + side + &#x27;.json&#x27;)).write_text(json.dumps(header, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                         with (run / (&#x27;stereo_first_&#x27; + side + &#x27;.bin&#x27;)).open(&#x27;xb&#x27;) as raw:</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                             raw.write(bytes(message.data))</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                 pair = buffer.pop(clock.stamp, time.monotonic())</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                 if pair is not None:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                     if count == 0:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                         np.savez(run / &#x27;stereo_first_pair.npz&#x27;, left=pair.left.pixels, right=pair.right.pixels)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                     row = {&#x27;left_stamp&#x27;: pair.left.metadata.stamp, &#x27;right_stamp&#x27;: pair.right.metadata.stamp,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                            &#x27;imu_clock_stamp&#x27;: clock.stamp, &#x27;pair_stamp&#x27;: pair.metadata.stamp,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                            &#x27;valid_until&#x27;: pair.metadata.valid_until, &#x27;epoch&#x27;: pair.metadata.epoch,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                            &#x27;header_skew_s&#x27;: pair.skew_s, &#x27;encoding&#x27;: pair.left.encoding,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>                            &#x27;image_shape&#x27;: list(pair.left.pixels.shape),</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                            &#x27;processing_begin_wall_monotonic&#x27;: begin,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                            &#x27;emitted_wall_monotonic&#x27;: time.monotonic(),</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                            &#x27;exposure_sync_verified&#x27;: False, &#x27;calibrated_rectification_verified&#x27;: False}</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                     output.write(json.dumps(row, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                     count += 1</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                     last_pair = time.monotonic()</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                 if last_pair is None and time.monotonic() - started &gt; 5:</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                     raise RuntimeError(&#x27;NO_STEREO_PAIR_WITHIN_5MS&#x27;)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                 if last_pair is not None and time.monotonic() - last_pair &gt; .5:</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                     raise RuntimeError(&#x27;STALE_STEREO_PAIRS&#x27;)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                 time.sleep(.002)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     except Exception as error:</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         fault = str(error)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     finally:</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         try:</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             pubs, subs, _ = rosgraph.Master(rospy.get_name()).getSystemState()</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             node = rospy.get_name()</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             graph = {&#x27;subscriptions&#x27;: sorted(t for t, nodes in subs if node in nodes),</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                      &#x27;publishers&#x27;: sorted(t for t, nodes in pubs if node in nodes)}</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             if graph[&#x27;subscriptions&#x27;] != sorted(TOPICS.values()) or set(graph[&#x27;publishers&#x27;]) - {&#x27;/rosout&#x27;}:</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>                 fault = fault or &#x27;STEREO_OBSERVER_GRAPH_POLICY&#x27;</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         except Exception as error:</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             fault = fault or &#x27;GRAPH_AUDIT_FAILED:&#x27; + str(error)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         for listener in listeners:</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             listener.unregister()</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         summary = {&#x27;pairs&#x27;: count, &#x27;decoded_frames&#x27;: dict(decoded), &#x27;received_frames&#x27;: dict(received),</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>                    &#x27;events&#x27;: dict(buffer.events), &#x27;fault&#x27;: fault, &#x27;node_graph&#x27;: graph,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>                    &#x27;source_headers&#x27;: headers, &#x27;max_skew_s&#x27;: buffer.max_skew_s,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>                    &#x27;queue_capacity_per_side&#x27;: buffer.capacity, &#x27;clock_source&#x27;: TOPICS[&#x27;imu&#x27;],</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>                    &#x27;image_age_budget_s&#x27;: image_ttl_s, &#x27;experimental_age_budget&#x27;: image_ttl_s != .15,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>                    &#x27;control_published&#x27;: False, &#x27;debug_inputs_used&#x27;: False,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>                    &#x27;exposure_sync_verified&#x27;: False, &#x27;calibrated_rectification_verified&#x27;: False,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>                    &#x27;metric_depth_verified&#x27;: False, &#x27;acceptance_eligible&#x27;: False}</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         (run / &#x27;stereo_summary.json&#x27;).write_text(json.dumps(summary, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     return 0 if count and fault is None else 2</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a> </span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a> </span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a> def main():</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     parser.add_argument(&#x27;--run-dir&#x27;, type=Path, required=True)</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     parser.add_argument(&#x27;--duration&#x27;, type=float, default=10.)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     parser.add_argument(&#x27;--image-age-budget-ms&#x27;, type=int, choices=(150, 200), default=150)</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>     args = parser.parse_args()</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     if not math.isfinite(args.duration) or not 0 &lt; args.duration &lt;= 30:</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         parser.error(&#x27;duration must be in (0,30] seconds&#x27;)</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     return observe(args.run_dir, args.duration, args.image_age_budget_ms / 1000.)</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a> </span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a> </span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>     raise SystemExit(main())</span></pre></body></html>

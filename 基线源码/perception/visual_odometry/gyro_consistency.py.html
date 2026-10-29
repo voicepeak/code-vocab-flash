@@ -1,0 +1,49 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/visual_odometry/gyro_consistency.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/visual_odometry/gyro_consistency.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Compare relative visual rotation to causal gyroscope integration.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import bisect</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numpy as np</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from estimation.geometry import delta_quaternion, rotation</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> def gyro_rotation(samples, start, end, max_gap_s=.04):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     &quot;&quot;&quot;Integrate unbiased-or-raw body gyro; no extrapolation or gap bridging.</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     samples are (stamp, angular_velocity_body), already restricted to one epoch.</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     The returned previous-from-current orientation is diagnostic and has no</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     calibrated error bound. Bias correction, if any, is the caller&#x27;s input.</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     if (not math.isfinite(start) or not math.isfinite(end) or not 0 &lt;= start &lt; end</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             or not math.isfinite(max_gap_s) or not 0 &lt; max_gap_s &lt;= .1):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         raise ValueError(&#x27;invalid gyro interval&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     stamps = [x[0] for x in samples]</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if (len(samples)&lt;2 or any(not math.isfinite(s) for s in stamps)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             or any(b &lt;= a for a,b in zip(stamps,stamps[1:]))):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         raise ValueError(&#x27;invalid gyro timestamps&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     left=bisect.bisect_right(stamps,start)-1;right=bisect.bisect_left(stamps,end)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     if left&lt;0 or right&gt;=len(stamps):raise ValueError(&#x27;gyro interval not bracketed&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     selection = samples[left:right+1]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     if any(b[0]-a[0]&gt;max_gap_s for a,b in zip(selection,selection[1:])):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         raise ValueError(&#x27;gyro sample gap&#x27;)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     rates=[]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     for _, rate in selection:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         v=np.asarray(rate,dtype=float)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if v.shape!=(3,) or not np.isfinite(v).all():raise ValueError(&#x27;invalid gyro rate&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         rates.append(v)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def interpolate(t):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         i=min(bisect.bisect_right(stamps,t)-1,right-1)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         a,b=stamps[i],stamps[i+1];f=(t-a)/(b-a)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         return (1-f)*rates[i-left]+f*rates[i-left+1]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     times=[start]+[s for s in stamps[left+1:right] if start&lt;s&lt;end]+[end]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     result=np.eye(3)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     for a,b in zip(times,times[1:]):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         result=result @ rotation(delta_quaternion((interpolate(a)+interpolate(b))*.5*(b-a)))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     return result</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> def rotation_residual(visual_rotation, gyro):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     visual=np.asarray(visual_rotation,dtype=float);gyro=np.asarray(gyro,dtype=float)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     if (visual.shape!=(3,3) or gyro.shape!=(3,3) or not np.isfinite(visual).all() or not np.isfinite(gyro).all()</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             or any(not np.allclose(r.T@r,np.eye(3),rtol=0,atol=1e-5) or abs(np.linalg.det(r)-1)&gt;1e-5</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                    for r in (visual,gyro))):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         raise ValueError(&#x27;invalid rotation&#x27;)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     return float(np.arccos(np.clip((np.trace(gyro.T @ visual)-1)/2,-1,1)))</span></pre></body></html>

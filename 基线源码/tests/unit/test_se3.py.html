@@ -1,0 +1,102 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_se3.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_se3.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import json</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import math</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from control.motor_allocator.allocator import MotorAllocator</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from control.se3_controller.controller import Se3Controller</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from estimation.geometry import delta_quaternion, rotation</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from interfaces.contracts import Health, Metadata, StateEstimate</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def config():</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     return json.loads((Path(__file__).resolve().parents[2]/&#x27;configs/vehicle_identification.json&#x27;).read_text())</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def state(q=(1., 0., 0., 0.), omega=(0., 0., 0.)):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     return StateEstimate(Metadata(1., 2., 0, &#x27;test&#x27;), (0., 0., -1.), (0., 0., 0.),</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                          tuple(q), omega, Health.OK)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> class FlightControlTests(unittest.TestCase):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     def test_hover_force_and_motor_order(self):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         c = config()</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         allocator = MotorAllocator(c)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         wrench = Se3Controller(c).step(state(), (0., 0., -1.))</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.assertAlmostEqual(wrench.thrust, .9*9.81)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         allocation = allocator.allocate(wrench.thrust, wrench.moment)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         np.testing.assert_allclose(allocation.pwm, (.17605,)*4, atol=.0001)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         signs = np.sign(allocator.B[1:])</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         np.testing.assert_array_equal(signs, ((-1, 1, 1, -1), (1, -1, 1, -1), (1, 1, -1, -1)))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def test_attitude_feedback_and_rate_damping_restore_level(self):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         for axis in range(3):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             angle = np.zeros(3);angle[axis] = .1</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             omega = np.zeros(3);omega[axis] = .1</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             w = Se3Controller(config()).step(state(delta_quaternion(angle), tuple(omega)), (0., 0., -1.))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             self.assertLess(w.moment[axis], 0.)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     def test_positive_x_reference_tilts_towards_positive_x_in_ned(self):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         w = Se3Controller(config()).step(state(), (1., 0., -1.))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         # Negative pitch rotates body thrust towards +NED x.</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         self.assertLess(w.moment[1], 0.)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         self.assertAlmostEqual(w.moment[0], 0.)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     def test_yaw_rate_feedforward_produces_positive_torque(self):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         w=Se3Controller(config()).step(state(),(0.,0.,-1.),yaw_rate=.1)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertGreater(w.moment[2],0.)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     def test_allocator_saturates_and_reports_achieved_wrench(self):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         a = MotorAllocator(config())</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         for thrust, moment in ((8.829, (2., 2., 1.)), (100., (0., 0., 0.)), (0., (1., 0., 0.))):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             result = a.allocate(thrust, moment)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             self.assertTrue(result.saturated)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             self.assertTrue(all(0 &lt;= v &lt;= .6 for v in result.pwm))</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             np.testing.assert_allclose(result.achieved_wrench, a.B @ (np.array(result.pwm)*a.max_thrust))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         result = a.allocate(8.829, (.01, -.01, .005))</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         self.assertFalse(result.saturated)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         np.testing.assert_allclose(result.achieved_wrench, (8.829, .01, -.01, .005), atol=1e-10)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     def test_anti_windup_freezes_integral_when_saturated(self):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         c = Se3Controller(config())</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         for _ in range(1000):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             w = c.step(state(), (100., 0., -1.))</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertLessEqual(abs(w.integral[0]), 1.)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         for _ in range(10):</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             w = c.step(state(), (-100., 0., -1.), allow_integral=False)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         self.assertEqual(w.integral[0], 1.)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> </span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     def test_allocator_reports_small_limit_excess_as_saturation(self):</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         allocator = MotorAllocator(config())</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         limit = allocator.max_thrust * allocator.ceiling</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         # Relative closeness of the achieved and requested wrench must not</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         # conceal a real reduction in collective thrust.</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         requested = 4. * limit * (1. + 1e-6)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         clipped = allocator.allocate(requested, (0., 0., 0.))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         self.assertLess(clipped.achieved_wrench[0], requested)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         self.assertTrue(clipped.saturated)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         self.assertFalse(allocator.allocate(4. * limit, (0., 0., 0.)).saturated)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> </span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         # A small moment reduction at a motor boundary is also saturation.</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         forces = np.array((limit * (1. + 1e-6), limit * .5,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                            limit * .5, limit * (1. - 1e-6)))</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         wrench = allocator.B @ forces</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         result = allocator.allocate(wrench[0], wrench[1:])</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         self.assertLess(result.moment_scale, 1.)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         self.assertTrue(result.saturated)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> </span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     def test_small_angle_closed_loop_roll_converges(self):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         c = config(); controller = Se3Controller(c); allocator = MotorAllocator(c)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         angle, omega = .12, 0.</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         for _ in range(1000):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             w = controller.step(state(delta_quaternion((angle, 0., 0.)), (omega, 0., 0.)),</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                                 (0., 0., -1.), dt=.005)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             applied = allocator.allocate(w.thrust, w.moment)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             omega += applied.achieved_wrench[1]/c[&#x27;inertia_kg_m2&#x27;][0]*.005</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             angle += omega*.005</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         self.assertLess(abs(angle), 1e-4)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         self.assertLess(abs(omega), 1e-4)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> </span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     unittest.main()</span></pre></body></html>

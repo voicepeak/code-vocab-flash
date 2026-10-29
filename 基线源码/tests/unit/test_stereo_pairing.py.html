@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_pairing.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_pairing.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import replace</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from types import SimpleNamespace as NS</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import unittest</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from adapters.ros_noetic.stereo_images import decode_image</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from perception.stereo_depth.pairing import ImageFrame, StereoPairBuffer</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def frame(side, stamp=10., epoch=0, encoding=&#x27;rgb8&#x27;, shape=(3, 4, 3)):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     return ImageFrame(Metadata(stamp, stamp + .15, epoch, &#x27;test&#x27;, &#x27;front_&#x27; + side + &#x27;_image&#x27;),</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>                       encoding, np.zeros(shape, np.uint8))</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> class StereoPairingTests(unittest.TestCase):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     def test_pair_is_causal_in_sensor_time_and_consumed_once(self):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         buffer = StereoPairBuffer()</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;), 20.)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, 10.003), 20.001)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.assertIsNone(buffer.pop(10.001, 20.002))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         pair = buffer.pop(10.004, 20.003)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertAlmostEqual(pair.skew_s, .003)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.assertEqual(pair.metadata.valid_until, 10.15)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             replace(pair, metadata=replace(pair.metadata, valid_until=11.))</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             replace(pair, metadata=replace(pair.metadata, epoch=1))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.assertIsNone(buffer.pop(10.004, 20.004))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         with self.assertRaises(ValueError): pair.left.pixels.setflags(write=True)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def test_large_skew_expiry_and_wall_stall_do_not_produce_pairs(self):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         for right_stamp, now, wall in ((10.02, 10.03, 20.01), (10.001, 10.16, 20.01),</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                                        (10.001, 10.01, 20.21)):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             buffer = StereoPairBuffer()</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;), 20.)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, right_stamp), 20.)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             self.assertIsNone(buffer.pop(now, wall))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             if now &gt;= 10.15:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 self.assertGreater(buffer.events[&#x27;SENSOR_EXPIRED_left&#x27;], 0)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             elif wall &gt;= 20.2:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                 self.assertGreater(buffer.events[&#x27;WALL_EXPIRED_left&#x27;], 0)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     def test_queues_bounded_old_frames_not_replayed_and_reset_clears_pending(self):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         buffer = StereoPairBuffer(capacity=2)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         for stamp in (10., 10.01, 10.02): buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, stamp), 20.)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         self.assertEqual(len(buffer.pending[&#x27;left&#x27;]), 2)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         self.assertFalse(buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, 10.01), 20.))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         buffer.reset(1)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         self.assertFalse(buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, 10.02), 20.))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         self.assertIsNone(buffer.pop(10.03, 20.01))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertTrue(buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, 1., 1), 21.))</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         self.assertTrue(buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, 1., 1), 21.))</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         self.assertIsNotNone(buffer.pop(1.01, 21.01))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     def test_nearest_available_pair_discards_superseded_unpaired_images(self):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         buffer = StereoPairBuffer()</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, 10.), 20.)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, 10.004), 20.)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, 10.003), 20.)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         pair = buffer.pop(10.005, 20.01)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertEqual(pair.left.metadata.stamp, 10.004)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertEqual(buffer.events[&#x27;SUPERSEDED_left&#x27;], 1)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         self.assertEqual(len(buffer.pending[&#x27;left&#x27;]), 0)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> </span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     def test_incompatible_images_wrong_source_and_future_leap_are_rejected(self):</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         buffer = StereoPairBuffer()</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;), 20.)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, shape=(4, 4, 3)), 20.)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         self.assertIsNone(buffer.pop(10.01, 20.01))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         with self.assertRaises(ValueError): buffer.add(&#x27;left&#x27;, frame(&#x27;right&#x27;), 20.)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         buffer = StereoPairBuffer()</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         buffer.add(&#x27;left&#x27;, frame(&#x27;left&#x27;, 11.), 20.)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         buffer.add(&#x27;right&#x27;, frame(&#x27;right&#x27;, 11.), 20.)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         self.assertIsNone(buffer.pop(10., 20.01))</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         self.assertEqual(len(buffer.pending[&#x27;left&#x27;]), 0)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> </span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     def test_padded_image_bytes_and_empty_header_frame_are_preserved_without_tf(self):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         message = NS(header=NS(stamp=NS(to_sec=lambda: 10.), frame_id=&#x27;&#x27;),</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                      height=2, width=2, step=8, encoding=&#x27;rgb8&#x27;, data=bytes(range(16)))</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         image = decode_image(message, &#x27;left&#x27;, 0)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         np.testing.assert_array_equal(image.pixels, [[[0, 1, 2], [3, 4, 5]],</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                                                    [[8, 9, 10], [11, 12, 13]]])</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         self.assertEqual(image.metadata.frame_id, &#x27;front_left_image&#x27;)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         delayed = decode_image(message, &#x27;left&#x27;, 0, ttl_s=.2)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         self.assertTrue(delayed.metadata.current(10.18, 0))</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         self.assertFalse(image.metadata.current(10.18, 0))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         for key, value in ((&#x27;encoding&#x27;, &#x27;mono16&#x27;), (&#x27;step&#x27;, 5), (&#x27;data&#x27;, b&#x27;&#x27;), (&#x27;height&#x27;, -1)):</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             original = getattr(message, key)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             setattr(message, key, value)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             with self.assertRaises(ValueError): decode_image(message, &#x27;left&#x27;, 0)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             setattr(message, key, original)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a> </span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a> </span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     unittest.main()</span></pre></body></html>

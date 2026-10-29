@@ -1,0 +1,81 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/bridge_lifetime.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/bridge_lifetime.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline address/timing audit; no dereferences and no actuator-causality claim.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter, defaultdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> REQUIRED = (&#x27;bridge_begin&#x27;, &#x27;bridge_end&#x27;, &#x27;parameter_borrow&#x27;, &#x27;command_constructed&#x27;,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>             &#x27;command_handoff&#x27;, &#x27;parameter_free_begin&#x27;, &#x27;parameter_free_end&#x27;)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def evaluate(records):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     counts = Counter(row[&#x27;event&#x27;] for row in records)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     spans = defaultdict(list)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     frees = defaultdict(list)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     for row in records:</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         if (row.get(&#x27;mode&#x27;) not in (&#x27;lifetime&#x27;,&#x27;native-input&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 or not 0 &lt;= row[&#x27;start_monotonic_ns&#x27;] &lt;= row[&#x27;end_monotonic_ns&#x27;]):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             raise ValueError(&#x27;invalid lifetime record&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if row[&#x27;bridge_span&#x27;]:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             spans[row[&#x27;bridge_span&#x27;]].append(row)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         if row[&#x27;event&#x27;] == &#x27;parameter_free_end&#x27;:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             frees[row[&#x27;parameter_address&#x27;]].append(row)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     complete, handoffs, incomplete = 0, 0, 0</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     violations = []</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     for span, rows in spans.items():</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         begin = [r for r in rows if r[&#x27;event&#x27;] == &#x27;bridge_begin&#x27;]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         end = [r for r in rows if r[&#x27;event&#x27;] == &#x27;bridge_end&#x27;]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         borrowed = [r for r in rows if r[&#x27;event&#x27;] == &#x27;parameter_borrow&#x27; and r[&#x27;parameter_address&#x27;] != &#x27;0x0&#x27;]</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if len(begin) != 1 or len(end) != 1:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             incomplete += 1</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             continue</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         complete += 1</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         for borrow in borrowed:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             commands = [r for r in rows if r[&#x27;event&#x27;] == &#x27;command_constructed&#x27;</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                         and r[&#x27;parameter_address&#x27;] == borrow[&#x27;parameter_address&#x27;]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                         and borrow[&#x27;end_monotonic_ns&#x27;] &lt;= r[&#x27;start_monotonic_ns&#x27;]]</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             for command in commands:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 candidates = [r for r in rows if r[&#x27;event&#x27;] == &#x27;command_handoff&#x27;</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                               and r[&#x27;parameter_address&#x27;] == borrow[&#x27;parameter_address&#x27;]</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                               and r[&#x27;command_address&#x27;] == command[&#x27;command_address&#x27;] != &#x27;0x0&#x27;</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                               and r[&#x27;thread_id&#x27;] == command[&#x27;thread_id&#x27;] == borrow[&#x27;thread_id&#x27;]</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                               and command[&#x27;end_monotonic_ns&#x27;] &lt;= r[&#x27;start_monotonic_ns&#x27;]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                               and begin[0][&#x27;start_monotonic_ns&#x27;] &lt;= borrow[&#x27;start_monotonic_ns&#x27;]</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                               and r[&#x27;end_monotonic_ns&#x27;] &lt;= end[0][&#x27;end_monotonic_ns&#x27;]]</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 for handoff in candidates:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                     handoffs += 1</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                     for free in frees[borrow[&#x27;parameter_address&#x27;]]:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                         # Strict ordering excludes a free from an earlier reuse of</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                         # this address and calls overlapping the get() interval.</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                         if (borrow[&#x27;end_monotonic_ns&#x27;] &lt;= free[&#x27;start_monotonic_ns&#x27;]</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                                 and free[&#x27;end_monotonic_ns&#x27;] &lt;= handoff[&#x27;start_monotonic_ns&#x27;]):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                             violations.append({&#x27;bridge_span&#x27;: span,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                                 &#x27;parameter_address&#x27;: borrow[&#x27;parameter_address&#x27;],</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                                 &#x27;command_address&#x27;: command[&#x27;command_address&#x27;],</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                                 &#x27;borrow&#x27;: borrow, &#x27;free&#x27;: free, &#x27;command_handoff&#x27;: handoff,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                                 &#x27;free_to_handoff_ns&#x27;: handoff[&#x27;start_monotonic_ns&#x27;] - free[&#x27;end_monotonic_ns&#x27;]})</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     return {&#x27;event_counts&#x27;: {name: counts[name] for name in REQUIRED},</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &#x27;complete_bridge_spans&#x27;: complete, &#x27;incomplete_bridge_spans&#x27;: incomplete,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &#x27;linked_parameter_handoffs&#x27;: handoffs,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             &#x27;freed_parameter_handoffs&#x27;: len(violations), &#x27;violations&#x27;: violations,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             &#x27;hook_coverage_valid&#x27;: all(counts[name] &gt; 0 for name in REQUIRED) and handoffs &gt; 0,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             &#x27;record_write_errors&#x27;: max((r[&#x27;write_errors&#x27;] for r in records), default=0),</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             &#x27;actual_native_consumer_read_observed&#x27;: False,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             &#x27;physical_impulse_cause_identified&#x27;: False, &#x27;acceptance_eligible&#x27;: False,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             &#x27;interpretation&#x27;: &#x27;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&#x27;}</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> </span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a> def main():</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     parser.add_argument(&#x27;run&#x27;, type=Path)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     args = parser.parse_args()</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     records = [json.loads(line) for line in (args.run / &#x27;bridge_probe.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     result = evaluate(records)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     (args.run / &#x27;bridge_lifetime_audit.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     print(json.dumps({k: v for k, v in result.items() if k != &#x27;violations&#x27;}, indent=2))</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     return 0 if result[&#x27;hook_coverage_valid&#x27;] and not result[&#x27;record_write_errors&#x27;] else 2</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> </span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> </span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     raise SystemExit(main())</span></pre></body></html>

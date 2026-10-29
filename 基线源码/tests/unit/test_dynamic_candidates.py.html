@@ -1,0 +1,73 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_dynamic_candidates.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_dynamic_candidates.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from interfaces.contracts import Metadata, Trajectory, TrajectorySample</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from planning.trajectory_validator.static_sweep import SweepBounds</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from planning.trajectory_validator.dynamic_candidates import DynamicBounds, DynamicScene, check_dynamic_candidates</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from world_model.dynamic_tracks.tracker import ObjectTrack</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from tests.unit.test_static_candidates import scene</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from planning.spacetime_local.static_candidates import plan_static_local</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> class DynamicCandidateTests(unittest.TestCase):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     def setUp(self):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         self.meta=Metadata(10.,10.5,0,&#x27;synthetic&#x27;)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         self.body=SweepBounds((.1,.1,.1),0.,0.)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         self.bounds=DynamicBounds(0.,0.,0.,3.)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     def trajectory(self,a=(0.,0.,0.),b=(0.,0.,0.),end=10.4):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         return Trajectory(Metadata(10.,end,0,&#x27;trajectory&#x27;),tuple(TrajectorySample(t,p,(0.,0.,0.),(0.,0.,0.),0.) for t,p in ((10.,a),(end,b))))</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     def track(self,center=(0.,-2.,0.),velocity=(0.,10.,0.),observations=2):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         return ObjectTrack(1,0,center,(.2,.2,.2),velocity,observations,10.,10.5)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def test_detects_crossing_between_samples(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         result=check_dynamic_candidates(self.trajectory(),DynamicScene(self.meta,(self.track(),)),10.,0,self.body,self.bounds)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertFalse(result.allowed);self.assertEqual(result.reason,&#x27;DYNAMIC_CANDIDATE_CONFLICT&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertEqual(result.track_id,1);self.assertFalse(result.safety_certified)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     def test_no_collision_is_explicitly_uncertified(self):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         track=self.track(center=(10.,-2.,0.))</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         result=check_dynamic_candidates(self.trajectory(),DynamicScene(self.meta,(track,)),10.,0,self.body,self.bounds)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertTrue(result.allowed);self.assertFalse(result.safety_certified)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertEqual(result.reason,&#x27;NO_DETECTED_DYNAMIC_CONFLICT_UNCERTIFIED&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def test_tangent_contact_counts_as_conflict(self):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         track=self.track(center=(.3,0.,0.),velocity=(0.,0.,0.))</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         result=check_dynamic_candidates(self.trajectory(),DynamicScene(self.meta,(track,)),10.,0,self.body,self.bounds)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         self.assertFalse(result.allowed);self.assertEqual(result.reason,&#x27;DYNAMIC_CANDIDATE_CONFLICT&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     def test_excess_pair_budget_is_not_silently_skipped(self):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         trajectory=self.trajectory();one=self.track(center=(10.,0.,0.))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         scene=DynamicScene(self.meta,(one,replace(one,track_id=2)))</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         bounds=replace(self.bounds,max_pair_tests=1)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertEqual(check_dynamic_candidates(trajectory,scene,10.,0,self.body,bounds).reason,&#x27;DYNAMIC_BUDGET&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     def test_single_observation_expands_unknown_velocity(self):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         track=self.track(center=(0.,1.,0.),velocity=(0.,0.,0.),observations=1)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         result=check_dynamic_candidates(self.trajectory(),DynamicScene(self.meta,(track,)),10.,0,self.body,self.bounds)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertFalse(result.allowed);self.assertEqual(result.reason,&#x27;DYNAMIC_CANDIDATE_CONFLICT&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     def test_stale_wrong_epoch_and_horizon_reject(self):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         scene=DynamicScene(self.meta,(self.track(),))</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertEqual(check_dynamic_candidates(self.trajectory(),scene,10.5,0,self.body,self.bounds).reason,&#x27;DYNAMIC_SOURCE_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         self.assertEqual(check_dynamic_candidates(self.trajectory(end=10.6),scene,10.,0,self.body,self.bounds).reason,&#x27;DYNAMIC_HORIZON&#x27;)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         other=replace(self.track(),epoch=1)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         self.assertEqual(check_dynamic_candidates(self.trajectory(),DynamicScene(self.meta,(other,)),10.,0,self.body,self.bounds).reason,&#x27;DYNAMIC_TRACK_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     def test_unknown_or_empty_scene_never_claims_certification(self):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         empty=DynamicScene(self.meta,())</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         result=check_dynamic_candidates(self.trajectory(),empty,10.,0,self.body,self.bounds)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         self.assertTrue(result.allowed);self.assertFalse(result.safety_certified)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         self.assertFalse(empty.coverage_verified)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         _,_,_,limits=scene()</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             plan_static_local(*scene()[:2],(.501,.5,.5),scene()[2],10.,0,limits,dynamic_scene=empty)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     def test_planner_uses_veto_and_bounds_source_lease(self):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         state,initial,grid,limits=scene()</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         limits=replace(limits,segment_durations_s=(.1,),lateral_offsets_m=(),speed_limit_m_s=1.,sweep=replace(limits.sweep,acceleration_bound_m_s2=2.))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         obstacle=self.track(center=(.5,.5,.5),velocity=(0.,0.,0.))</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         result=plan_static_local(state,initial,(.501,.5,.5),grid,10.,0,limits,DynamicScene(self.meta,(obstacle,)),self.bounds)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         self.assertIsNone(result.trajectory);self.assertEqual(result.checks[0].reason,&#x27;DYNAMIC_CANDIDATE_CONFLICT&#x27;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         far=replace(obstacle,center_ned=(10.,10.,10.),valid_until=10.04)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         result=plan_static_local(state,initial,(.501,.5,.5),grid,10.,0,limits,DynamicScene(self.meta,(far,)),self.bounds)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         self.assertIsNotNone(result.trajectory);self.assertLessEqual(result.trajectory.metadata.valid_until,10.04)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         self.assertEqual(result.checks[0].reason,&#x27;NO_DETECTED_DYNAMIC_CONFLICT_UNCERTIFIED&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         self.assertEqual(result.source_dynamic,self.meta);self.assertFalse(result.dynamic_coverage_certified)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> </span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> </span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

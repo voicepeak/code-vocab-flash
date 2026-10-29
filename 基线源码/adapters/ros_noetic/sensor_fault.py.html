@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/sensor_fault.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/sensor_fault.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Explicit local experiment injection; disabled in all normal sensor adapters.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> @dataclass</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> class LocalSensorFault:</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     kind: str</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     start_stamp: float</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     duration: float</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     injected_samples: int = 0</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     def __post_init__(self):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         if (self.kind not in (&#x27;GPS_ZERO&#x27;, &#x27;IMU_DROP&#x27;, &#x27;IMU_ROLLBACK&#x27;)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>                 or not math.isfinite(self.start_stamp) or self.start_stamp &lt;= 0</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>                 or not math.isfinite(self.duration) or not 0 &lt; self.duration &lt;= 1.):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>             raise ValueError(&#x27;invalid local sensor fault&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     def active(self, stamp):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         return self.start_stamp &lt;= stamp &lt; self.start_stamp+self.duration</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     def affects(self, kind, stamp):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         if self.kind == kind and self.active(stamp):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             self.injected_samples += 1</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             return True</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         return False</span></pre></body></html>

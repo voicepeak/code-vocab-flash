@@ -1,0 +1,53 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/gate_geometry/roi_disparity.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/gate_geometry/roi_disparity.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Optional edge-local stereo disparity for gate proposals only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from perception.gate_geometry.stereo_gate import _vertical_edges, checked_gate_edges</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from perception.stereo_depth.sgbm import DisparityObservation, SgbmConfig, compute_diagnostic_disparity</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> def gate_region_disparity(pair, config=None, prepared=None):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     &quot;&quot;&quot;Match in an edge-bounded crop, returning UNKNOWN everywhere else.</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     Both images use the same crop origin so disparity remains in original pixel</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     units. SGBM may differ from a full-image computation due to image context.</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     The ROI is only a diagnostic gate proposal input, never free-space evidence.</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     import cv2</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     config = config or SgbmConfig()</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if pair.skew_s &gt; .005:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         raise ValueError(&#x27;incompatible diagnostic stereo input&#x27;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     edges = (_vertical_edges(pair.left.pixels, pair.left.encoding, cv2) if prepared is None</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>              else checked_gate_edges(pair, prepared))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     height, width = pair.left.pixels.shape[:2]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     values = np.full((height, width), np.nan, dtype=np.float32)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     valid = np.zeros((height, width), dtype=bool)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if edges:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         # Give both directions a full disparity search margin in x, and avoid</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         # letting ROI edges pretend to be image borders in y.</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         padding = config.num_disparities + config.block_size + 5</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         ypad = max(16, config.block_size * 3)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         x0 = max(0, int(min(x-w/2 for x,_,_,w in edges)) - padding)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         x1 = min(width, int(max(x+w/2 for x,_,_,w in edges)) + padding + 1)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         y0 = max(0, int(min(top for _,top,_,_ in edges)) - ypad)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         y1 = min(height, int(max(bottom for _,_,bottom,_ in edges)) + ypad + 1)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         if x1-x0 &gt; config.num_disparities + config.block_size and y1-y0 &gt; 2*config.block_size:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             def crop(frame):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 return ImageFrame(frame.metadata, frame.encoding, frame.pixels[y0:y1, x0:x1])</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             cropped = StereoPair(pair.metadata, crop(pair.left), crop(pair.right), pair.skew_s)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             sub = compute_diagnostic_disparity(cropped, config)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             # Only the actual edge support windows can be consumed. Other</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             # pixels, including the rest of the crop, stay explicitly UNKNOWN.</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             keep = np.zeros((height, width), dtype=bool)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             for x, top, bottom, edge_width in edges:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 ax0=max(0,int(x-edge_width/2-4)); ax1=min(width,int(x+edge_width/2+5))</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 ay0=max(0,int(top+.15*(bottom-top))); ay1=min(height,int(bottom-.15*(bottom-top))+1)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 keep[ay0:ay1,ax0:ax1]=True</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             crop_keep = keep[y0:y1,x0:x1] &amp; sub.valid</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             valid[y0:y1,x0:x1] = crop_keep</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             region = values[y0:y1,x0:x1]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             region[crop_keep] = sub.disparity_px[crop_keep]</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     meta=Metadata(pair.metadata.stamp,pair.metadata.valid_until,pair.metadata.epoch,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                   &#x27;gate_roi_sgbm_diagnostic_pixels&#x27;,&#x27;front_left_image&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     return DisparityObservation(meta,values,valid,pair.left.metadata.stamp,pair.right.metadata.stamp)</span></pre></body></html>

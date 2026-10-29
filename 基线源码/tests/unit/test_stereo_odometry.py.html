@@ -1,0 +1,85 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_odometry.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_odometry.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from perception.visual_odometry.stereo import estimate_stereo_motion, solve_relative, half_scale_rig</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class StereoOdometryTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     @classmethod</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     def setUpClass(cls):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         cls.rig = load_nominal_rig(Path(__file__).resolve().parents[2] / &#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     def scene(self):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         rng = np.random.RandomState(7)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         return np.column_stack((rng.uniform(7, 18, 100), rng.uniform(-4, 4, 100), rng.uniform(-3, 3, 100)))</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     def test_half_scale_preserves_stereo_metric_geometry(self):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         rig = half_scale_rig(self.rig)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         points = self.scene()</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         left, _, visible_left = self.rig.left.project_body(points)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         right, _, visible_right = self.rig.right.project_body(points)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         visible = visible_left &amp; visible_right</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         left = (left[visible] + .5) * .5 - .5</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         right = (right[visible] + .5) * .5 - .5</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         recovered, valid, _ = rig.triangulate_body(left, right)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.assertTrue(valid.all())</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         np.testing.assert_allclose(recovered, points[visible], atol=1e-10)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     def test_known_body_motion_and_camera_lever_arm(self):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         points = self.scene()</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         yaw = .05</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         rotation = np.array(((np.cos(yaw), -np.sin(yaw), 0.), (np.sin(yaw), np.cos(yaw), 0.), (0., 0., 1.)))</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         displacement = np.array((.25, -.12, .06))</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         current = (points - displacement) @ rotation</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         uv, _, valid = self.rig.left.project_body(current)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         result, found_rotation, count, p95 = solve_relative(points[valid], uv[valid], self.rig)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         np.testing.assert_allclose(result, displacement, atol=.005)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         np.testing.assert_allclose(found_rotation, rotation, atol=.001)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertGreater(count, 50)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         self.assertLess(p95, .1)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     def test_outliers_are_rejected_and_collinear_geometry_fails(self):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         points = self.scene()</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         uv, _, valid = self.rig.left.project_body(points)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         points, uv = points[valid], uv[valid]</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         uv[:20] = np.roll(uv[:20], 7, axis=0)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         _, _, count, p95 = solve_relative(points, uv, self.rig)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertLess(count, len(points))</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         self.assertLess(p95, .1)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         with self.assertRaisesRegex(ValueError, &#x27;degenerate&#x27;):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             solve_relative(np.tile((10., 0., 0.), (20, 1)), np.tile((480., 360.), (20, 1)), self.rig)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def test_untextured_inputs_and_epoch_mismatch_rejected(self):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         image = np.zeros((720, 960, 1), dtype=np.uint8)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         def pair(stamp, epoch=0):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             left = ImageFrame(Metadata(stamp, stamp+.2, epoch, &#x27;left&#x27;, &#x27;front_left_image&#x27;), &#x27;mono8&#x27;, image)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             right = ImageFrame(Metadata(stamp, stamp+.2, epoch, &#x27;right&#x27;, &#x27;front_right_image&#x27;), &#x27;mono8&#x27;, image)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             return StereoPair(Metadata(stamp, stamp+.2, epoch, &#x27;pair&#x27;, &#x27;front_stereo&#x27;), left, right, 0.)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         with self.assertRaises(ValueError): estimate_stereo_motion(pair(1.), pair(1.1), self.rig)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         with self.assertRaisesRegex(ValueError, &#x27;epoch or time&#x27;): estimate_stereo_motion(pair(1.), pair(1.1, 1), self.rig)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         with self.assertRaisesRegex(ValueError, &#x27;epoch or time&#x27;): estimate_stereo_motion(pair(1.), pair(1.), self.rig)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> class RefineCorrespondencesTests(unittest.TestCase):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     def test_subpixel_shift_is_recovered_and_blank_image_rejected(self):</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         import cv2</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         from perception.visual_odometry.stereo import refine_correspondences</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         rng = np.random.RandomState(64)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         image = rng.randint(0, 256, (150, 200), dtype=np.uint8)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         shifted = cv2.warpAffine(image, np.float32([[1., 0., 2.4], [0., 1., -.7]]), (200, 150))</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         points = np.array([[40., 40.], [80., 90.], [140., 110.]], dtype=np.float32)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         expected = points + (2.4, -.7)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         result, valid = refine_correspondences(image, shifted, points, points + (2., -1.), cv2)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         self.assertGreaterEqual(int(valid.sum()), 1)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         np.testing.assert_allclose(result[valid], expected[valid], atol=.2)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         _, valid = refine_correspondences(np.zeros_like(image), np.zeros_like(image), points, points, cv2)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         self.assertFalse(valid.any())</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     unittest.main()</span></pre></body></html>

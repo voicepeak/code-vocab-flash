@@ -1,0 +1,45 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_braking_measurement.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_braking_measurement.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from evaluation.metrics.braking import measure_braking</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from control.reference import benchmark_reference</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> class BrakingMeasurementTests(unittest.TestCase):</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     def truth(self):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>         rows=[]</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         for t in np.arange(3.,11.,.01):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>             if t&lt;4:x=0.</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>             elif t&lt;6:x=.4*(t-4)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>             else:</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>                 dt=min(.8,t-6)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>                 x=.8+.4*dt-.25*dt*dt</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             rows.append({&#x27;stamp&#x27;:float(t),&#x27;position&#x27;:(float(x),0.,-1.)})</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         return rows</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     def test_constant_deceleration_response_and_finite_stop(self):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         command=[{&#x27;sim_elapsed&#x27;:6.,&#x27;command&#x27;:{&#x27;stamp&#x27;:6.}}]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         r=measure_braking(command,self.truth())</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.assertTrue(r[&#x27;valid&#x27;])</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertFalse(r[&#x27;certified_deceleration_bound&#x27;])</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertAlmostEqual(r[&#x27;forward_excursion_m&#x27;],.16,delta=.01)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.assertAlmostEqual(r[&#x27;stop_time_s&#x27;],.64,delta=.05)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.assertGreater(r[&#x27;effective_average_deceleration_m_s2&#x27;],.4)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         self.assertLess(r[&#x27;effective_average_deceleration_m_s2&#x27;],.55)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     def test_gaps_and_missing_braking_phase_cannot_create_a_bound(self):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         command=[{&#x27;sim_elapsed&#x27;:6.,&#x27;command&#x27;:{&#x27;stamp&#x27;:6.}}]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.assertFalse(measure_braking([],self.truth())[&#x27;valid&#x27;])</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         rows=[r for r in self.truth() if not 6.&lt;r[&#x27;stamp&#x27;]&lt;6.3]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         self.assertFalse(measure_braking(command,rows)[&#x27;valid&#x27;])</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     def test_reference_velocity_changes_at_stop_with_continuous_position(self):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         before=benchmark_reference((0.,0.,0.),5.999,braking=True)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         after=benchmark_reference((0.,0.,0.),6.,braking=True)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertAlmostEqual(after[0][0],.8)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertAlmostEqual(before[1][0],.4)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self.assertEqual(after[1][0],0.)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         self.assertLess(abs(before[0][0]-after[0][0]),.001)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     unittest.main()</span></pre></body></html>

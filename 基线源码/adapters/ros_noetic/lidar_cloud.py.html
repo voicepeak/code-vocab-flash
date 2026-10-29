@@ -1,0 +1,82 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/lidar_cloud.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/lidar_cloud.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded PointCloud2 XYZ decoding; no ROS import or implicit frame transform.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numbers</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> @dataclass(frozen=True)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> class LidarCloud:</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     metadata: Metadata</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     points: np.ndarray</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     input_points: int</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     nonfinite_points: int</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     def __post_init__(self):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         points = np.asarray(self.points, dtype=np.float64)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if (points.ndim != 2 or points.shape[1] != 3</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>                 or len(points) &gt; 250000 or not np.isfinite(points).all()</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                 or self.nonfinite_points &lt; 0</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                 or self.input_points != len(points) + self.nonfinite_points):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             raise ValueError(&#x27;invalid finite XYZ cloud&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         # A bytes owner prevents callers from enabling writes on the array.</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         immutable = np.frombuffer(points.tobytes(), dtype=np.float64).reshape(-1, 3)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         object.__setattr__(self, &#x27;points&#x27;, immutable)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> def integer(value, name, minimum=0):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     if isinstance(value, bool) or not isinstance(value, numbers.Integral) or value &lt; minimum:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         raise ValueError(&#x27;invalid &#x27; + name)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     return int(value)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> def decode_xyz(message, epoch, ttl_s=.2, expected_frame=&#x27;lidar&#x27;):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     &quot;&quot;&quot;Preserve the sensor frame and stamp; drop nonfinite returns as UNKNOWN.</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     Handles row/point padding and both byte orders. No dense/is_dense assumption,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     ray timing, no-return inference, or body/world coordinate conversion.</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     stamp = message.header.stamp.to_sec()</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     if not math.isfinite(stamp) or stamp &lt;= 0:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         raise ValueError(&#x27;invalid lidar timestamp&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     if not math.isfinite(ttl_s) or not 0 &lt; ttl_s &lt;= .5:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         raise ValueError(&#x27;invalid lidar lifetime&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     if not expected_frame or message.header.frame_id != expected_frame:</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         raise ValueError(&#x27;unexpected lidar frame&#x27;)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     width = integer(message.width, &#x27;width&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     height = integer(message.height, &#x27;height&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     step = integer(message.point_step, &#x27;point_step&#x27;, 1)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     row_step = integer(message.row_step, &#x27;row_step&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     if (width * height &gt; 250000 or step &gt; 1024 or row_step &lt; width * step</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             or row_step * height &gt; 16 * 1024 * 1024):</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         raise ValueError(&#x27;oversized or inconsistent cloud layout&#x27;)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     if len(message.data) != row_step * height:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         raise ValueError(&#x27;truncated or oversized cloud data&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     data = bytes(message.data)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     fields = {}</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     sizes = {1: 1, 2: 1, 3: 2, 4: 2, 5: 4, 6: 4, 7: 4, 8: 8}</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     for field in message.fields:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         offset = integer(field.offset, &#x27;field offset&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         count = integer(field.count, &#x27;field count&#x27;, 1)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         datatype = integer(field.datatype, &#x27;field datatype&#x27;, 1)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         if (not field.name or field.name in fields or datatype not in sizes</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 or offset + count * sizes[datatype] &gt; step):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             raise ValueError(&#x27;invalid or duplicate point field&#x27;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         fields[field.name] = field</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     endian = &#x27;&gt;&#x27; if message.is_bigendian else &#x27;&lt;&#x27;</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     points = np.empty((height * width, 3), dtype=np.float64)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     for axis, name in enumerate((&#x27;x&#x27;, &#x27;y&#x27;, &#x27;z&#x27;)):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         field = fields.get(name)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         if field is None or field.count != 1 or field.datatype not in (7, 8):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             raise ValueError(&#x27;XYZ requires scalar FLOAT32 or FLOAT64 fields&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         if width * height:</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             view = np.ndarray((height, width), dtype=endian + (&#x27;f4&#x27; if field.datatype == 7 else &#x27;f8&#x27;),</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                               buffer=data, offset=field.offset, strides=(row_step, step))</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             points[:, axis] = view.reshape(-1)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     finite = np.isfinite(points).all(axis=1)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     metadata = Metadata(stamp, stamp + ttl_s, integer(epoch, &#x27;epoch&#x27;),</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                         &#x27;official_lidar_xyz&#x27;, message.header.frame_id)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     return LidarCloud(metadata, points[finite], len(points), int((~finite).sum()))</span></pre></body></html>

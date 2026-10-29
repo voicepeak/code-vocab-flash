@@ -1,0 +1,136 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/pose_history_observer.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/pose_history_observer.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Read-only camera-header association with historical IMU/GPS ESKF poses.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import math</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from pathlib import Path</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import threading</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import time</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from adapters.ros_noetic.flight_sensors import FlightSensors</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from estimation.history import HistoryUnavailable, PoseHistory</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> CAMERA = &#x27;/airsim_node/drone_1/front_left/Scene&#x27;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> INPUTS = sorted((CAMERA, &#x27;/airsim_node/initial_pose&#x27;, &#x27;/airsim_node/drone_1/gps&#x27;,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                  &#x27;/airsim_node/drone_1/imu/imu&#x27;))</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> def observe(run, duration):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     import rosgraph</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     import rospy</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     from sensor_msgs.msg import Image</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     rospy.init_node(&#x27;rmua_pose_history_observer&#x27;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     history = PoseHistory()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     sensors = FlightSensors(pose_history=history)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     lock = threading.Lock()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     pending = None</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     def receive(message):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         nonlocal pending</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         with lock:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             pending = (message.header.stamp.to_sec(), time.monotonic(), message.header.frame_id)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     listener = rospy.Subscriber(CAMERA, Image, receive, queue_size=1, buff_size=4000000)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     started = time.monotonic()</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     dumped = None</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     count = matched = 0</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     reasons = Counter()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     fault = None</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     graph = None</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     source_count = 0</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     last_image_arrival = None</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     with (run / &#x27;history_states.jsonl&#x27;).open(&#x27;x&#x27;) as sources, (run / &#x27;camera_history.jsonl&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         def dump_sources():</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             nonlocal dumped, source_count</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             for state, arrival in history.snapshot_sources():</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 key = (state.metadata.epoch, state.metadata.stamp)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 if dumped is None or key &gt; dumped:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                     sources.write(json.dumps({&#x27;state&#x27;: asdict(state), &#x27;arrival_wall_monotonic&#x27;: arrival},</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                                              allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                     dumped = key</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                     source_count += 1</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         try:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             while time.monotonic() - started &lt; duration and not rospy.is_shutdown():</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 with sensors.lock:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                     if sensors.fault:</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                         raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                     ready = sensors.estimator.initialized and sensors.raw is not None</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                     if ready and not sensors.clock.fresh(time.monotonic()):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                         raise RuntimeError(&#x27;STALE_IMU&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 dump_sources()</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 with lock:</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                     item, pending = pending, None</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 if not ready or item is None:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                     if time.monotonic() - started &gt; 5 and (not ready or last_image_arrival is None):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                         raise RuntimeError(&#x27;NO_STATE_OR_CAMERA&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                     if last_image_arrival is not None and time.monotonic() - last_image_arrival &gt; .5:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                         raise RuntimeError(&#x27;STALE_CAMERA&#x27;)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                     time.sleep(.003)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                     continue</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                 stamp, arrival, header_frame = item</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                 last_image_arrival = arrival</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                 begin = time.monotonic()</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 pose = None</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 reason = None</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                 with sensors.lock:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                     if sensors.fault:</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                         raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                     now, epoch = sensors.clock.stamp, sensors.clock.epoch</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                     query_wall = time.monotonic()</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                     try:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                         pose = history.lookup(stamp, now, query_wall, epoch)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                     except HistoryUnavailable as error:</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                         reason = str(error)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                 elapsed = time.monotonic() - begin</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 output.write(json.dumps({&#x27;image_stamp&#x27;: stamp, &#x27;image_header_frame_id&#x27;: header_frame,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                     &#x27;image_arrival_wall_monotonic&#x27;: arrival, &#x27;query_wall_monotonic&#x27;: query_wall,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                     &#x27;query_now&#x27;: now, &#x27;epoch&#x27;: epoch, &#x27;lookup_elapsed_wall_s&#x27;: elapsed,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                     &#x27;reason&#x27;: reason, &#x27;historical_pose&#x27;: asdict(pose) if pose else None,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                     &#x27;world_projection_applied&#x27;: False, &#x27;current_control_eligible&#x27;: False}, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                 count += 1</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                 if pose is not None:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                     matched += 1</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                 else:</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                     reasons[reason] += 1</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                 time.sleep(.003)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         except Exception as error:</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             fault = str(error)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         finally:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             try:</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                 pubs, subs, _ = rosgraph.Master(rospy.get_name()).getSystemState()</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                 node = rospy.get_name()</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                 graph = {&#x27;subscriptions&#x27;: sorted(t for t, nodes in subs if node in nodes),</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                          &#x27;publishers&#x27;: sorted(t for t, nodes in pubs if node in nodes)}</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                 if graph[&#x27;subscriptions&#x27;] != INPUTS or set(graph[&#x27;publishers&#x27;]) - {&#x27;/rosout&#x27;}:</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                     fault = fault or &#x27;HISTORY_OBSERVER_GRAPH_POLICY&#x27;</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             except Exception as error:</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                 fault = fault or &#x27;GRAPH_AUDIT_FAILED:&#x27; + str(error)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             listener.unregister()</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             sensors.close()</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             dump_sources()</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     summary = {&#x27;images&#x27;: count, &#x27;historical_matches&#x27;: matched, &#x27;unavailable_reasons&#x27;: dict(reasons),</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                &#x27;source_states&#x27;: source_count, &#x27;fault&#x27;: fault, &#x27;node_graph&#x27;: graph,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                &#x27;horizon_s&#x27;: history.horizon_s, &#x27;max_bracket_s&#x27;: history.max_bracket_s,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                &#x27;control_published&#x27;: False, &#x27;debug_inputs_used&#x27;: False,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>                &#x27;image_exposure_time_calibrated&#x27;: False, &#x27;world_projection_applied&#x27;: False,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                &#x27;historical_uncertainty_calibrated&#x27;: False, &#x27;acceptance_eligible&#x27;: False}</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>     (run / &#x27;pose_history_summary.json&#x27;).write_text(json.dumps(summary, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     return 0 if matched and fault is None else 2</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a> </span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a> </span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a> def main():</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     parser.add_argument(&#x27;--run-dir&#x27;, type=Path, required=True)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     parser.add_argument(&#x27;--duration&#x27;, type=float, default=10.)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     args = parser.parse_args()</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     if not math.isfinite(args.duration) or not 0 &lt; args.duration &lt;= 30:</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         parser.error(&#x27;duration must be in (0,30] seconds&#x27;)</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     return observe(args.run_dir, args.duration)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a> </span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a> </span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     raise SystemExit(main())</span></pre></body></html>

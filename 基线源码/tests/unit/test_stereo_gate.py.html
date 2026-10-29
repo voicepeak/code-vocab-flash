@@ -1,0 +1,64 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_gate.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_gate.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import cv2</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from perception.stereo_depth.sgbm import DisparityObservation</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from perception.gate_geometry.stereo_gate import stereo_gate_candidates, prepare_gate_edges</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> class StereoGateTests(unittest.TestCase):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def setUp(self):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.rig = load_nominal_rig(Path(__file__).resolve().parents[2] / &#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         self.image = np.zeros((720,960,3),np.uint8)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         cv2.rectangle(self.image,(350,250),(355,450),(0,0,255),-1)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         cv2.rectangle(self.image,(600,250),(605,450),(0,0,255),-1)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         l = ImageFrame(Metadata(10.,10.2,0,&#x27;left&#x27;,&#x27;front_left_image&#x27;),&#x27;bgr8&#x27;,self.image)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         r = ImageFrame(Metadata(10.,10.2,0,&#x27;right&#x27;,&#x27;front_right_image&#x27;),&#x27;bgr8&#x27;,self.image)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.pair = StereoPair(Metadata(10.,10.2,0,&#x27;pair&#x27;,&#x27;front_stereo&#x27;),l,r,0.)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         valid = np.ones((720,960),dtype=bool); depth = np.full((720,960),12.,dtype=np.float32)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.disparity = DisparityObservation(Metadata(10.,10.2,0,&#x27;depth&#x27;,&#x27;front_left_image&#x27;),depth,valid,10.,10.)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     def test_valid_nominal_pair_and_no_control_eligibility(self):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         out=stereo_gate_candidates(self.pair,self.disparity,self.rig,10.05,0)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertEqual(len(out),1)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.assertGreater(out[0].center_body_frd_m[0],20.)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.assertFalse(out[0].control_eligible);self.assertFalse(out[0].aperture_verified)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         self.assertEqual(out[0].metadata.valid_until,10.2)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     def test_shared_edge_cache_matches_and_rejects_different_frame(self):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         prepared=prepare_gate_edges(self.pair)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         baseline=stereo_gate_candidates(self.pair,self.disparity,self.rig,10.05,0)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         shared=stereo_gate_candidates(self.pair,self.disparity,self.rig,10.05,0,prepared=prepared)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertEqual(baseline,shared)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         new_pair=replace(self.pair,left=replace(self.pair.left,pixels=self.image))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         with self.assertRaisesRegex(ValueError,&#x27;another image&#x27;):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             stereo_gate_candidates(new_pair,self.disparity,self.rig,10.05,0,prepared=prepared)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def test_empty_depth_and_border_cropped_frame_are_not_promoted(self):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         empty=replace(self.disparity,disparity_px=np.full((720,960),np.nan,np.float32),valid=np.zeros((720,960),bool))</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         self.assertEqual(stereo_gate_candidates(self.pair,empty,self.rig,10.,0),())</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         image=self.image.copy();image[:, :]=0;cv2.rectangle(image,(0,250),(5,450),(0,0,255),-1);cv2.rectangle(image,(250,250),(255,450),(0,0,255),-1)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertEqual(stereo_gate_candidates(replace(self.pair,left=replace(self.pair.left,pixels=image)),self.disparity,self.rig,10.,0),())</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     def test_depth_inconsistent_edges_and_plain_scene_do_not_produce_candidate(self):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         values = np.full((720,960), 12., dtype=np.float32)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         values[:, 590:620] = 24.</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         mismatch = replace(self.disparity, disparity_px=values)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertEqual(stereo_gate_candidates(self.pair,mismatch,self.rig,10.05,0),())</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         blank = np.zeros_like(self.image)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         blank_pair = replace(self.pair,left=replace(self.pair.left,pixels=blank))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         self.assertEqual(stereo_gate_candidates(blank_pair,self.disparity,self.rig,10.05,0),())</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def test_stale_epoch_and_cross_pair_disparity_are_rejected(self):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         for now,epoch in ((10.2,0),(10.05,1)):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             with self.assertRaises(ValueError):stereo_gate_candidates(self.pair,self.disparity,self.rig,now,epoch)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         with self.assertRaises(ValueError):stereo_gate_candidates(self.pair,replace(self.disparity,left_measurement_stamp=9.9),self.rig,10.05,0)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> </span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> </span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> if __name__ == &#x27;__main__&#x27;: unittest.main()</span></pre></body></html>

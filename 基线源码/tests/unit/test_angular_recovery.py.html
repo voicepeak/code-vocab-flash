@@ -1,0 +1,101 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_angular_recovery.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_angular_recovery.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import replace</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import json</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from control.safety_supervisor.angular_recovery import AngularRecovery</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from control.motor_allocator.allocator import MotorAllocator</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from control.se3_controller.controller import Se3Controller</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from estimation.geometry import delta_quaternion,multiply,unit,rotation</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from interfaces.contracts import StateEstimate,Metadata,Health</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def state(stamp=1.,omega=(0.,0.,0.),health=Health.OK,epoch=0):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     return StateEstimate(Metadata(stamp,stamp+.05,epoch,&#x27;test&#x27;),(0.,0.,-1.),(0.,0.,0.),</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>                          (1.,0.,0.,0.),omega,health)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> def simulate_recovery(axis,impulse,lag=.02,delay=0.,inertia_scale=1.,profile=&#x27;standard&#x27;):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     cfg=json.loads((Path(__file__).resolve().parents[2]/&#x27;configs/vehicle_identification.json&#x27;).read_text())</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     inertia=np.array(cfg[&#x27;inertia_kg_m2&#x27;])*inertia_scale;mass=cfg[&#x27;mass_kg&#x27;]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     controller=Se3Controller(cfg);allocator=MotorAllocator(cfg);supervisor=AngularRecovery(profile)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     q=np.array([1.,0.,0.,0.]);p=np.array([0.,0.,-1.]);v=np.zeros(3)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     direction=np.eye(3)[axis] if axis&lt;3 else np.array([1.,1.,0.])/np.sqrt(2)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     omega=direction*impulse</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     actual=np.array([mass*9.81,0,0,0]);request=actual.copy()</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     dt=.0025;max_tilt=0.;max_drift=0.</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     delay_steps=round(delay/dt)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     history=[(p.copy(),v.copy(),q.copy(),np.zeros(3)) for _ in range(delay_steps)]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     for i in range(1600):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         history.append((p.copy(),v.copy(),q.copy(),omega.copy()))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         if i%5==0:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             observed=history[len(history)-1-delay_steps]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             s=StateEstimate(Metadata(1+i*dt,1.05+i*dt,0,&#x27;model&#x27;),tuple(observed[0]),tuple(observed[1]),</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                             tuple(observed[2]),tuple(observed[3]),Health.OK)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             decision=supervisor.decide(s)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             wrench=controller.step(s,decision.hold_position,yaw=decision.hold_yaw,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 dt=.0125,allow_integral=False,rate_gain_scale=decision.rate_gain_scale,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 attitude_gain_scale=decision.attitude_gain_scale)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             request=np.array(allocator.allocate(wrench.thrust,wrench.moment).achieved_wrench)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         actual+=(1-np.exp(-dt/lag))*(request-actual)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         R=rotation(q)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         acceleration=np.array([0,0,9.81])-R[:,2]*actual[0]/mass</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         alpha=(actual[1:]-np.cross(omega,inertia*omega))/inertia</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         p+=v*dt+.5*acceleration*dt*dt;v+=acceleration*dt</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         q=unit(multiply(q,delta_quaternion(omega*dt+.5*alpha*dt*dt)));omega+=alpha*dt</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         max_tilt=max(max_tilt,float(np.arccos(np.clip(R[2,2],-1,1))))</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         max_drift=max(max_drift,float(np.linalg.norm(p-[0,0,-1])))</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     return max_tilt,max_drift,supervisor.phase,float(np.linalg.norm(omega))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> </span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> class AngularRecoveryTests(unittest.TestCase):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     def test_loss_epoch_hard_bound_and_timeout_do_not_resume_normal_commands(self):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         for s in (state(health=Health.LOST),state(omega=(0,5.,0))):</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             with self.assertRaises(RuntimeError):AngularRecovery().decide(s)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         r=AngularRecovery();r.decide(state(omega=(0,1.,0)))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         with self.assertRaises(RuntimeError):r.decide(state(1.1,epoch=1))</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         r=AngularRecovery();r.decide(state(omega=(0,1.,0)))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         with self.assertRaises(RuntimeError):r.decide(state(4.1,omega=(0,1.,0)))</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     def test_fast_profile_is_explicit_and_does_not_relax_the_hard_bound(self):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         standard=AngularRecovery().decide(state(omega=(0,.6,0)))</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         fast=AngularRecovery(&#x27;fast&#x27;).decide(state(omega=(0,.6,0)))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertEqual((standard.rate_gain_scale,standard.attitude_gain_scale),(2.,1.))</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertEqual((fast.rate_gain_scale,fast.attitude_gain_scale),(3.,4.))</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         with self.assertRaises(RuntimeError):AngularRecovery(&#x27;fast&#x27;).decide(state(omega=(0,2.6,0)))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         with self.assertRaises(ValueError):AngularRecovery(&#x27;unsupported&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     def test_settling_requires_sustained_window_and_keeps_hold_target(self):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         r=AngularRecovery();d=r.decide(state(omega=(0,.6,0)))</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         self.assertEqual(d.phase,&#x27;ANGULAR_RECOVERY&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         r.decide(state(1.1));r.decide(state(1.3,omega=(0,.3,0)))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         self.assertEqual(r.decide(state(1.4)).phase,&#x27;ANGULAR_RECOVERY&#x27;)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         self.assertEqual(r.decide(state(1.76)).phase,&#x27;RECOVERY_HOLD&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         d=r.decide(replace(state(2.),position_ned=(.1,0.,-1.)))</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         self.assertEqual(d.hold_position,(0.,0.,-1.))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         self.assertEqual(d.phase,&#x27;RECOVERY_HOLD&#x27;)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     def test_nominal_rigid_body_impulses_with_80hz_control_and_20ms_motor_lag(self):</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         for axis in (0,1,2):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             for impulse in (1.8,2.3):</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                 with self.subTest(axis=axis,impulse=impulse):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                     max_tilt,max_drift,phase,rate=simulate_recovery(axis,impulse)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                     self.assertLess(max_tilt,.35)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                     self.assertLess(max_drift,.8)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                     self.assertEqual(phase,&#x27;RECOVERY_HOLD&#x27;)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                     self.assertLess(rate,.2)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> </span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     def test_recovery_with_delayed_sensors_slow_motors_and_inertia_uncertainty(self):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         for axis in (0,1,3):</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             for lag in (.02,.04):</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                 for delay in (0.,.02):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                     for inertia_scale in (.8,1.2):</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                         with self.subTest(axis=axis,lag=lag,delay=delay,inertia_scale=inertia_scale):</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                             tilt,drift,phase,rate=simulate_recovery(axis,2.3,lag,delay,inertia_scale,&#x27;fast&#x27;)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                             self.assertLess(tilt,.35)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                             self.assertLess(drift,.8)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                             self.assertEqual(phase,&#x27;RECOVERY_HOLD&#x27;)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                             self.assertLess(rate,.2)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> </span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

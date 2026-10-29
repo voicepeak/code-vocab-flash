@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/controller_cleanup.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/controller_cleanup.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Terminate only a legacy exec controller carrying this run&#x27;s exact UUID path.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import json</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import os</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import subprocess</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> def stop_bound_controller(container,module,run_directory):</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     script=&#x27;&#x27;&#x27;</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import json,os,signal,sys</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> module,run_directory=sys.argv[1:]</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> stopped=[]</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> for name in os.listdir(&#x27;/proc&#x27;):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     if not name.isdigit():continue</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     try:</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         with open(&#x27;/proc/&#x27;+name+&#x27;/cmdline&#x27;,&#x27;rb&#x27;) as handle:</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             argv=[p.decode() for p in handle.read().split(b&#x27;\\0&#x27;) if p]</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         if module not in argv or &#x27;--run-dir&#x27; not in argv:continue</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         index=argv.index(&#x27;--run-dir&#x27;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         if index+1&gt;=len(argv) or argv[index+1]!=run_directory:continue</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         os.kill(int(name),signal.SIGTERM)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         stopped.append(int(name))</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     except (OSError,UnicodeError):pass</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> print(json.dumps(stopped))</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     output=subprocess.check_output([&#x27;docker&#x27;,&#x27;exec&#x27;,&#x27;-u&#x27;,str(os.getuid())+&#x27;:&#x27;+str(os.getgid()),</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                     container,&#x27;python3&#x27;,&#x27;-c&#x27;,script,module,run_directory],text=True,timeout=8)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     return json.loads(output)</span></pre></body></html>

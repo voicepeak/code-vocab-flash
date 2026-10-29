@@ -1,0 +1,43 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>estimation/stationary_bootstrap.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>estimation/stationary_bootstrap.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Conservative pre-control resting-window check for local takeoff experiments.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Stationary IMU alone cannot distinguish constant velocity. This helper also</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> requires GPS position consistency and must only run before control is acquired</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> in a fresh ground-start scene. It is not an in-flight reset or outage recovery.</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> &quot;&quot;&quot;</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import numpy as np</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from estimation.geometry import unit</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def resting_window(imu,gps,initial_attitude,stamp):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     imu=[r for r in imu if stamp-1.1&lt;=r[&#x27;stamp&#x27;]&lt;=stamp]</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     gps=[r for r in gps if stamp-1.1&lt;=r[0]&lt;=stamp]</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     if len(imu)&lt;65 or len(gps)&lt;7:return None</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     times=np.array([r[&#x27;stamp&#x27;] for r in imu])</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     if (not np.all(np.isfinite(times)) or times[-1]-times[0]&lt;1.</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>             or np.any(np.diff(times)&lt;=0) or np.max(np.diff(times))&gt;.04):return None</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     gt=np.array([r[0] for r in gps])</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if (not np.all(np.isfinite(gt)) or np.any(np.diff(gt)&lt;=0)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             or gt[-1]-gt[0]&lt;.6 or stamp-gt[-1]&gt;.15):return None</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     positions=np.array([r[1] for r in gps])</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     if not np.all(np.isfinite(positions)) or np.any(np.all(positions==0,axis=1)):return None</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     if np.max(np.linalg.norm(positions-positions.mean(0),axis=1))&gt;.2:return None</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     acceleration=np.array([r[&#x27;acceleration_body&#x27;] for r in imu])</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     gyro=np.array([r[&#x27;omega_body&#x27;] for r in imu])</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if (acceleration.shape != (len(imu),3) or gyro.shape != (len(imu),3)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             or not np.all(np.isfinite(acceleration)) or not np.all(np.isfinite(gyro))</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             or np.max(np.linalg.norm(gyro,axis=1))&gt;.025</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             or np.max(np.std(acceleration,axis=0))&gt;.08</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             or abs(np.linalg.norm(acceleration.mean(0))-9.81)&gt;.15):return None</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     q0=unit(initial_attitude)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     for r in imu:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         q=r.get(&#x27;imu_orientation_wxyz&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if q is None:return None</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         q=np.array(q,dtype=float)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         if not np.all(np.isfinite(q)) or abs(np.linalg.norm(q)-1)&gt;.01:return None</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if 2*np.arccos(np.clip(abs(unit(q)@q0),0.,1.))&gt;.02:return None</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     return {&#x27;position&#x27;:positions.mean(0).tolist(),&#x27;gyro_bias&#x27;:gyro.mean(0).tolist(),</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             &#x27;imu_samples&#x27;:len(imu),&#x27;gps_samples&#x27;:len(gps),&#x27;span_s&#x27;:float(times[-1]-times[0]),</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             &#x27;gps_position_std_m&#x27;:positions.std(0).tolist(),</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             &#x27;acceleration_std_m_s2&#x27;:acceleration.std(0).tolist(),</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             &#x27;assumption&#x27;:&#x27;fresh ground-start scene, before any control publisher&#x27;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             &#x27;imu_orientation_use&#x27;:&#x27;resting alignment check only; initial_pose supplies attitude&#x27;}</span></pre></body></html>

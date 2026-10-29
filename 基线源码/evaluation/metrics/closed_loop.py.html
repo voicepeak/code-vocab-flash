@@ -1,0 +1,105 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/closed_loop.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/closed_loop.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline temporal matching; truth files are opened only AFTER the control run.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> def evaluate(telemetry, truth, settled_after=4.):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     ordered = sorted({r[&#x27;stamp&#x27;]: r for r in truth if r[&#x27;stamp&#x27;] &gt; 0}.values(),</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>                      key=lambda r: r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     stamps = np.array([r[&#x27;stamp&#x27;] for r in ordered])</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     errors, tracking, attitudes, yaw_errors, imu_attitudes = [], [], [], [], []</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     matched = 0</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     for row in telemetry:</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         stamp = row[&#x27;command&#x27;][&#x27;stamp&#x27;]</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         index = int(np.searchsorted(stamps, stamp))</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         if index == 0 or index == len(ordered):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>             continue</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         a, b = ordered[index-1], ordered[index]</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if b[&#x27;stamp&#x27;]-a[&#x27;stamp&#x27;] &gt; .05:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             continue</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         t = (stamp-a[&#x27;stamp&#x27;])/(b[&#x27;stamp&#x27;]-a[&#x27;stamp&#x27;])</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         position = (1-t)*np.array(a[&#x27;position&#x27;])+t*np.array(b[&#x27;position&#x27;])</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         qa, qb = np.array(a[&#x27;orientation&#x27;]), np.array(b[&#x27;orientation&#x27;])</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         if qa @ qb &lt; 0:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             qb = -qb</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         orientation = (1-t)*qa+t*qb</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         orientation /= np.linalg.norm(orientation)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         estimated = np.array(row[&#x27;state&#x27;][&#x27;position_ned&#x27;])</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         matched += 1</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         if row[&#x27;wall_elapsed&#x27;] &gt;= settled_after:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             errors.append(estimated-position)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             dot = abs(np.array(row[&#x27;state&#x27;][&#x27;orientation_wxyz&#x27;]) @ orientation)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             attitudes.append(2*np.arccos(np.clip(dot, 0., 1.)))</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             raw_q=row.get(&#x27;raw&#x27;,{}).get(&#x27;imu_orientation_wxyz&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             if raw_q is not None:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 q=np.asarray(raw_q,dtype=float)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 norm=np.linalg.norm(q)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 if q.shape==(4,) and np.all(np.isfinite(q)) and abs(norm-1)&lt;.01:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                     dot=abs(q @ orientation/norm)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                     imu_attitudes.append(2*np.arccos(np.clip(dot,0.,1.)))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             if &#x27;reference&#x27; in row:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                 tracking.append(position-np.array(row[&#x27;reference&#x27;]))</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             if &#x27;yaw_reference&#x27; in row:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 w,x,y,z=orientation</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 yaw=np.arctan2(2*(w*z+x*y),1-2*(y*y+z*z))</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                 yaw_errors.append((yaw-row[&#x27;yaw_reference&#x27;]+np.pi) % (2*np.pi)-np.pi)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     timestamp_key = &#x27;publish_wall_elapsed&#x27; if telemetry and all(&#x27;publish_wall_elapsed&#x27; in r for r in telemetry) else &#x27;wall_elapsed&#x27;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     intervals = np.diff([r[timestamp_key] for r in telemetry])</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     result = {&#x27;matched_commands&#x27;: matched, &#x27;commands&#x27;: len(telemetry),</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>               &#x27;match_fraction&#x27;: matched/len(telemetry) if telemetry else 0.,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>               &#x27;settled_after_wall_s&#x27;: settled_after, &#x27;settled_samples&#x27;: len(errors),</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>               &#x27;command_timing_measurement&#x27;: &#x27;after_publish&#x27; if timestamp_key == &#x27;publish_wall_elapsed&#x27; else &#x27;loop_start_before_graph_query&#x27;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>               &#x27;official_result&#x27;: &#x27;UNKNOWN&#x27;, &#x27;truth_use&#x27;: &#x27;offline_evaluation_only&#x27;}</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     if len(intervals):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         result[&#x27;command_wall_interval_p50_p95_p99_s&#x27;] = np.percentile(intervals, (50, 95, 99)).tolist()</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         result[&#x27;minimum_command_wall_interval_s&#x27;] = float(intervals.min())</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     if errors:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         result[&#x27;state_position_rmse_m&#x27;] = np.sqrt(np.mean(np.array(errors)**2, axis=0)).tolist()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         result[&#x27;state_attitude_rmse_rad&#x27;] = float(np.sqrt(np.mean(np.array(attitudes)**2)))</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     if tracking:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         result[&#x27;truth_tracking_rmse_m&#x27;] = np.sqrt(np.mean(np.array(tracking)**2, axis=0)).tolist()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         result[&#x27;truth_tracking_max_norm_m&#x27;] = float(np.linalg.norm(tracking, axis=1).max())</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     if yaw_errors:</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         result[&#x27;truth_yaw_tracking_rmse_rad&#x27;]=float(np.sqrt(np.mean(np.array(yaw_errors)**2)))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         result[&#x27;truth_yaw_tracking_max_abs_rad&#x27;]=float(np.abs(yaw_errors).max())</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     if imu_attitudes:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         result[&#x27;imu_orientation_unit_valid_fraction&#x27;]=len(imu_attitudes)/len(errors)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         result[&#x27;imu_orientation_truth_rmse_rad&#x27;]=float(np.sqrt(np.mean(np.array(imu_attitudes)**2)))</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         result[&#x27;imu_orientation_fused_in_estimator&#x27;]=False</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     result[&#x27;evaluation_valid&#x27;] = result[&#x27;match_fraction&#x27;] &gt;= .9 and len(errors) &gt;= 100</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     return result</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> def main():</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     parser.add_argument(&#x27;run&#x27;, type=Path)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     args = parser.parse_args()</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     def rows(name):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         return [json.loads(line) for line in (args.run/name).read_text().splitlines()]</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     manifest = json.loads((args.run/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     mode = manifest[&#x27;config&#x27;].get(&#x27;control_mode&#x27;,&#x27;PWM&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     telemetry=rows(&#x27;vel_telemetry.jsonl&#x27; if mode == &#x27;VEL&#x27; else &#x27;pwm_telemetry.jsonl&#x27;)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     result = evaluate(telemetry, rows(&#x27;evaluation_truth.jsonl&#x27;))</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     result[&#x27;control_mode&#x27;] = mode</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     if manifest[&#x27;config&#x27;].get(&#x27;experiment&#x27;,{}).get(&#x27;braking&#x27;):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         from evaluation.metrics.braking import measure_braking</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         result[&#x27;braking_response&#x27;]=measure_braking(telemetry,rows(&#x27;evaluation_truth.jsonl&#x27;))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     if mode == &#x27;VEL&#x27;:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         samples=[r for r in telemetry if 5.4 &lt;= r.get(&#x27;sim_elapsed&#x27;,0) &lt; 6.8</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                  and r.get(&#x27;yaw_rate_reference&#x27;,0) &gt; 0 and abs(r[&#x27;command&#x27;][&#x27;values&#x27;][3]) &gt; 1.]</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         if len(samples)&gt;20:</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             command=np.array([r[&#x27;command&#x27;][&#x27;values&#x27;][3] for r in samples])</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             omega=np.array([r[&#x27;raw&#x27;][&#x27;omega_body&#x27;][2] for r in samples])</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             gain=float(command @ omega/(command @ command))</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             result[&#x27;vel_yaw_response_gain_rad_per_command_unit&#x27;]=gain</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             result[&#x27;vel_yaw_expected_rad_per_degree&#x27;]=float(np.pi/180)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             result[&#x27;vel_yaw_degrees_response_within_20pct&#x27;]=abs(gain/(np.pi/180)-1) &lt; .2</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     (args.run/&#x27;closed_loop_metrics.json&#x27;).write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     print(json.dumps(result, indent=2))</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     return 0 if result[&#x27;evaluation_valid&#x27;] else 2</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a> </span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a> </span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     raise SystemExit(main())</span></pre></body></html>

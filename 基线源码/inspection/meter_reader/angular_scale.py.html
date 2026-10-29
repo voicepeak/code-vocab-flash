@@ -1,0 +1,43 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>inspection/meter_reader/angular_scale.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>inspection/meter_reader/angular_scale.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Provisional angular meter reading with explicit geometric uncertainty.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> @dataclass(frozen=True)</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> class MeterCandidate:</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     status: str</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     value: int = None</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     lower_value: float = None</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     upper_value: float = None</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     # Neither geometric inputs nor the selected equipment are verified.</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     report_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     scale_calibrated: bool = field(default=False, init=False)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> def read_angle(center, pointer_tip, zero_angle_rad, sweep_rad, angular_uncertainty_rad):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     &quot;&quot;&quot;Map a manually specified 0..50 dial arc to an integer candidate.</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     Angles use image x-right/y-down coordinates, with signed sweep. The input</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     pointer, center, endpoints, and uncertainty must come from the same image;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     no association, image detection, calibration, or reporting is implied.</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     try:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         cx,cy=center;px,py=pointer_tip</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         vals=(cx,cy,px,py,zero_angle_rad,sweep_rad,angular_uncertainty_rad)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         valid=(all(math.isfinite(v) for v in vals) and 0&lt;abs(sweep_rad)&lt;2*math.pi</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>                and 0&lt;=angular_uncertainty_rad&lt;abs(sweep_rad)/2 and math.hypot(px-cx,py-cy)&gt;=2.)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     except (TypeError,ValueError):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         valid=False</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     if not valid:raise ValueError(&#x27;invalid dial geometry&#x27;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     direction=1 if sweep_rad&gt;0 else -1</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     angle=math.atan2(py-cy,px-cx)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     offset=(direction*(angle-zero_angle_rad))%(2*math.pi)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     if offset-angular_uncertainty_rad&lt;0 or offset+angular_uncertainty_rad&gt;abs(sweep_rad):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         return MeterCandidate(&#x27;OUTSIDE_CALIBRATED_ARC&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     lower=(offset-angular_uncertainty_rad)*50/abs(sweep_rad)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     upper=(offset+angular_uncertainty_rad)*50/abs(sweep_rad)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     # Half-integer boundaries are ambiguous, including exact endpoints.</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     first=math.floor(lower+.5);last=math.floor(upper+.5)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     if first!=last or abs((lower+.5)-round(lower+.5))&lt;1e-12 or abs((upper+.5)-round(upper+.5))&lt;1e-12:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         return MeterCandidate(&#x27;AMBIGUOUS&#x27;,None,lower,upper)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     return MeterCandidate(&#x27;CANDIDATE&#x27;,first,lower,upper)</span></pre></body></html>

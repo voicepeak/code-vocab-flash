@@ -1,0 +1,32 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_meter_consensus.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_meter_consensus.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from inspection.meter_reader.angular_scale import MeterCandidate</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from inspection.meter_reader.consensus import ConsensusTracker</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> class MeterConsensusTests(unittest.TestCase):</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     def feed(self,t,stamp,device=&#x27;a&#x27;,lights=(True,True,True),value=12):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>         meta=Metadata(stamp,stamp+.15,0,&#x27;test&#x27;,&#x27;image&#x27;)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         return t.observe(meta,stamp,stamp,stamp,device,lights,MeterCandidate(&#x27;CANDIDATE&#x27;,value,11.8,12.2))</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     def test_distinct_frames_are_needed_and_output_expires(self):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         tracker=ConsensusTracker();self.feed(tracker,1.);self.feed(tracker,1.1)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         with self.assertRaises(ValueError):self.feed(tracker,1.1)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         result=self.feed(tracker,1.2);self.assertEqual(result.status,&#x27;CONSENSUS&#x27;)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         self.assertFalse(result.report_eligible);self.assertFalse(result.device_identity_verified)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.assertEqual(tracker.snapshot(1.35,1.35).status,&#x27;UNAVAILABLE&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     def test_identity_value_or_light_change_resets(self):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         for change in ({&#x27;device&#x27;:&#x27;b&#x27;},{&#x27;value&#x27;:13},{&#x27;lights&#x27;:(True,None,True)}):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             tracker=ConsensusTracker();self.feed(tracker,1.);self.feed(tracker,1.1)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>             result=self.feed(tracker,1.2,**change)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             self.assertNotEqual(result.status,&#x27;CONSENSUS&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             self.assertLess(result.observations,3)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     def test_reset_invalidates_prior_epoch(self):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         tracker=ConsensusTracker();self.feed(tracker,1.);tracker.reset(1)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertEqual(tracker.snapshot(1.,1.).status,&#x27;UNAVAILABLE&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         with self.assertRaises(ValueError):self.feed(tracker,1.1)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

@@ -1,0 +1,705 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_stereo_pairing.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_stereo_pairing.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 29,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-23&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P2_READ_ONLY_STEREO_PAIRING&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;default_image_age_budget_s&quot;: 0.15,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;experimental_image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   &quot;max_stereo_header_skew_s&quot;: 0.005,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;comparison_frozen&quot;: false,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>       &quot;run&quot;: &quot;runs/20261023T052931Z_f186bfd448e7434487b1e641c2f525e2&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>       &quot;seed&quot;: 2104,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>       &quot;kind&quot;: &quot;stereo&quot;,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>       &quot;run_state&quot;: &quot;OBSERVER_FAILED&quot;,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>       &quot;observer_exit_code&quot;: 2,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &quot;sha256&quot;: &quot;7358ee4777ae86f79d5b87314d3293283ad69712d1346703cdc0d550d18c1e57&quot;,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;files&quot;: 236,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;uncompressed_bytes&quot;: 811899,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>       },</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       &quot;independently_rehashed_source_files&quot;: 236,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &quot;pairs&quot;: 1,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         &quot;decoded_frames&quot;: {</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;left&quot;: 72,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;right&quot;: 72</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         },</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         &quot;received_frames&quot;: {</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>           &quot;imu&quot;: 403,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>           &quot;left&quot;: 72,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>           &quot;right&quot;: 72</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         },</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &quot;events&quot;: {</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>           &quot;EXPIRED_left&quot;: 71,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>           &quot;EXPIRED_right&quot;: 71,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         },</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;fault&quot;: &quot;STALE_STEREO_PAIRS&quot;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &quot;node_graph&quot;: null,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &quot;source_headers&quot;: {</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           &quot;left&quot;: {</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             &quot;stamp&quot;: 1792733381.6206684,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>           },</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>           &quot;right&quot;: {</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &quot;stamp&quot;: 1792733381.6206684,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>           }</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         },</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         &quot;max_skew_s&quot;: 0.005,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         &quot;queue_capacity_per_side&quot;: 4,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         &quot;clock_source&quot;: &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &quot;calibrated_rectification_verified&quot;: false,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>       },</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;audit_valid&quot;: false,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &quot;pairs&quot;: 1,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;cv_bridge_first_images_match&quot;: {</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;left&quot;: true,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>           &quot;right&quot;: true</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         },</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;input_records_valid&quot;: false,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &quot;pair_records_valid&quot;: true,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &quot;source_fault&quot;: &quot;STALE_STEREO_PAIRS&quot;,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &quot;image_timing_records&quot;: 0,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         &quot;header_skew_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           0.0,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           0.0,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>           0.0,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>           0.0</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         ],</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &quot;pair_age_on_imu_clock_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>           0.147003173828125,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>           0.147003173828125,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           0.147003173828125,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           0.147003173828125</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         ],</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         &quot;pair_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           0.007955946959555149,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           0.007955946959555149,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>           0.007955946959555149,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>           0.007955946959555149</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         ],</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;image_header_age_at_callback_p50_p95_p99_max_s&quot;: null,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         &quot;image_header_age_at_processing_p50_p95_p99_max_s&quot;: null,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         &quot;image_pending_wall_age_p50_p95_p99_max_s&quot;: null,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         &quot;image_shapes&quot;: [</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>           [</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             720,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             960,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             3</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>           ]</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         ],</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;analysis_source_sha256&quot;: &quot;e92772d7b243716082a6ce31144b0cd689bf4dd86752fd210df91abfc0edde20&quot;</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>       },</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>       &quot;analysis_matches_run_source_snapshot&quot;: false,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         &quot;manifest.json&quot;: &quot;4d49aae5a9873796f68522b4ced3ed68f9f6a3e7dd0303358388a1ed57002070&quot;,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         &quot;stereo_first_left.bin&quot;: &quot;ca548a496b19220c983a8cdd583a8aa1451f620c2103705ff2ef6d64bbb0d769&quot;,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         &quot;stereo_first_left.json&quot;: &quot;94bb6bc186f26474ca22123e4f6bf3bf945cfe4ad24877a17d24a990837fdaee&quot;,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         &quot;stereo_first_pair.npz&quot;: &quot;04a859b0825f3d5a6b53c26f85e7e3dc330a5c4ea4a372731775853db4a94317&quot;,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         &quot;stereo_first_right.bin&quot;: &quot;01b06f54a91e28fd0ee36a343ccde9369a72ccbd529b6d40ed29140244bbcaf6&quot;,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         &quot;stereo_first_right.json&quot;: &quot;94bb6bc186f26474ca22123e4f6bf3bf945cfe4ad24877a17d24a990837fdaee&quot;,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &quot;stereo_pairing_audit.json&quot;: &quot;c4f709922b6eaa2280b481ba7e1321cb0a20b174a193348035828f2275e0dfd9&quot;,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;stereo_pairs.jsonl&quot;: &quot;ba71fdbf78dbde121adad2ddd72da724295f2b9fbf805a8230599f56604b14e0&quot;,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;stereo_summary.json&quot;: &quot;52cab4d2d3042adbe5b354b0789c150aba47ba3bf92fc18df52a99bf77113df4&quot;</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>       }</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     },</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     {</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>       &quot;run&quot;: &quot;runs/20261023T053351Z_4299f402d61846fb80714b2beb66fad3&quot;,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>       &quot;seed&quot;: 2105,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>       &quot;kind&quot;: &quot;stereo&quot;,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>       &quot;run_state&quot;: &quot;OBSERVER_FAILED&quot;,</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>       &quot;observer_exit_code&quot;: 2,</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         &quot;sha256&quot;: &quot;13f2386ef287746f849ce270e40d45e18ba76760f19b741b61f5fb7e07e08ccc&quot;,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &quot;files&quot;: 236,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;uncompressed_bytes&quot;: 814952,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>       },</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>       &quot;independently_rehashed_source_files&quot;: 236,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         &quot;pairs&quot;: 1,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         &quot;decoded_frames&quot;: {</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           &quot;right&quot;: 14,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           &quot;left&quot;: 13</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>         },</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>         &quot;received_frames&quot;: {</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>           &quot;imu&quot;: 76,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>           &quot;right&quot;: 14,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>           &quot;left&quot;: 13</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>         },</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>         &quot;events&quot;: {</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           &quot;SENSOR_EXPIRED_right&quot;: 13,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>           &quot;SENSOR_EXPIRED_left&quot;: 12,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>         },</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         &quot;fault&quot;: &quot;STALE_STEREO_PAIRS&quot;,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>           ],</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>           ]</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         },</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         &quot;source_headers&quot;: {</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>           &quot;right&quot;: {</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>             &quot;stamp&quot;: 1792733642.2451746,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>           },</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>           &quot;left&quot;: {</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>             &quot;stamp&quot;: 1792733642.3051758,</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>           }</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>         },</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         &quot;max_skew_s&quot;: 0.005,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         &quot;queue_capacity_per_side&quot;: 4,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>         &quot;clock_source&quot;: &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>         &quot;calibrated_rectification_verified&quot;: false,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>       },</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>         &quot;audit_valid&quot;: false,</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>         &quot;pairs&quot;: 1,</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         &quot;cv_bridge_first_images_match&quot;: {</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>           &quot;left&quot;: true,</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>           &quot;right&quot;: true</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>         },</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>         &quot;input_records_valid&quot;: true,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         &quot;pair_records_valid&quot;: true,</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>         &quot;source_fault&quot;: &quot;STALE_STEREO_PAIRS&quot;,</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>         &quot;image_timing_records&quot;: 27,</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>         &quot;header_skew_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>           0.0,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>           0.0,</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>           0.0,</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>           0.0</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>         ],</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>         &quot;pair_age_on_imu_clock_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>           0.147003173828125,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>           0.147003173828125,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>           0.147003173828125,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>           0.147003173828125</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>         ],</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>         &quot;pair_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>           0.010372701101005077,</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>           0.010372701101005077,</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>           0.010372701101005077,</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>           0.010372701101005077</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>         ],</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>         &quot;image_header_age_at_callback_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>           0.15300321578979492,</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>           0.16410353183746337,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>           0.16500353813171387,</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>           0.16500353813171387</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>         ],</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         &quot;image_header_age_at_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>           0.15300321578979492,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>           0.16500353813171387,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>           0.1694435691833496,</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>           0.1710035800933838</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         ],</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>         &quot;image_pending_wall_age_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>           0.00013585900887846947,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>           0.0015484185656532644,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>           0.001654865485616028,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>           0.0016755089163780212</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>         ],</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         &quot;image_shapes&quot;: [</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>           [</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>             720,</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>             960,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>             3</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>           ]</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>         ],</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>         &quot;analysis_source_sha256&quot;: &quot;e92772d7b243716082a6ce31144b0cd689bf4dd86752fd210df91abfc0edde20&quot;</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>       },</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>         &quot;manifest.json&quot;: &quot;3945400cf4f9e92af9d331c3b2548e5212a27165e80e4e7387dcb03e9f8dc4d8&quot;,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>         &quot;stereo_first_left.bin&quot;: &quot;2e8224b7ec69ea16d66c7bdb3443393d42802a3f47e0367698ddc1e06958a0ce&quot;,</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>         &quot;stereo_first_left.json&quot;: &quot;a1830086fbef7ea79abf90b4591fc99cb08a2d1391d6015afdf5638e814995a1&quot;,</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;stereo_first_pair.npz&quot;: &quot;324d1a55b2b2e769d77f0cbdb87277959c6e588d92bab4135ea9f191e2f9a560&quot;,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &quot;stereo_first_right.bin&quot;: &quot;fe0e906c35925132632d2f2d351c4230790c8e691824038a852866078816886d&quot;,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>         &quot;stereo_first_right.json&quot;: &quot;fae2dce17c24ec6906f8005466ae2ab7dbebfd5eadd1d18e88d53420a4420a81&quot;,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>         &quot;stereo_image_timing.jsonl&quot;: &quot;94f8309ad26625089fc1d333e765a60bf4ca7302126e6a170bd68b18365f78cd&quot;,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>         &quot;stereo_pairing_audit.json&quot;: &quot;443f870e8676c8fb17b7c69cf555a0cbb3f9c7f6a0fbc34511f5a3a78acb76af&quot;,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>         &quot;stereo_pairs.jsonl&quot;: &quot;c1adbd1180ac955105778caa5ad5579b91e3274a5a5bc7cac3461aeeb8097e04&quot;,</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>         &quot;stereo_summary.json&quot;: &quot;ba215c729b76877669754844eb10424f5063d4574e5a8e452c6c72a9789cc240&quot;</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>       }</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>     },</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>     {</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>       &quot;run&quot;: &quot;runs/20261023T053533Z_a98296d2effb4c81946ab6c75d32e5b5&quot;,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>       &quot;seed&quot;: 2105,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>       &quot;kind&quot;: &quot;stereo&quot;,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>         &quot;sha256&quot;: &quot;0463b857afbdcedcd88e05a1b348a97c58384c2ac8175913109f2adbd801f7f6&quot;,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>         &quot;files&quot;: 236,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>         &quot;uncompressed_bytes&quot;: 816189,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>       },</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>       &quot;independently_rehashed_source_files&quot;: 236,</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>         &quot;pairs&quot;: 182,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>         &quot;decoded_frames&quot;: {</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>           &quot;left&quot;: 182,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>           &quot;right&quot;: 182</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>         },</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>         &quot;received_frames&quot;: {</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>           &quot;imu&quot;: 999,</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>           &quot;left&quot;: 182,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>           &quot;right&quot;: 182</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>         },</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>         &quot;events&quot;: {</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>         },</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>         &quot;fault&quot;: null,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>           ],</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>           ]</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>         },</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>         &quot;source_headers&quot;: {</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>           &quot;left&quot;: {</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>             &quot;stamp&quot;: 1792733743.3014345,</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>           },</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>           &quot;right&quot;: {</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>             &quot;stamp&quot;: 1792733743.3014345,</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>           }</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>         },</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>         &quot;max_skew_s&quot;: 0.005,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>         &quot;queue_capacity_per_side&quot;: 4,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>         &quot;clock_source&quot;: &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>         &quot;experimental_age_budget&quot;: true,</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>         &quot;calibrated_rectification_verified&quot;: false,</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>       },</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>         &quot;pairs&quot;: 182,</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>         &quot;cv_bridge_first_images_match&quot;: {</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>           &quot;left&quot;: true,</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>           &quot;right&quot;: true</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>         },</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>         &quot;input_records_valid&quot;: true,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>         &quot;pair_records_valid&quot;: true,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>         &quot;default_150ms_pipeline_passed&quot;: false,</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>         &quot;source_fault&quot;: null,</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>         &quot;image_timing_records&quot;: 364,</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>         &quot;header_skew_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>           0.0,</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>           0.0,</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>           0.0,</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>           0.0</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>         ],</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>         &quot;pair_age_on_imu_clock_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>           0.15600347518920898,</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>           0.17400360107421875,</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>           0.18114388942718504,</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>           0.18900418281555176</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>         ],</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>         &quot;pair_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>           0.0003769374452531338,</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>           0.0006268710829317569,</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>           0.0008173800515942273,</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>           0.009150295052677393</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>         ],</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>         &quot;image_header_age_at_callback_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>           0.15000319480895996,</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>           0.16500353813171387,</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>           0.1770038604736328,</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>           0.18900418281555176</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>         ],</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>         &quot;image_header_age_at_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>           0.15000319480895996,</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>           0.16800355911254883,</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>           0.1781137800216675,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>           0.18900418281555176</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>         ],</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>         &quot;image_pending_wall_age_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>           0.0002623070031404495,</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>           0.0015442161122336982,</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>           0.0016320194466970862,</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>           0.0016852659173309803</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>         ],</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>         &quot;image_shapes&quot;: [</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>           [</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>             720,</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>             960,</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>             3</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>           ]</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>         ],</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>         &quot;analysis_source_sha256&quot;: &quot;49c6f0d00fe138ebf8fb61068843ae7f4bf061cfce676cd3d74fcce0788bbbf0&quot;</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>       },</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>         &quot;manifest.json&quot;: &quot;be6899f5ae58d6adf9e6248484bb784654ddccde92bd84cee9c3fc60a0cc41cc&quot;,</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>         &quot;stereo_first_left.bin&quot;: &quot;7aa23696d77903534de60008fd8100c6d992fab7760be503a6546e387ff4e203&quot;,</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>         &quot;stereo_first_left.json&quot;: &quot;7424fb9a500b9ddb25d5c788c47c407cf7a2828b7b9642b9dda7a65b04bac152&quot;,</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>         &quot;stereo_first_pair.npz&quot;: &quot;995346f3edb70236d6c3e602f8e81bc4a205e3f173ee4c730816e87587337b30&quot;,</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>         &quot;stereo_first_right.bin&quot;: &quot;730d262dfa29e34c20b1532ed6ee706cd23a2a960ee1cc629017d62790f512e3&quot;,</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>         &quot;stereo_first_right.json&quot;: &quot;7424fb9a500b9ddb25d5c788c47c407cf7a2828b7b9642b9dda7a65b04bac152&quot;,</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>         &quot;stereo_image_timing.jsonl&quot;: &quot;4639afbca530a0e40deb3220da1f312e40a56fdc04e27e485c5f777896613fd6&quot;,</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>         &quot;stereo_pairing_audit.json&quot;: &quot;19396f1b0bd727b5e8eaab217326cf8dc85bf0f645cbf91218f6a6541c2bdac6&quot;,</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>         &quot;stereo_pairs.jsonl&quot;: &quot;8ac1ec3d2c63d2b7d32ca4794380b76a6c54c370fb93a032769b9c5e23ad95f0&quot;,</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>         &quot;stereo_summary.json&quot;: &quot;c1ba0b7550b7ac9b5e32f335946c93175113a201379898c9b3e5ec0b3e4d3f10&quot;</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a>       }</span>
+<span class="line" id="L431"><a class="ln" href="#L431">  431</a>     },</span>
+<span class="line" id="L432"><a class="ln" href="#L432">  432</a>     {</span>
+<span class="line" id="L433"><a class="ln" href="#L433">  433</a>       &quot;run&quot;: &quot;runs/20261023T053653Z_58ccb0439090433bb3c4e23fbb637c84&quot;,</span>
+<span class="line" id="L434"><a class="ln" href="#L434">  434</a>       &quot;seed&quot;: 2106,</span>
+<span class="line" id="L435"><a class="ln" href="#L435">  435</a>       &quot;kind&quot;: &quot;stereo&quot;,</span>
+<span class="line" id="L436"><a class="ln" href="#L436">  436</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L437"><a class="ln" href="#L437">  437</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L438"><a class="ln" href="#L438">  438</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L439"><a class="ln" href="#L439">  439</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L440"><a class="ln" href="#L440">  440</a>         &quot;sha256&quot;: &quot;9ee504d86bafd07b0e6b75b8e6cd016ace8248c4cc1bf53d544004dd7fdf40e7&quot;,</span>
+<span class="line" id="L441"><a class="ln" href="#L441">  441</a>         &quot;files&quot;: 236,</span>
+<span class="line" id="L442"><a class="ln" href="#L442">  442</a>         &quot;uncompressed_bytes&quot;: 816496,</span>
+<span class="line" id="L443"><a class="ln" href="#L443">  443</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L444"><a class="ln" href="#L444">  444</a>       },</span>
+<span class="line" id="L445"><a class="ln" href="#L445">  445</a>       &quot;independently_rehashed_source_files&quot;: 236,</span>
+<span class="line" id="L446"><a class="ln" href="#L446">  446</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L447"><a class="ln" href="#L447">  447</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L448"><a class="ln" href="#L448">  448</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L449"><a class="ln" href="#L449">  449</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L450"><a class="ln" href="#L450">  450</a>         &quot;pairs&quot;: 181,</span>
+<span class="line" id="L451"><a class="ln" href="#L451">  451</a>         &quot;decoded_frames&quot;: {</span>
+<span class="line" id="L452"><a class="ln" href="#L452">  452</a>           &quot;left&quot;: 182,</span>
+<span class="line" id="L453"><a class="ln" href="#L453">  453</a>           &quot;right&quot;: 181</span>
+<span class="line" id="L454"><a class="ln" href="#L454">  454</a>         },</span>
+<span class="line" id="L455"><a class="ln" href="#L455">  455</a>         &quot;received_frames&quot;: {</span>
+<span class="line" id="L456"><a class="ln" href="#L456">  456</a>           &quot;imu&quot;: 998,</span>
+<span class="line" id="L457"><a class="ln" href="#L457">  457</a>           &quot;left&quot;: 182,</span>
+<span class="line" id="L458"><a class="ln" href="#L458">  458</a>           &quot;right&quot;: 181</span>
+<span class="line" id="L459"><a class="ln" href="#L459">  459</a>         },</span>
+<span class="line" id="L460"><a class="ln" href="#L460">  460</a>         &quot;events&quot;: {</span>
+<span class="line" id="L461"><a class="ln" href="#L461">  461</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L462"><a class="ln" href="#L462">  462</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L463"><a class="ln" href="#L463">  463</a>         },</span>
+<span class="line" id="L464"><a class="ln" href="#L464">  464</a>         &quot;fault&quot;: null,</span>
+<span class="line" id="L465"><a class="ln" href="#L465">  465</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L466"><a class="ln" href="#L466">  466</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L467"><a class="ln" href="#L467">  467</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L468"><a class="ln" href="#L468">  468</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L469"><a class="ln" href="#L469">  469</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L470"><a class="ln" href="#L470">  470</a>           ],</span>
+<span class="line" id="L471"><a class="ln" href="#L471">  471</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L472"><a class="ln" href="#L472">  472</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L473"><a class="ln" href="#L473">  473</a>           ]</span>
+<span class="line" id="L474"><a class="ln" href="#L474">  474</a>         },</span>
+<span class="line" id="L475"><a class="ln" href="#L475">  475</a>         &quot;source_headers&quot;: {</span>
+<span class="line" id="L476"><a class="ln" href="#L476">  476</a>           &quot;left&quot;: {</span>
+<span class="line" id="L477"><a class="ln" href="#L477">  477</a>             &quot;stamp&quot;: 1792733823.594143,</span>
+<span class="line" id="L478"><a class="ln" href="#L478">  478</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L479"><a class="ln" href="#L479">  479</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L480"><a class="ln" href="#L480">  480</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L481"><a class="ln" href="#L481">  481</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L482"><a class="ln" href="#L482">  482</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L483"><a class="ln" href="#L483">  483</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L484"><a class="ln" href="#L484">  484</a>           },</span>
+<span class="line" id="L485"><a class="ln" href="#L485">  485</a>           &quot;right&quot;: {</span>
+<span class="line" id="L486"><a class="ln" href="#L486">  486</a>             &quot;stamp&quot;: 1792733823.594143,</span>
+<span class="line" id="L487"><a class="ln" href="#L487">  487</a>             &quot;frame_id&quot;: &quot;&quot;,</span>
+<span class="line" id="L488"><a class="ln" href="#L488">  488</a>             &quot;encoding&quot;: &quot;bgr8&quot;,</span>
+<span class="line" id="L489"><a class="ln" href="#L489">  489</a>             &quot;width&quot;: 960,</span>
+<span class="line" id="L490"><a class="ln" href="#L490">  490</a>             &quot;height&quot;: 720,</span>
+<span class="line" id="L491"><a class="ln" href="#L491">  491</a>             &quot;step&quot;: 2880,</span>
+<span class="line" id="L492"><a class="ln" href="#L492">  492</a>             &quot;is_bigendian&quot;: 0</span>
+<span class="line" id="L493"><a class="ln" href="#L493">  493</a>           }</span>
+<span class="line" id="L494"><a class="ln" href="#L494">  494</a>         },</span>
+<span class="line" id="L495"><a class="ln" href="#L495">  495</a>         &quot;max_skew_s&quot;: 0.005,</span>
+<span class="line" id="L496"><a class="ln" href="#L496">  496</a>         &quot;queue_capacity_per_side&quot;: 4,</span>
+<span class="line" id="L497"><a class="ln" href="#L497">  497</a>         &quot;clock_source&quot;: &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L498"><a class="ln" href="#L498">  498</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L499"><a class="ln" href="#L499">  499</a>         &quot;experimental_age_budget&quot;: true,</span>
+<span class="line" id="L500"><a class="ln" href="#L500">  500</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L501"><a class="ln" href="#L501">  501</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L502"><a class="ln" href="#L502">  502</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L503"><a class="ln" href="#L503">  503</a>         &quot;calibrated_rectification_verified&quot;: false,</span>
+<span class="line" id="L504"><a class="ln" href="#L504">  504</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L505"><a class="ln" href="#L505">  505</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L506"><a class="ln" href="#L506">  506</a>       },</span>
+<span class="line" id="L507"><a class="ln" href="#L507">  507</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L508"><a class="ln" href="#L508">  508</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L509"><a class="ln" href="#L509">  509</a>         &quot;pairs&quot;: 181,</span>
+<span class="line" id="L510"><a class="ln" href="#L510">  510</a>         &quot;cv_bridge_first_images_match&quot;: {</span>
+<span class="line" id="L511"><a class="ln" href="#L511">  511</a>           &quot;left&quot;: true,</span>
+<span class="line" id="L512"><a class="ln" href="#L512">  512</a>           &quot;right&quot;: true</span>
+<span class="line" id="L513"><a class="ln" href="#L513">  513</a>         },</span>
+<span class="line" id="L514"><a class="ln" href="#L514">  514</a>         &quot;input_records_valid&quot;: true,</span>
+<span class="line" id="L515"><a class="ln" href="#L515">  515</a>         &quot;pair_records_valid&quot;: true,</span>
+<span class="line" id="L516"><a class="ln" href="#L516">  516</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L517"><a class="ln" href="#L517">  517</a>         &quot;default_150ms_pipeline_passed&quot;: false,</span>
+<span class="line" id="L518"><a class="ln" href="#L518">  518</a>         &quot;source_fault&quot;: null,</span>
+<span class="line" id="L519"><a class="ln" href="#L519">  519</a>         &quot;image_timing_records&quot;: 363,</span>
+<span class="line" id="L520"><a class="ln" href="#L520">  520</a>         &quot;header_skew_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L521"><a class="ln" href="#L521">  521</a>           0.0,</span>
+<span class="line" id="L522"><a class="ln" href="#L522">  522</a>           0.0,</span>
+<span class="line" id="L523"><a class="ln" href="#L523">  523</a>           0.0,</span>
+<span class="line" id="L524"><a class="ln" href="#L524">  524</a>           0.0</span>
+<span class="line" id="L525"><a class="ln" href="#L525">  525</a>         ],</span>
+<span class="line" id="L526"><a class="ln" href="#L526">  526</a>         &quot;pair_age_on_imu_clock_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L527"><a class="ln" href="#L527">  527</a>           0.15900325775146484,</span>
+<span class="line" id="L528"><a class="ln" href="#L528">  528</a>           0.17400383949279785,</span>
+<span class="line" id="L529"><a class="ln" href="#L529">  529</a>           0.1836039066314697,</span>
+<span class="line" id="L530"><a class="ln" href="#L530">  530</a>           0.19200420379638672</span>
+<span class="line" id="L531"><a class="ln" href="#L531">  531</a>         ],</span>
+<span class="line" id="L532"><a class="ln" href="#L532">  532</a>         &quot;pair_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L533"><a class="ln" href="#L533">  533</a>           0.00038440292701125145,</span>
+<span class="line" id="L534"><a class="ln" href="#L534">  534</a>           0.000618145102635026,</span>
+<span class="line" id="L535"><a class="ln" href="#L535">  535</a>           0.0007043637800961707,</span>
+<span class="line" id="L536"><a class="ln" href="#L536">  536</a>           0.020989648066461086</span>
+<span class="line" id="L537"><a class="ln" href="#L537">  537</a>         ],</span>
+<span class="line" id="L538"><a class="ln" href="#L538">  538</a>         &quot;pair_processing_interval_scope&quot;: &quot;Emission loop only; images may have been decoded in earlier loops. Not end-to-end latency.&quot;,</span>
+<span class="line" id="L539"><a class="ln" href="#L539">  539</a>         &quot;image_decode_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L540"><a class="ln" href="#L540">  540</a>           0.0002587779890745878,</span>
+<span class="line" id="L541"><a class="ln" href="#L541">  541</a>           0.0004709069617092607,</span>
+<span class="line" id="L542"><a class="ln" href="#L542">  542</a>           0.0005543475784361362,</span>
+<span class="line" id="L543"><a class="ln" href="#L543">  543</a>           0.008268999867141247</span>
+<span class="line" id="L544"><a class="ln" href="#L544">  544</a>         ],</span>
+<span class="line" id="L545"><a class="ln" href="#L545">  545</a>         &quot;image_header_age_at_callback_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L546"><a class="ln" href="#L546">  546</a>           0.15000319480895996,</span>
+<span class="line" id="L547"><a class="ln" href="#L547">  547</a>           0.16800355911254883,</span>
+<span class="line" id="L548"><a class="ln" href="#L548">  548</a>           0.18300390243530273,</span>
+<span class="line" id="L549"><a class="ln" href="#L549">  549</a>           0.19200420379638672</span>
+<span class="line" id="L550"><a class="ln" href="#L550">  550</a>         ],</span>
+<span class="line" id="L551"><a class="ln" href="#L551">  551</a>         &quot;image_header_age_at_processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L552"><a class="ln" href="#L552">  552</a>           0.15300321578979492,</span>
+<span class="line" id="L553"><a class="ln" href="#L553">  553</a>           0.16800355911254883,</span>
+<span class="line" id="L554"><a class="ln" href="#L554">  554</a>           0.18300390243530273,</span>
+<span class="line" id="L555"><a class="ln" href="#L555">  555</a>           0.19200420379638672</span>
+<span class="line" id="L556"><a class="ln" href="#L556">  556</a>         ],</span>
+<span class="line" id="L557"><a class="ln" href="#L557">  557</a>         &quot;image_pending_wall_age_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L558"><a class="ln" href="#L558">  558</a>           0.00023257499560713768,</span>
+<span class="line" id="L559"><a class="ln" href="#L559">  559</a>           0.0013806408969685433,</span>
+<span class="line" id="L560"><a class="ln" href="#L560">  560</a>           0.001604986591264605,</span>
+<span class="line" id="L561"><a class="ln" href="#L561">  561</a>           0.0017497860826551914</span>
+<span class="line" id="L562"><a class="ln" href="#L562">  562</a>         ],</span>
+<span class="line" id="L563"><a class="ln" href="#L563">  563</a>         &quot;image_shapes&quot;: [</span>
+<span class="line" id="L564"><a class="ln" href="#L564">  564</a>           [</span>
+<span class="line" id="L565"><a class="ln" href="#L565">  565</a>             720,</span>
+<span class="line" id="L566"><a class="ln" href="#L566">  566</a>             960,</span>
+<span class="line" id="L567"><a class="ln" href="#L567">  567</a>             3</span>
+<span class="line" id="L568"><a class="ln" href="#L568">  568</a>           ]</span>
+<span class="line" id="L569"><a class="ln" href="#L569">  569</a>         ],</span>
+<span class="line" id="L570"><a class="ln" href="#L570">  570</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L571"><a class="ln" href="#L571">  571</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L572"><a class="ln" href="#L572">  572</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L573"><a class="ln" href="#L573">  573</a>         &quot;analysis_source_sha256&quot;: &quot;7565171a242d546268273bc125833e6c02780993324eaf864d449db514bb7b6e&quot;</span>
+<span class="line" id="L574"><a class="ln" href="#L574">  574</a>       },</span>
+<span class="line" id="L575"><a class="ln" href="#L575">  575</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L576"><a class="ln" href="#L576">  576</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L577"><a class="ln" href="#L577">  577</a>         &quot;manifest.json&quot;: &quot;87aea112771cdcf0070f41064ec3bba185910a2ee34167b6525228d6c58487e5&quot;,</span>
+<span class="line" id="L578"><a class="ln" href="#L578">  578</a>         &quot;stereo_first_left.bin&quot;: &quot;777ecff7176fc3568b61fee8d8ae2fdc98995c737570df64721f1f408a153e89&quot;,</span>
+<span class="line" id="L579"><a class="ln" href="#L579">  579</a>         &quot;stereo_first_left.json&quot;: &quot;e5b634cae5c66651709182f65fd9afb9df992384098c42b23f44540c1ce346ec&quot;,</span>
+<span class="line" id="L580"><a class="ln" href="#L580">  580</a>         &quot;stereo_first_pair.npz&quot;: &quot;55be29b2090f5d9fc99691bc6070360f64e4a447497d4af58f9ee530e6e580a6&quot;,</span>
+<span class="line" id="L581"><a class="ln" href="#L581">  581</a>         &quot;stereo_first_right.bin&quot;: &quot;a5474389448b295780c67f41a1571f95350f9bc6293028512b98e92724695ec2&quot;,</span>
+<span class="line" id="L582"><a class="ln" href="#L582">  582</a>         &quot;stereo_first_right.json&quot;: &quot;e5b634cae5c66651709182f65fd9afb9df992384098c42b23f44540c1ce346ec&quot;,</span>
+<span class="line" id="L583"><a class="ln" href="#L583">  583</a>         &quot;stereo_image_timing.jsonl&quot;: &quot;bb2360c4782956b48d3b407a23185fd5a2a24b35792729591e0825dc0d3ee55e&quot;,</span>
+<span class="line" id="L584"><a class="ln" href="#L584">  584</a>         &quot;stereo_pairing_audit.json&quot;: &quot;089676b54dbaa496b9db8f422961768f73d08e6443e2f3ffb5a96ae54a22e068&quot;,</span>
+<span class="line" id="L585"><a class="ln" href="#L585">  585</a>         &quot;stereo_pairs.jsonl&quot;: &quot;e070a734feec902842e17043bff81dc999e43302e2f8d367ab691208b42b6b91&quot;,</span>
+<span class="line" id="L586"><a class="ln" href="#L586">  586</a>         &quot;stereo_summary.json&quot;: &quot;fd0e33765df92782132d30746299718fd57da0e00cf5790e872ee1b0956618e3&quot;</span>
+<span class="line" id="L587"><a class="ln" href="#L587">  587</a>       }</span>
+<span class="line" id="L588"><a class="ln" href="#L588">  588</a>     },</span>
+<span class="line" id="L589"><a class="ln" href="#L589">  589</a>     {</span>
+<span class="line" id="L590"><a class="ln" href="#L590">  590</a>       &quot;run&quot;: &quot;runs/20261023T053748Z_1c4cbdf1b9044ad2b7c86be2965fc5ba&quot;,</span>
+<span class="line" id="L591"><a class="ln" href="#L591">  591</a>       &quot;seed&quot;: 2107,</span>
+<span class="line" id="L592"><a class="ln" href="#L592">  592</a>       &quot;kind&quot;: &quot;lidar&quot;,</span>
+<span class="line" id="L593"><a class="ln" href="#L593">  593</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L594"><a class="ln" href="#L594">  594</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L595"><a class="ln" href="#L595">  595</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L596"><a class="ln" href="#L596">  596</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L597"><a class="ln" href="#L597">  597</a>         &quot;sha256&quot;: &quot;9ee504d86bafd07b0e6b75b8e6cd016ace8248c4cc1bf53d544004dd7fdf40e7&quot;,</span>
+<span class="line" id="L598"><a class="ln" href="#L598">  598</a>         &quot;files&quot;: 236,</span>
+<span class="line" id="L599"><a class="ln" href="#L599">  599</a>         &quot;uncompressed_bytes&quot;: 816496,</span>
+<span class="line" id="L600"><a class="ln" href="#L600">  600</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L601"><a class="ln" href="#L601">  601</a>       },</span>
+<span class="line" id="L602"><a class="ln" href="#L602">  602</a>       &quot;independently_rehashed_source_files&quot;: 236,</span>
+<span class="line" id="L603"><a class="ln" href="#L603">  603</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L604"><a class="ln" href="#L604">  604</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L605"><a class="ln" href="#L605">  605</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L606"><a class="ln" href="#L606">  606</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L607"><a class="ln" href="#L607">  607</a>         &quot;processed_frames&quot;: 29,</span>
+<span class="line" id="L608"><a class="ln" href="#L608">  608</a>         &quot;received_frames&quot;: 29,</span>
+<span class="line" id="L609"><a class="ln" href="#L609">  609</a>         &quot;events&quot;: {},</span>
+<span class="line" id="L610"><a class="ln" href="#L610">  610</a>         &quot;fault&quot;: null,</span>
+<span class="line" id="L611"><a class="ln" href="#L611">  611</a>         &quot;schemas&quot;: [</span>
+<span class="line" id="L612"><a class="ln" href="#L612">  612</a>           {</span>
+<span class="line" id="L613"><a class="ln" href="#L613">  613</a>             &quot;frame_id&quot;: &quot;lidar&quot;,</span>
+<span class="line" id="L614"><a class="ln" href="#L614">  614</a>             &quot;point_step&quot;: 12,</span>
+<span class="line" id="L615"><a class="ln" href="#L615">  615</a>             &quot;is_bigendian&quot;: false,</span>
+<span class="line" id="L616"><a class="ln" href="#L616">  616</a>             &quot;fields&quot;: [</span>
+<span class="line" id="L617"><a class="ln" href="#L617">  617</a>               {</span>
+<span class="line" id="L618"><a class="ln" href="#L618">  618</a>                 &quot;name&quot;: &quot;x&quot;,</span>
+<span class="line" id="L619"><a class="ln" href="#L619">  619</a>                 &quot;offset&quot;: 0,</span>
+<span class="line" id="L620"><a class="ln" href="#L620">  620</a>                 &quot;datatype&quot;: 7,</span>
+<span class="line" id="L621"><a class="ln" href="#L621">  621</a>                 &quot;count&quot;: 1</span>
+<span class="line" id="L622"><a class="ln" href="#L622">  622</a>               },</span>
+<span class="line" id="L623"><a class="ln" href="#L623">  623</a>               {</span>
+<span class="line" id="L624"><a class="ln" href="#L624">  624</a>                 &quot;name&quot;: &quot;y&quot;,</span>
+<span class="line" id="L625"><a class="ln" href="#L625">  625</a>                 &quot;offset&quot;: 4,</span>
+<span class="line" id="L626"><a class="ln" href="#L626">  626</a>                 &quot;datatype&quot;: 7,</span>
+<span class="line" id="L627"><a class="ln" href="#L627">  627</a>                 &quot;count&quot;: 1</span>
+<span class="line" id="L628"><a class="ln" href="#L628">  628</a>               },</span>
+<span class="line" id="L629"><a class="ln" href="#L629">  629</a>               {</span>
+<span class="line" id="L630"><a class="ln" href="#L630">  630</a>                 &quot;name&quot;: &quot;z&quot;,</span>
+<span class="line" id="L631"><a class="ln" href="#L631">  631</a>                 &quot;offset&quot;: 8,</span>
+<span class="line" id="L632"><a class="ln" href="#L632">  632</a>                 &quot;datatype&quot;: 7,</span>
+<span class="line" id="L633"><a class="ln" href="#L633">  633</a>                 &quot;count&quot;: 1</span>
+<span class="line" id="L634"><a class="ln" href="#L634">  634</a>               }</span>
+<span class="line" id="L635"><a class="ln" href="#L635">  635</a>             ]</span>
+<span class="line" id="L636"><a class="ln" href="#L636">  636</a>           }</span>
+<span class="line" id="L637"><a class="ln" href="#L637">  637</a>         ],</span>
+<span class="line" id="L638"><a class="ln" href="#L638">  638</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L639"><a class="ln" href="#L639">  639</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L640"><a class="ln" href="#L640">  640</a>             &quot;/airsim_node/drone_1/lidar&quot;</span>
+<span class="line" id="L641"><a class="ln" href="#L641">  641</a>           ],</span>
+<span class="line" id="L642"><a class="ln" href="#L642">  642</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L643"><a class="ln" href="#L643">  643</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L644"><a class="ln" href="#L644">  644</a>           ]</span>
+<span class="line" id="L645"><a class="ln" href="#L645">  645</a>         },</span>
+<span class="line" id="L646"><a class="ln" href="#L646">  646</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L647"><a class="ln" href="#L647">  647</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L648"><a class="ln" href="#L648">  648</a>         &quot;frame_semantics&quot;: &quot;frozen_sensor_frame_at_scan_stamp&quot;,</span>
+<span class="line" id="L649"><a class="ln" href="#L649">  649</a>         &quot;motion_compensated&quot;: false,</span>
+<span class="line" id="L650"><a class="ln" href="#L650">  650</a>         &quot;free_space_certified&quot;: false,</span>
+<span class="line" id="L651"><a class="ln" href="#L651">  651</a>         &quot;flight_clearance_eligible&quot;: false,</span>
+<span class="line" id="L652"><a class="ln" href="#L652">  652</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;</span>
+<span class="line" id="L653"><a class="ln" href="#L653">  653</a>       },</span>
+<span class="line" id="L654"><a class="ln" href="#L654">  654</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L655"><a class="ln" href="#L655">  655</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L656"><a class="ln" href="#L656">  656</a>         &quot;processed_frames&quot;: 29,</span>
+<span class="line" id="L657"><a class="ln" href="#L657">  657</a>         &quot;first_cloud_matches_ros_reference_decoder&quot;: true,</span>
+<span class="line" id="L658"><a class="ln" href="#L658">  658</a>         &quot;first_cloud_finite_points&quot;: 15169,</span>
+<span class="line" id="L659"><a class="ln" href="#L659">  659</a>         &quot;first_cloud_reference_endpoint_voxels&quot;: 4206,</span>
+<span class="line" id="L660"><a class="ln" href="#L660">  660</a>         &quot;last_cloud_endpoint_voxels&quot;: 4574,</span>
+<span class="line" id="L661"><a class="ln" href="#L661">  661</a>         &quot;processing_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L662"><a class="ln" href="#L662">  662</a>           0.02102395403198898,</span>
+<span class="line" id="L663"><a class="ln" href="#L663">  663</a>           0.03672487214207648,</span>
+<span class="line" id="L664"><a class="ln" href="#L664">  664</a>           0.042255344353616234,</span>
+<span class="line" id="L665"><a class="ln" href="#L665">  665</a>           0.04371801903471351</span>
+<span class="line" id="L666"><a class="ln" href="#L666">  666</a>         ],</span>
+<span class="line" id="L667"><a class="ln" href="#L667">  667</a>         &quot;processed_arrival_span_s&quot;: 2.879987881053239,</span>
+<span class="line" id="L668"><a class="ln" href="#L668">  668</a>         &quot;observed_processed_frequency_hz&quot;: 9.722263133190731,</span>
+<span class="line" id="L669"><a class="ln" href="#L669">  669</a>         &quot;sensor_frame&quot;: &quot;lidar&quot;,</span>
+<span class="line" id="L670"><a class="ln" href="#L670">  670</a>         &quot;world_transform_verified&quot;: false,</span>
+<span class="line" id="L671"><a class="ln" href="#L671">  671</a>         &quot;motion_compensated&quot;: false,</span>
+<span class="line" id="L672"><a class="ln" href="#L672">  672</a>         &quot;free_space_certified&quot;: false,</span>
+<span class="line" id="L673"><a class="ln" href="#L673">  673</a>         &quot;flight_clearance_eligible&quot;: false,</span>
+<span class="line" id="L674"><a class="ln" href="#L674">  674</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L675"><a class="ln" href="#L675">  675</a>         &quot;header_stamp_to_arrival_latency_calibrated&quot;: false,</span>
+<span class="line" id="L676"><a class="ln" href="#L676">  676</a>         &quot;analysis_source_sha256&quot;: &quot;d001fa791fe99fd5be56b10353808b32837de189511e15ad3f6acab31abe4ca1&quot;</span>
+<span class="line" id="L677"><a class="ln" href="#L677">  677</a>       },</span>
+<span class="line" id="L678"><a class="ln" href="#L678">  678</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L679"><a class="ln" href="#L679">  679</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L680"><a class="ln" href="#L680">  680</a>         &quot;lidar_audit.json&quot;: &quot;fefccfc94648616c0118496d54f1aec907b6afb105361243e674842e6a254641&quot;,</span>
+<span class="line" id="L681"><a class="ln" href="#L681">  681</a>         &quot;lidar_endpoint_snapshot.json&quot;: &quot;d9c350fe15a95d198cb72ff8174ef1c1ee8098b4ae35abd9d6096dfbeb8da1aa&quot;,</span>
+<span class="line" id="L682"><a class="ln" href="#L682">  682</a>         &quot;lidar_first_message.bin&quot;: &quot;3aedc5cd3a5fe8ac7ada53d22ff8d1736306b6a86e99925f40916674b946d840&quot;,</span>
+<span class="line" id="L683"><a class="ln" href="#L683">  683</a>         &quot;lidar_first_message.json&quot;: &quot;dcaa20e239a4f0bf44dfa3b4b9cf69632e61fd14f6c8d4966221d28b43bea3df&quot;,</span>
+<span class="line" id="L684"><a class="ln" href="#L684">  684</a>         &quot;lidar_frames.jsonl&quot;: &quot;491fd98fe6f61fd44c5a57d01ac15d72502a6b5dc75eaf25d4faa1d26e63366b&quot;,</span>
+<span class="line" id="L685"><a class="ln" href="#L685">  685</a>         &quot;lidar_summary.json&quot;: &quot;ffcf706be8ff5640225cb6e744d9c625a103faf3707b404643d801489608b4e5&quot;,</span>
+<span class="line" id="L686"><a class="ln" href="#L686">  686</a>         &quot;manifest.json&quot;: &quot;0aa2ff3e39f4c4f4182112af89cd82a39887d9586aff9d53c9cd81ae3e480e28&quot;</span>
+<span class="line" id="L687"><a class="ln" href="#L687">  687</a>       }</span>
+<span class="line" id="L688"><a class="ln" href="#L688">  688</a>     }</span>
+<span class="line" id="L689"><a class="ln" href="#L689">  689</a>   ],</span>
+<span class="line" id="L690"><a class="ln" href="#L690">  690</a>   &quot;verification&quot;: {</span>
+<span class="line" id="L691"><a class="ln" href="#L691">  691</a>     &quot;host_unit_tests_passed&quot;: 91,</span>
+<span class="line" id="L692"><a class="ln" href="#L692">  692</a>     &quot;noetic_unit_tests_passed&quot;: 88,</span>
+<span class="line" id="L693"><a class="ln" href="#L693">  693</a>     &quot;noetic_host_git_tests_skipped&quot;: 3</span>
+<span class="line" id="L694"><a class="ln" href="#L694">  694</a>   },</span>
+<span class="line" id="L695"><a class="ln" href="#L695">  695</a>   &quot;limitations&quot;: [</span>
+<span class="line" id="L696"><a class="ln" href="#L696">  696</a>     &quot;The default 150ms image-age pipeline failed in both exploratory scenes; retained failures are not replaced by 200ms experiments.&quot;,</span>
+<span class="line" id="L697"><a class="ln" href="#L697">  697</a>     &quot;200ms is an explicit read-only experiment, not a change to the default or an accepted flight budget.&quot;,</span>
+<span class="line" id="L698"><a class="ln" href="#L698">  698</a>     &quot;Equal header stamps do not prove synchronized exposures, rectification, extrinsics or metric depth.&quot;,</span>
+<span class="line" id="L699"><a class="ln" href="#L699">  699</a>     &quot;Header age relative to the latest IMU is not a calibrated exposure-to-output latency measurement.&quot;,</span>
+<span class="line" id="L700"><a class="ln" href="#L700">  700</a>     &quot;Pair processing duration covers the emission loop only; decoding can happen in earlier loops.&quot;,</span>
+<span class="line" id="L701"><a class="ln" href="#L701">  701</a>     &quot;The first run lacks raw timing and node-graph records; its post-hoc audit cannot certify those inputs.&quot;,</span>
+<span class="line" id="L702"><a class="ln" href="#L702">  702</a>     &quot;Scene source revisions differ; archives are authoritative and no frozen causal or reliability comparison is claimed.&quot;,</span>
+<span class="line" id="L703"><a class="ln" href="#L703">  703</a>     &quot;No LiDAR/stereo joint synchronization, motion compensation, SGBM or VIO acceptance is claimed.&quot;</span>
+<span class="line" id="L704"><a class="ln" href="#L704">  704</a>   ]</span>
+<span class="line" id="L705"><a class="ln" href="#L705">  705</a> }</span></pre></body></html>

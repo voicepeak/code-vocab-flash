@@ -1,0 +1,176 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/visual_odometry/stereo.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/visual_odometry/stereo.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Sparse stereo visual odometry; nominal geometry, no control authorization.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field, replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from perception.stereo_depth.sgbm import _gray</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> @dataclass(frozen=True)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class RelativeMotion:</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     # Transform from the current body frame to the previous body frame.</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     translation_previous_body_m: tuple</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     rotation_previous_from_current_body: tuple</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     stereo_matches: int</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     temporal_matches: int</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     inliers: int</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     reprojection_p95_px: float</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     previous_stamp: float</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     current_stamp: float</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     epoch: int</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     metric_calibration_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> def _reciprocal(first, second, cv2):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     if first is None or second is None or len(first) &lt; 2 or len(second) &lt; 2:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         return []</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     matcher = cv2.BFMatcher(cv2.NORM_HAMMING)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def good(a, b):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         return {m.queryIdx: m for group in matcher.knnMatch(a, b, k=2) if len(group) == 2</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 for m, n in [group] if m.distance &lt; .75 * n.distance}</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     forward, backward = good(first, second), good(second, first)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     return [m for m in forward.values() if m.trainIdx in backward</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             and backward[m.trainIdx].trainIdx == m.queryIdx]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> </span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> def solve_relative(points_body_previous, pixels_current, rig, *, min_inliers=12, reprojection_limit_px=2.):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     &quot;&quot;&quot;Estimate body-current pose in body-previous, using nominal stereo geometry.</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     PnP maps previous optical points into the current optical frame; we invert</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     that transform, then conjugate through the fixed camera-to-body mount. A</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     RANSAC result is rejected for poor coverage, inliers or reprojection error.</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     The result is diagnostic until calibration, timing and moving-scene checks.</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     import cv2</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     body = np.asarray(points_body_previous, dtype=np.float64)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     pixels = np.asarray(pixels_current, dtype=np.float64)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     if (body.ndim != 2 or body.shape[1:] != (3,) or pixels.shape != (len(body), 2)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             or len(body) &lt; min_inliers or not np.isfinite(body).all() or not np.isfinite(pixels).all()</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             or not isinstance(min_inliers, int) or isinstance(min_inliers, bool) or min_inliers &lt; 6</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             or not math.isfinite(reprojection_limit_px) or not 0 &lt; reprojection_limit_px &lt;= 2.):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         raise ValueError(&#x27;invalid visual odometry correspondences&#x27;)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     camera = rig.left</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     if (np.any(pixels[:, 0] &lt; 0) or np.any(pixels[:, 0] &gt;= camera.width)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             or np.any(pixels[:, 1] &lt; 0) or np.any(pixels[:, 1] &gt;= camera.height)):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         raise ValueError(&#x27;image points outside camera&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     optical = camera.body_to_optical(body)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     if np.any(optical[:, 2] &lt;= 0):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         raise ValueError(&#x27;nonpositive previous optical depth&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     # Reject concentrated or effectively collinear observations.</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     singular = np.linalg.svd(optical - optical.mean(axis=0), compute_uv=False)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     if len(singular) &lt; 2 or singular[1] &lt; .05:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         raise ValueError(&#x27;degenerate geometry&#x27;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     k = np.array(((camera.fx, 0., camera.cx), (0., camera.fy, camera.cy), (0., 0., 1.)))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     ok, rvec, tvec, inliers = cv2.solvePnPRansac(optical, pixels, k, None,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         iterationsCount=150, reprojectionError=reprojection_limit_px, confidence=.99, flags=cv2.SOLVEPNP_EPNP)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     if not ok or inliers is None or len(inliers) &lt; min_inliers or len(inliers) / len(body) &lt; .5:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         raise ValueError(&#x27;insufficient PnP inliers&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     indices = inliers.ravel()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     bins = {(min(3, int(u * 4 / camera.width)), min(2, int(v * 3 / camera.height)))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             for u, v in pixels[indices]}</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     if len(bins) &lt; 4:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         raise ValueError(&#x27;insufficient image coverage&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     rotation, _ = cv2.Rodrigues(rvec)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     projected, _ = cv2.projectPoints(optical[indices], rvec, tvec, k, None)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     errors = np.linalg.norm(projected.reshape(-1, 2) - pixels[indices], axis=1)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     p95 = float(np.percentile(errors, 95))</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     if not math.isfinite(p95) or p95 &gt; reprojection_limit_px or np.any((optical[indices] @ rotation.T + tvec.ravel())[:, 2] &lt;= 0):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         raise ValueError(&#x27;invalid PnP reprojection&#x27;)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     # Optical (right, down, forward) -&gt; sensor FRD (forward, right, down).</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     optical_to_frd = np.array(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     b_from_c = np.array(camera.pose.rotation_body_from_sensor_frd) @ optical_to_frd</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     mount = np.asarray(camera.pose.translation_body_frd)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     prev_from_cur_opt = rotation.T</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     prev_from_cur_body = b_from_c @ prev_from_cur_opt @ b_from_c.T</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     # Invert x_cur = R x_prev + t; account for the rotating camera lever arm.</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     displacement = b_from_c @ (-rotation.T @ tvec.ravel()) + mount - prev_from_cur_body @ mount</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     return tuple(displacement), tuple(tuple(float(v) for v in row) for row in prev_from_cur_body), len(indices), p95</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a> </span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a> </span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a> def refine_correspondences(source_image, target_image, source_points, target_points, cv2, pixel_scale=1.):</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     &quot;&quot;&quot;Refine descriptor matches with forward/backward pyramidal LK.</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a> </span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     Returns refined target pixels and a mask; invalid, drifting or inconsistent</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     patches never contribute to triangulation or PnP. Not a calibration claim.</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     if pixel_scale not in (1., .5):</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         raise ValueError(&quot;unsupported image scale&quot;)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     source = np.asarray(source_points, dtype=np.float32).reshape(-1, 1, 2)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     initial = np.asarray(target_points, dtype=np.float32).reshape(-1, 1, 2)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     if source.shape != initial.shape or not np.isfinite(source).all() or not np.isfinite(initial).all():</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         raise ValueError(&#x27;invalid feature coordinates&#x27;)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     if not len(source):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         return np.empty((0, 2)), np.zeros(0, dtype=bool)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, .01)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     parameters = dict(winSize=(21, 21), maxLevel=3, criteria=criteria,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                       flags=cv2.OPTFLOW_USE_INITIAL_FLOW, minEigThreshold=1e-4)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     forward, good_forward, _ = cv2.calcOpticalFlowPyrLK(source_image, target_image,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         source, initial.copy(), **parameters)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     if forward is None or good_forward is None:</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         return np.full((len(source), 2), np.nan), np.zeros(len(source), dtype=bool)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     backward, good_backward, _ = cv2.calcOpticalFlowPyrLK(target_image, source_image,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         forward, source.copy(), **parameters)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     if backward is None or good_backward is None:</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         return np.full((len(source), 2), np.nan), np.zeros(len(source), dtype=bool)</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>     forward = forward.reshape(-1, 2); backward = backward.reshape(-1, 2)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>     original = source.reshape(-1, 2); guessed = initial.reshape(-1, 2)</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     height, width = target_image.shape</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>     valid = ((good_forward.ravel() != 0) &amp; (good_backward.ravel() != 0)</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>              &amp; np.isfinite(forward).all(axis=1) &amp; np.isfinite(backward).all(axis=1)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>              &amp; (np.linalg.norm(backward - original, axis=1) &lt;= .75 * pixel_scale)</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>              &amp; (np.linalg.norm(forward - guessed, axis=1) &lt;= 3. * pixel_scale)</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>              &amp; (forward[:, 0] &gt;= 0) &amp; (forward[:, 0] &lt; width)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>              &amp; (forward[:, 1] &gt;= 0) &amp; (forward[:, 1] &lt; height))</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     return forward.astype(np.float64), valid</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a> </span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a> </span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a> </span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a> def half_scale_rig(rig):</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     &quot;&quot;&quot;Pixel-center-preserving geometry for OpenCV 2x area downsampling.&quot;&quot;&quot;</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     if rig.left.width % 2 or rig.left.height % 2:</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         raise ValueError(&#x27;half scale requires even dimensions&#x27;)</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     def scaled(camera):</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         return replace(camera, width=camera.width // 2, height=camera.height // 2,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>                        fx=camera.fx * .5, fy=camera.fy * .5,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>                        cx=(camera.cx + .5) * .5 - .5, cy=(camera.cy + .5) * .5 - .5)</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     return replace(rig, left=scaled(rig.left), right=scaled(rig.right))</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a> </span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a> </span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a> def estimate_stereo_motion(previous, current, rig, max_gap_s=2., method=&quot;orb&quot;):</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     &quot;&quot;&quot;Extract stereo/temporal ORB tracks and estimate nominal relative motion.&quot;&quot;&quot;</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     import cv2</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>     if (previous.metadata.epoch != current.metadata.epoch</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             or previous.skew_s &gt; .005 or current.skew_s &gt; .005</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>             or not math.isfinite(max_gap_s) or not 0 &lt; max_gap_s &lt;= 5</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>             or not 0 &lt; current.metadata.stamp - previous.metadata.stamp &lt;= max_gap_s):</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         raise ValueError(&#x27;stereo pair epoch or time mismatch&#x27;)</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>     shape = (rig.left.height, rig.left.width)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     if any(frame.pixels.shape[:2] != shape for frame in (previous.left, previous.right, current.left)):</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         raise ValueError(&#x27;stereo dimensions differ from camera model&#x27;)</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>     if method not in (&quot;orb&quot;, &quot;orb_lk&quot;, &quot;orb_lk_half&quot;):</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         raise ValueError(&quot;unknown visual odometry method&quot;)</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>     scale = .5 if method == &quot;orb_lk_half&quot; else 1.</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>     orb = cv2.ORB_create(nfeatures=1200 if scale == .5 else 2000, fastThreshold=10)</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     images = [_gray(frame, cv2) for frame in (previous.left, previous.right, current.left)]</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>     if scale == .5:</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>         images = [cv2.resize(image, (rig.left.width // 2, rig.left.height // 2), interpolation=cv2.INTER_AREA) for image in images]</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>         rig = half_scale_rig(rig)</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>     features = [orb.detectAndCompute(image, None) for image in images]</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>     (kl, dl), (kr, dr), (kc, dc) = features</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>     stereo, temporal = _reciprocal(dl, dr, cv2), _reciprocal(dl, dc, cv2)</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>     stereo_by_left = {m.queryIdx: m.trainIdx for m in stereo}</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>     joined = [m for m in temporal if m.queryIdx in stereo_by_left]</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>     left = np.array([kl[m.queryIdx].pt for m in joined], dtype=np.float64).reshape(-1, 2)</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>     right = np.array([kr[stereo_by_left[m.queryIdx]].pt for m in joined], dtype=np.float64).reshape(-1, 2)</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     target = np.array([kc[m.trainIdx].pt for m in joined], dtype=np.float64).reshape(-1, 2)</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>     if method in (&quot;orb_lk&quot;, &quot;orb_lk_half&quot;):</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         right, good_stereo = refine_correspondences(images[0], images[1], left, right, cv2, pixel_scale=scale)</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         target, good_temporal = refine_correspondences(images[0], images[2], left, target, cv2, pixel_scale=scale)</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         keep = good_stereo &amp; good_temporal</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>         left, right, target = left[keep], right[keep], target[keep]</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>     body, valid, _ = rig.triangulate_body(left, right, max_depth_m=30., max_vertical_px=scale)</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>     translation, rotation, inliers, p95 = solve_relative(body[valid], target[valid], rig, reprojection_limit_px=2. * scale)</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>     return RelativeMotion(translation, rotation, len(stereo), len(joined), inliers, p95,</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>                           previous.metadata.stamp, current.metadata.stamp, current.metadata.epoch)</span></pre></body></html>

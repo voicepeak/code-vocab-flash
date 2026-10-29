@@ -1,0 +1,137 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/flight_stereo_motion.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/flight_stereo_motion.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline flight-image VO followed by an isolated truth-only evaluation step.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import bisect</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from collections import Counter</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from dataclasses import asdict</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import hashlib</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import json</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from pathlib import Path</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import time</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import numpy as np</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from estimation.geometry import rotation</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from estimation.history import slerp</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> from perception.visual_odometry.stereo import estimate_stereo_motion</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> def digest(path):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     return hashlib.sha256(path.read_bytes()).hexdigest()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> def estimate(source, settings, method=&quot;orb&quot;):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;&quot;&quot;Only scene images/index and simulator settings are read in this step.&quot;&quot;&quot;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     import cv2</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     cv2.setNumThreads(1)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     source = Path(source)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     rig = load_nominal_rig(settings)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     index_path = source / &#x27;scene_trace/index.json&#x27;</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     index = json.loads(index_path.read_text())</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     if index[&#x27;fault&#x27;] is not None:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         raise ValueError(&#x27;scene capture reports an error&#x27;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     images = {side: sorted((row for row in index[&#x27;frames&#x27;] if row[&#x27;sensor&#x27;] == &#x27;front_&#x27; + side),</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                            key=lambda row: row[&#x27;stamp&#x27;]) for side in (&#x27;left&#x27;, &#x27;right&#x27;)}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     pairs, unmatched, used = [], [], set()</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     files = {str(index_path): digest(index_path), str(settings): digest(Path(settings))}</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     for left in images[&#x27;left&#x27;]:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         candidates = [(abs(left[&#x27;stamp&#x27;] - row[&#x27;stamp&#x27;]), i, row) for i, row in enumerate(images[&#x27;right&#x27;]) if i not in used]</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         if not candidates:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             unmatched.append(left[&#x27;file&#x27;]); continue</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         skew, i, right = min(candidates, key=lambda item: item[0])</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         if skew &gt; .005:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             unmatched.append(left[&#x27;file&#x27;]); continue</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         used.add(i)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         frames = []</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         for side, row in ((&#x27;left&#x27;, left), (&#x27;right&#x27;, right)):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             path = index_path.parent / row[&#x27;file&#x27;]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             if path.parent != index_path.parent or path.suffix != &#x27;.png&#x27;:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 raise ValueError(&#x27;invalid scene image path&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             data = cv2.imread(str(path), cv2.IMREAD_COLOR)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             if data is None:</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                 raise ValueError(&#x27;unreadable scene image&#x27;)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             files[str(path)] = digest(path)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             stamp = row[&#x27;stamp&#x27;]</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             frames.append(ImageFrame(Metadata(stamp, stamp + .2, 0, &#x27;retained_&#x27; + side,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                                               &#x27;front_&#x27; + side + &#x27;_image&#x27;), &#x27;bgr8&#x27;, data))</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         stamp = max(frame.metadata.stamp for frame in frames)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         meta = Metadata(stamp, min(frame.metadata.valid_until for frame in frames), 0,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                         &#x27;offline_pair&#x27;, &#x27;front_stereo&#x27;)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         pairs.append((left[&#x27;file&#x27;], StereoPair(meta, frames[0], frames[1], skew)))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     output = []</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     for (previous_name, previous), (current_name, current) in zip(pairs, pairs[1:]):</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         row = {&#x27;previous&#x27;: previous_name, &#x27;current&#x27;: current_name,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                &#x27;previous_stamp&#x27;: previous.left.metadata.stamp, &#x27;current_stamp&#x27;: current.left.metadata.stamp}</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         started = time.monotonic()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         try:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             cv2.setRNGSeed(0)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             result = estimate_stereo_motion(previous, current, rig, method=method)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             row.update(status=&#x27;ESTIMATED&#x27;, motion=asdict(result))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         except (ValueError, cv2.error) as error:</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             row.update(status=&#x27;REJECTED&#x27;, reason=str(error))</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         row[&#x27;elapsed_s&#x27;] = time.monotonic() - started</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         output.append(row)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     return {&#x27;source&#x27;: str(source), &#x27;method&#x27;: method, &#x27;status_counts&#x27;: dict(Counter(r[&#x27;status&#x27;] for r in output)),</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             &#x27;stereo_pairs&#x27;: len(pairs), &#x27;unmatched_left&#x27;: unmatched,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             &#x27;unmatched_right_count&#x27;: len(images[&#x27;right&#x27;]) - len(used), &#x27;input_sha256&#x27;: files,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             &#x27;input_role&#x27;: &#x27;official_recorded_images_and_nominal_settings&#x27;,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             &#x27;truth_accessed&#x27;: False, &#x27;control_eligible&#x27;: False, &#x27;results&#x27;: output}</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> </span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> def evaluate(estimate_result, truth_path):</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     &quot;&quot;&quot;Open truth only after estimates were saved; never feeds the VO algorithm.&quot;&quot;&quot;</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     truth_path = Path(truth_path)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     records = [json.loads(line) for line in truth_path.read_text().splitlines()]</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     ordered = sorted({r[&#x27;stamp&#x27;]: r for r in records if r[&#x27;stamp&#x27;] &gt; 0}.values(), key=lambda row: row[&#x27;stamp&#x27;])</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     stamps = [r[&#x27;stamp&#x27;] for r in ordered]</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     def interpolate(stamp):</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         i = bisect.bisect_left(stamps, stamp)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         if i == 0 or i == len(stamps): return None</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         a, b = ordered[i-1], ordered[i]</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         span = b[&#x27;stamp&#x27;] - a[&#x27;stamp&#x27;]</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         if span &lt;= 0 or span &gt; .05: return None</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         fraction = (stamp - a[&#x27;stamp&#x27;]) / span</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         position = (1-fraction)*np.array(a[&#x27;position&#x27;]) + fraction*np.array(b[&#x27;position&#x27;])</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         attitude = slerp(a[&#x27;orientation&#x27;], b[&#x27;orientation&#x27;], fraction)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         return position, rotation(attitude)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     result = []</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     for row in estimate_result[&#x27;results&#x27;]:</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         compared = {&#x27;previous&#x27;: row[&#x27;previous&#x27;], &#x27;current&#x27;: row[&#x27;current&#x27;], &#x27;status&#x27;: row[&#x27;status&#x27;]}</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         if row[&#x27;status&#x27;] != &#x27;ESTIMATED&#x27;:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             compared[&#x27;reason&#x27;] = row[&#x27;reason&#x27;]; result.append(compared); continue</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         old, new = interpolate(row[&#x27;previous_stamp&#x27;]), interpolate(row[&#x27;current_stamp&#x27;])</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         if old is None or new is None:</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             compared[&#x27;status&#x27;] = &#x27;TRUTH_UNAVAILABLE&#x27;; result.append(compared); continue</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         delta = old[1].T @ (new[0] - old[0])</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         truth_rotation = old[1].T @ new[1]</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         motion = row[&#x27;motion&#x27;]</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         predicted = np.array(motion[&#x27;translation_previous_body_m&#x27;])</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         residual = np.array(motion[&#x27;rotation_previous_from_current_body&#x27;]).T @ truth_rotation</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         compared.update(status=&#x27;COMPARED&#x27;, truth_displacement_m=delta.tolist(),</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                         truth_displacement_norm_m=float(np.linalg.norm(delta)),</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                         translation_error_m=float(np.linalg.norm(predicted-delta)),</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                         rotation_error_rad=float(np.arccos(np.clip((np.trace(residual)-1)/2, -1., 1.))))</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         result.append(compared)</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>     return {&#x27;source&#x27;: estimate_result[&#x27;source&#x27;], &#x27;truth_sha256&#x27;: digest(truth_path),</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             &#x27;role&#x27;: &#x27;isolated_post_estimate_evaluation&#x27;, &#x27;status_counts&#x27;: dict(Counter(r[&#x27;status&#x27;] for r in result)),</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             &#x27;results&#x27;: result}</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a> </span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a> </span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a> def main():</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>     sub = parser.add_subparsers(dest=&#x27;command&#x27;, required=True)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     est = sub.add_parser(&#x27;estimate&#x27;); est.add_argument(&#x27;source&#x27;); est.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     est.add_argument(&#x27;--settings&#x27;, default=&#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     est.add_argument(&#x27;--method&#x27;, choices=(&#x27;orb&#x27;, &#x27;orb_lk&#x27;, &#x27;orb_lk_half&#x27;), default=&#x27;orb&#x27;)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     ev = sub.add_parser(&#x27;evaluate&#x27;); ev.add_argument(&#x27;estimate&#x27;); ev.add_argument(&#x27;truth&#x27;); ev.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     args = parser.parse_args()</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     result = (estimate(args.source, args.settings, args.method) if args.command == &#x27;estimate&#x27;</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>               else evaluate(json.loads(Path(args.estimate).read_text()), args.truth))</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     with Path(args.output).open(&#x27;x&#x27;) as out: json.dump(result, out, indent=2, allow_nan=False); out.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     print(json.dumps({&#x27;output&#x27;: args.output, &#x27;status_counts&#x27;: result[&#x27;status_counts&#x27;]}))</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a> </span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a> </span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     main()</span></pre></body></html>

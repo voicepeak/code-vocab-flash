@@ -1,0 +1,160 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/joint_sensors.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/joint_sensors.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Audit exact same-scene inputs, replay poses and compare nominal projections.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Disparity residuals against sparse LiDAR are diagnostic: sparse visibility,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> exposure alignment, metric extrinsics and per-point scan time are unverified.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import argparse</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from dataclasses import asdict</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import hashlib</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import json</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from pathlib import Path</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import numpy as np</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from adapters.ros_noetic.capture_io import load_message</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from adapters.ros_noetic.stereo_images import decode_image</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from estimation.history import HistoricalPose, PoseHistory</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> from evaluation.metrics.pose_history import state_from_json</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> from perception.stereo_depth.lidar_projection import project_lidar_into_stereo, sparse_visible, sample_disparity</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> from perception.stereo_depth.pairing import StereoPair</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> from perception.stereo_depth.sgbm import compute_diagnostic_disparity</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> def restore_pose(data):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     if data[&#x27;frame_id&#x27;] != &#x27;world_ned&#x27; or data[&#x27;current_control_eligible&#x27;] or data[&#x27;uncertainty_calibrated&#x27;]:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         raise ValueError(&#x27;unexpected historical pose eligibility&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     return HistoricalPose(data[&#x27;stamp&#x27;], data[&#x27;epoch&#x27;], tuple(data[&#x27;position_ned&#x27;]),</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         tuple(data[&#x27;orientation_wxyz&#x27;]), tuple(data[&#x27;bracket_stamps&#x27;]),</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         tuple(tuple(d) for d in data[&#x27;bracket_covariance_diagonals&#x27;]), data[&#x27;interpolation_fraction&#x27;],</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         data[&#x27;position_correction_residual_m&#x27;], data[&#x27;rotation_correction_residual_rad&#x27;])</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> def audit(run):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     import cv2</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     from cv_bridge import CvBridge</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     from sensor_msgs.point_cloud2 import read_points</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     cv2.setNumThreads(1)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     manifest = json.loads((run / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     summary = json.loads((run / &#x27;joint_summary.json&#x27;).read_text())</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     source_rows = [json.loads(s) for s in (run / &#x27;joint_states.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     raw_rows = [json.loads(s) for s in (run / &#x27;joint_raw_sensors.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     rig = load_nominal_rig(Path(__file__).resolve().parents[2] / &#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     if rig.settings_sha256 != manifest[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;]:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         raise ValueError(&#x27;nominal settings differ from the captured scene&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     history = PoseHistory()</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     source_index = 0</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     packets = []</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     used_stamps = {tag: set() for tag in (&#x27;left&#x27;,&#x27;right&#x27;,&#x27;lidar&#x27;)}</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     valid = bool(summary[&#x27;captures&#x27;]) and summary[&#x27;fault&#x27;] is None and summary[&#x27;raw_queue_drops&#x27;] == 0</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     for entry in summary[&#x27;captures&#x27;]:</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         relative = Path(entry[&#x27;directory&#x27;])</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         if relative.is_absolute() or &#x27;..&#x27; in relative.parts:raise ValueError(&#x27;invalid packet directory&#x27;)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         directory = run / relative</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         packet_path = directory / &#x27;packet.json&#x27;</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         if hashlib.sha256(packet_path.read_bytes()).hexdigest() != entry[&#x27;packet_sha256&#x27;]:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             raise ValueError(&#x27;joint packet changed&#x27;)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         packet = json.loads(packet_path.read_text())</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         epoch = packet[&#x27;epoch&#x27;]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         messages = {tag: load_message(directory / (tag + &#x27;.json&#x27;)) for tag in used_stamps}</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         exact_images = True</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         frames = {}</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         for side in (&#x27;left&#x27;,&#x27;right&#x27;):</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             frames[side] = decode_image(messages[side], side, epoch, packet[&#x27;image_age_budget_s&#x27;])</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             independent = CvBridge().imgmsg_to_cv2(messages[side], desired_encoding=&#x27;passthrough&#x27;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             if independent.ndim == 2:independent = independent[:, :, None]</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             exact_images &amp;= np.array_equal(independent, frames[side].pixels)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         cloud = decode_xyz(messages[&#x27;lidar&#x27;], epoch)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         reference = np.asarray(list(read_points(messages[&#x27;lidar&#x27;], field_names=(&#x27;x&#x27;,&#x27;y&#x27;,&#x27;z&#x27;), skip_nans=False)), dtype=float).reshape(-1,3)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         reference = reference[np.isfinite(reference).all(axis=1)]</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         exact_cloud = np.array_equal(reference, cloud.points)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         while source_index &lt; len(source_rows) and source_rows[source_index][&#x27;state&#x27;][&#x27;metadata&#x27;][&#x27;stamp&#x27;] &lt;= packet[&#x27;query_now&#x27;]:</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             row = source_rows[source_index];state = state_from_json(row[&#x27;state&#x27;])</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             if state.metadata.epoch != history.epoch:history.reset(state.metadata.epoch)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             history.append(state, row[&#x27;arrival_wall_monotonic&#x27;]);source_index += 1</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         poses = {}</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         pose_equal = True</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         for tag, stamp in packet[&#x27;stamps&#x27;].items():</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             pose = history.lookup(stamp, packet[&#x27;query_now&#x27;], packet[&#x27;query_wall&#x27;], epoch)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             pose_equal &amp;= json.loads(json.dumps(asdict(pose))) == packet[&#x27;poses&#x27;][tag]</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             poses[tag] = restore_pose(packet[&#x27;poses&#x27;][tag])</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             valid &amp;= stamp == messages[tag].header.stamp.to_sec() and stamp not in used_stamps[tag]</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             used_stamps[tag].add(stamp)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         def metadata(data):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             data = dict(data);data[&#x27;covariance_or_bounds&#x27;] = tuple(data[&#x27;covariance_or_bounds&#x27;])</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             return Metadata(**data)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         ml, mr, mc = (metadata(packet[tag + &#x27;_source_metadata&#x27;]) for tag in (&#x27;left&#x27;,&#x27;right&#x27;,&#x27;lidar&#x27;))</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         source_meta_equal = (ml == frames[&#x27;left&#x27;].metadata and mr == frames[&#x27;right&#x27;].metadata and mc == cloud.metadata)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         timing_valid = (ml.current(packet[&#x27;selection_now&#x27;], epoch) and mr.current(packet[&#x27;selection_now&#x27;], epoch)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             and abs(ml.stamp-mr.stamp) &lt;= .005</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             and max(abs(mc.stamp-ml.stamp), abs(mc.stamp-mr.stamp)) &lt;= .02</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             and abs(ml.stamp-mr.stamp) == packet[&#x27;stereo_header_skew_s&#x27;]</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             and abs(mc.stamp-ml.stamp) == packet[&#x27;left_lidar_header_skew_s&#x27;]</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             and abs(mc.stamp-mr.stamp) == packet[&#x27;right_lidar_header_skew_s&#x27;]</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             and mc.current(packet[&#x27;selection_now&#x27;],epoch) == packet[&#x27;lidar_current_at_selection&#x27;])</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         pair = StereoPair(Metadata(max(ml.stamp,mr.stamp),min(ml.valid_until,mr.valid_until),epoch,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                                   &#x27;retained_joint_stereo&#x27;,&#x27;front_stereo&#x27;),frames[&#x27;left&#x27;],frames[&#x27;right&#x27;],abs(ml.stamp-mr.stamp))</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         disparity = compute_diagnostic_disparity(pair)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         luv,lz,ruv,rz,in_view = project_lidar_into_stereo(cloud.points,poses[&#x27;lidar&#x27;],poses[&#x27;left&#x27;],poses[&#x27;right&#x27;],rig)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         visible = (sparse_visible(luv,lz,np.isfinite(luv).all(axis=1),rig.left.width,rig.left.height)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                    &amp; sparse_visible(ruv,rz,np.isfinite(ruv).all(axis=1),rig.right.width,rig.right.height))</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         sampled, compared = sample_disparity(luv,disparity.disparity_px,disparity.valid,visible)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         expected = np.full(len(luv),np.nan)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         expected[in_view] = luv[in_view,0]-ruv[in_view,0]</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         compared[compared] = expected[compared] &gt; 0</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         residual = np.full(len(luv),np.nan)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         residual[compared] = sampled[compared]-expected[compared]</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         np.savez_compressed(directory/&#x27;projection_diagnostics.npz&#x27;, left_uv=luv,right_uv=ruv,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             in_view=in_view,sparse_visible=visible,comparison_valid=compared,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             expected_disparity_px=expected,measured_disparity_px=sampled,residual_px=residual)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         values = residual[compared]</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         packet_valid = bool(exact_images and exact_cloud and pose_equal and source_meta_equal and timing_valid</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             and not packet[&#x27;current_control_eligible&#x27;] and not packet[&#x27;per_point_motion_compensation_applied&#x27;]</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             and not packet[&#x27;exposure_sync_verified&#x27;])</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         valid &amp;= packet_valid</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         packets.append({&#x27;directory&#x27;:entry[&#x27;directory&#x27;],&#x27;input_records_valid&#x27;:packet_valid,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             &#x27;images_match_cv_bridge&#x27;:bool(exact_images),&#x27;cloud_matches_ros_decoder&#x27;:bool(exact_cloud),</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             &#x27;poses_match_source_replay&#x27;:bool(pose_equal),&#x27;metadata_matches_sources&#x27;:bool(source_meta_equal),</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             &#x27;header_timing_valid&#x27;:bool(timing_valid),&#x27;left_lidar_header_skew_s&#x27;:abs(ml.stamp-mc.stamp),</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             &#x27;right_lidar_header_skew_s&#x27;:abs(mr.stamp-mc.stamp),&#x27;lidar_points&#x27;:len(cloud.points),</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             &#x27;points_in_both_views&#x27;:int(in_view.sum()),&#x27;sparse_visible_points&#x27;:int(visible.sum()),</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             &#x27;comparison_points&#x27;:int(compared.sum()),</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             &#x27;disparity_residual_p10_p50_p90_px&#x27;:[float(v) for v in np.percentile(values,(10,50,90))] if len(values) else None,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             &#x27;absolute_disparity_residual_median_px&#x27;:float(np.median(np.abs(values))) if len(values) else None,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             &#x27;estimated_header_pose_alignment_applied&#x27;:True,&#x27;per_point_motion_compensation_applied&#x27;:False,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             &#x27;metric_calibration_verified&#x27;:False,&#x27;visibility_verified&#x27;:False,&#x27;real_scene_accuracy_verified&#x27;:False})</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     graph = summary.get(&#x27;node_graph&#x27;) or {}</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     expected_inputs = sorted((&#x27;/airsim_node/initial_pose&#x27;,&#x27;/airsim_node/drone_1/gps&#x27;,&#x27;/airsim_node/drone_1/imu/imu&#x27;,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &#x27;/airsim_node/drone_1/front_left/Scene&#x27;,&#x27;/airsim_node/drone_1/front_right/Scene&#x27;,&#x27;/airsim_node/drone_1/lidar&#x27;))</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     valid &amp;= (graph.get(&#x27;subscriptions&#x27;) == expected_inputs and not set(graph.get(&#x27;publishers&#x27;,[]))-{&#x27;/rosout&#x27;}</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>               and not summary[&#x27;control_published&#x27;] and not summary[&#x27;debug_inputs_used&#x27;]</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>               and len(raw_rows)==summary[&#x27;raw_sensor_records&#x27;] and len(source_rows)==summary[&#x27;source_states&#x27;])</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>     raw_counts = {tag:sum(r[&#x27;sensor&#x27;]==tag for r in raw_rows) for tag in (&#x27;imu&#x27;,&#x27;gps&#x27;)}</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     valid &amp;= all(raw_counts[tag]==summary[&#x27;received&#x27;].get(tag,0) for tag in raw_counts)</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     imu_stamps = [r[&#x27;stamp&#x27;] for r in raw_rows if r[&#x27;sensor&#x27;]==&#x27;imu&#x27;]</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     deltas = np.diff(imu_stamps)</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     result = {&#x27;input_audit_valid&#x27;:bool(valid),&#x27;captures&#x27;:len(packets),&#x27;packets&#x27;:packets,</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>         &#x27;source_states&#x27;:len(source_rows),&#x27;raw_sensor_records&#x27;:raw_counts,&#x27;raw_queue_drops&#x27;:summary[&#x27;raw_queue_drops&#x27;],</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &#x27;raw_recording_is_lossy&#x27;:True,&#x27;raw_imu_max_stamp_gap_s&#x27;:float(deltas.max()) if len(deltas) else None,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         &#x27;raw_imu_nonincreasing_records&#x27;:int((deltas&lt;=0).sum()),</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &#x27;nominal_settings_sha256&#x27;:rig.settings_sha256,&#x27;exposure_sync_verified&#x27;:False,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &#x27;per_point_motion_compensation_applied&#x27;:False,&#x27;metric_calibration_verified&#x27;:False,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &#x27;sparse_visibility_is_complete_proof&#x27;:False,&#x27;world_projection_verified&#x27;:False,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &#x27;current_control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         &#x27;interpretation&#x27;:&#x27;Payload and history audit is distinct from geometry accuracy. Residuals compare diagnostic SGBM with nominal LiDAR projection after estimated header-pose alignment; sparse z-buffers do not prove visibility. Point timing, exposure and calibration remain unverified.&#x27;,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         &#x27;analysis_source_sha256&#x27;:hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>     (run/&#x27;joint_audit.json&#x27;).write_text(json.dumps(result,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     return result</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a> </span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a> </span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> def main():</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>     parser = argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;run&#x27;,type=Path)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>     args = parser.parse_args();result = audit(args.run)</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     print(json.dumps(result,indent=2));return 0 if result[&#x27;input_audit_valid&#x27;] else 2</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a> </span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a> </span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>     raise SystemExit(main())</span></pre></body></html>

@@ -1,0 +1,131 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>world_model/occupancy/rolling_endpoints.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>world_model/occupancy/rolling_endpoints.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Nominal world-frame endpoint observations and bounded occupied-only fusion.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field, replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import threading</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from estimation.geometry import rotation</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from interfaces.contracts import Metadata, finite_vec3</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from world_model.occupancy.grid import Cell, Occupancy, OccupancySnapshot</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> @dataclass(frozen=True)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> class WorldEndpointObservation:</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     metadata: Metadata</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     source_metadata: Metadata</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     world_points: np.ndarray</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     sensor_origin_ned: tuple</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     pose_bracket_stamps: tuple</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     metric_calibration_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     per_point_deskew_applied: bool = field(default=False, init=False)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     current_control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     def __post_init__(self):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         points = np.asarray(self.world_points, dtype=np.float64)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         finite_vec3(self.sensor_origin_ned)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         if (points.ndim != 2 or points.shape[1] != 3 or len(points) &gt; 250000</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>                 or not np.isfinite(points).all() or self.metadata.frame_id != &#x27;world_ned&#x27;</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>                 or self.source_metadata.frame_id != &#x27;lidar&#x27;</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                 or (self.metadata.stamp, self.metadata.valid_until, self.metadata.epoch)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                    != (self.source_metadata.stamp, self.source_metadata.valid_until, self.source_metadata.epoch)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 or not isinstance(self.pose_bracket_stamps, tuple) or len(self.pose_bracket_stamps) != 2</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 or not all(math.isfinite(v) for v in self.pose_bracket_stamps)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 or not self.pose_bracket_stamps[0] &lt;= self.metadata.stamp &lt;= self.pose_bracket_stamps[1]):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             raise ValueError(&#x27;invalid nominal world endpoint observation&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         immutable = np.frombuffer(points.tobytes(), dtype=np.float64).reshape(-1, 3)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         object.__setattr__(self, &#x27;world_points&#x27;, immutable)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> def world_endpoints(cloud, pose, sensor_pose, max_range_m=30.):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     &quot;&quot;&quot;Apply mount and estimated scan-header pose, preserving the source lease.</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     This is NOT per-return scan deskew or verified metric calibration. Invalid,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     zero and maximum-range returns do not provide hit or free-space evidence.</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     if (cloud.metadata.frame_id != &#x27;lidar&#x27; or pose.frame_id != &#x27;world_ned&#x27;</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             or pose.stamp != cloud.metadata.stamp or pose.epoch != cloud.metadata.epoch</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             or pose.position_correction_residual_m &gt; .1 or pose.rotation_correction_residual_rad &gt; .05</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             or not math.isfinite(max_range_m) or not 0 &lt; max_range_m &lt;= 30):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         raise ValueError(&#x27;incompatible scan and historical pose&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     ranges = np.hypot(np.hypot(cloud.points[:, 0], cloud.points[:, 1]), cloud.points[:, 2])</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     hits = cloud.points[(ranges &gt; 0) &amp; (ranges &lt; max_range_m)]</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     body_to_world = rotation(pose.orientation_wxyz)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     world = sensor_pose.to_body(hits) @ body_to_world.T + pose.position_ned</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     origin = sensor_pose.to_body(np.zeros((1, 3)))[0] @ body_to_world.T + pose.position_ned</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     metadata = replace(cloud.metadata, frame_id=&#x27;world_ned&#x27;, source=&#x27;nominal_lidar_header_pose_no_deskew&#x27;)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     return WorldEndpointObservation(metadata, cloud.metadata, world, tuple(origin), pose.bracket_stamps)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> class RollingEndpointMap:</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     &quot;&quot;&quot;Thread-safe occupied-only map. Expired/cropped cells become UNKNOWN.&quot;&quot;&quot;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     def __init__(self, epoch=0, resolution_m=.25, capacity=50000, window_radius_m=40.):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         if (isinstance(epoch, bool) or not isinstance(epoch, int) or epoch &lt; 0</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 or not math.isfinite(resolution_m) or not .05 &lt;= resolution_m &lt;= 2</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 or isinstance(capacity, bool) or not isinstance(capacity, int) or not 1 &lt;= capacity &lt;= 100000</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 or not math.isfinite(window_radius_m) or not 1 &lt;= window_radius_m &lt;= 100):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             raise ValueError(&#x27;invalid rolling endpoint map limits&#x27;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         self.epoch, self.resolution_m = epoch, resolution_m</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         self.capacity, self.window_radius_m = capacity, window_radius_m</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         self._cells = {}</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         self._latest = None</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         self._last_now = None</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         self._lock = threading.RLock()</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     def reset(self, epoch):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         with self._lock:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             if isinstance(epoch, bool) or not isinstance(epoch, int) or epoch &lt;= self.epoch:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 raise ValueError(&#x27;map epoch must increase&#x27;)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             self.epoch = epoch</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             self._cells.clear()</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             self._latest = self._last_now = None</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     def _check_time(self, now, epoch):</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         if (not math.isfinite(now) or now &lt; 0 or epoch != self.epoch</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 or (self._last_now is not None and now &lt; self._last_now)):</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             raise ValueError(&#x27;map clock or epoch mismatch&#x27;)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> </span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     def integrate(self, observation, now, epoch):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         with self._lock:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             self._check_time(now, epoch)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             meta = observation.metadata</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             if not meta.current(now, epoch) or meta.frame_id != &#x27;world_ned&#x27;:</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                 raise ValueError(&#x27;endpoint observation is not current&#x27;)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             if observation.pose_bracket_stamps[1] &gt; now:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                 raise ValueError(&#x27;historical pose not yet available at query time&#x27;)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             if self._latest is not None and meta.stamp &lt;= self._latest.stamp:</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                 return False  # No change to data, lease or clock on duplicates.</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             origin = np.asarray(observation.sensor_origin_ned)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             with np.errstate(over=&#x27;ignore&#x27;, invalid=&#x27;ignore&#x27;):</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                 normalized = observation.world_points / self.resolution_m</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             if not np.isfinite(normalized).all() or np.any(np.abs(normalized) &gt; 2**50):</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                 raise ValueError(&#x27;endpoint voxel coordinates exceed numerical range&#x27;)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             keys = (np.unique(np.floor(normalized).astype(np.int64), axis=0)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                     if len(normalized) else np.empty((0, 3), dtype=np.int64))</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             def within_window(values):</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                 centers = (values.astype(float) + .5) * self.resolution_m</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                 return np.linalg.norm(centers - origin, axis=1) &lt;= self.window_radius_m</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             live = [(key, value) for key, value in self._cells.items() if value.current(now, epoch)]</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             if live:</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                 keep = within_window(np.array([key for key, _ in live], dtype=float))</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                 candidate = {key: value for (key, value), selected in zip(live, keep) if selected}</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             else:</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                 candidate = {}</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             for raw in keys[within_window(keys)]:</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                 key = tuple(int(value) for value in raw)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                 candidate[key] = meta</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             if len(candidate) &gt; self.capacity:</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                 raise ValueError(&#x27;rolling endpoint map capacity exceeded&#x27;)</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             # Commit only after complete validation; never publish a partial scan.</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             self._cells = candidate</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             self._latest, self._last_now = meta, now</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             return True</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a> </span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>     def snapshot(self, now, epoch):</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         with self._lock:</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             self._check_time(now, epoch)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             metadata = self._latest or Metadata(now, now, epoch, &#x27;empty_rolling_endpoints&#x27;)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             cells = tuple(Cell(key, Occupancy.OCCUPIED, value)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>                           for key, value in sorted(self._cells.items()) if value.current(now, epoch))</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>             self._last_now = now</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             return OccupancySnapshot(metadata, self.resolution_m, cells)</span></pre></body></html>

@@ -1,0 +1,155 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p3_static_sweep.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p3_static_sweep.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 41,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-24&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P3_STATIC_GEOMETRY_SOFTWARE_REPLAY&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   &quot;control_published&quot;: false,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;run&quot;: &quot;runs/20261024T064952Z_a7145cdfb6d4415788af7b459450170a&quot;,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>   &quot;run_state&quot;: &quot;COMPUTED&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>   &quot;source_archive&quot;: {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     &quot;sha256&quot;: &quot;b8aabc8fe3e3255a5d076038234790659daad75bab32a810c5eb67a2bc7ba9cb&quot;,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;files&quot;: 317,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     &quot;uncompressed_bytes&quot;: 1927791,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   },</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>   &quot;archive_files_independently_verified&quot;: 317,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>   &quot;source_unchanged_during_replay&quot;: true,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>   &quot;script_sha256&quot;: &quot;c6679a4fcb250bec45165486cff3bd4b37a2f59f5e9e359939eb1ea5629623a4&quot;,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>   &quot;replay&quot;: {</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     &quot;role&quot;: &quot;synthetic_static_geometry_replay_only&quot;,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;python&quot;: &quot;3.8.10&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     &quot;cases&quot;: [</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       {</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         &quot;case&quot;: &quot;free_corridor&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         &quot;expected_clear&quot;: true,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         &quot;result&quot;: {</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>           &quot;clear&quot;: true,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>           &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;voxel_tests&quot;: 108,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;intersected_voxels&quot;: 26,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>           &quot;segment_index&quot;: null,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>           &quot;voxel_key&quot;: null,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>           &quot;contact_time&quot;: null</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         },</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         &quot;elapsed_s&quot;: 0.00032627000473439693</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>       },</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>       {</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &quot;case&quot;: &quot;wall_between_endpoints&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         &quot;expected_clear&quot;: false,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         &quot;result&quot;: {</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>           &quot;clear&quot;: false,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>           &quot;reason&quot;: &quot;OCCUPIED_SPACE&quot;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>           &quot;voxel_tests&quot;: 60,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>           &quot;intersected_voxels&quot;: 14,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>           &quot;segment_index&quot;: 0,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           &quot;voxel_key&quot;: [</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             15,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             2,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             2</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>           ],</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>           &quot;contact_time&quot;: 10.483999999999993</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         },</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         &quot;elapsed_s&quot;: 0.0002607959322631359</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>       },</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>       {</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         &quot;case&quot;: &quot;unobserved_voxel&quot;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &quot;expected_clear&quot;: false,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         &quot;result&quot;: {</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>           &quot;clear&quot;: false,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>           &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>           &quot;voxel_tests&quot;: 60,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>           &quot;intersected_voxels&quot;: 14,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>           &quot;segment_index&quot;: 0,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>           &quot;voxel_key&quot;: [</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             15,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             2,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             2</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>           ],</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>           &quot;contact_time&quot;: 10.483999999999993</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         },</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &quot;elapsed_s&quot;: 0.0002025060821324587</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>       },</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>       {</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         &quot;case&quot;: &quot;free_expired_before_arrival&quot;,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         &quot;expected_clear&quot;: false,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;result&quot;: {</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>           &quot;clear&quot;: false,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>           &quot;reason&quot;: &quot;CELL_TIME_OR_EPOCH&quot;,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;voxel_tests&quot;: 60,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>           &quot;intersected_voxels&quot;: 14,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>           &quot;segment_index&quot;: 0,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>           &quot;voxel_key&quot;: [</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             15,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             2,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             2</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>           ],</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           &quot;contact_time&quot;: 10.483999999999993</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         },</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;elapsed_s&quot;: 0.00020000687800347805</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>       },</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>       {</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &quot;case&quot;: &quot;budget_exhausted&quot;,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &quot;expected_clear&quot;: false,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &quot;result&quot;: {</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           &quot;clear&quot;: false,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           &quot;reason&quot;: &quot;VOXEL_BUDGET&quot;,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>           &quot;voxel_tests&quot;: 0,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>           &quot;intersected_voxels&quot;: 0,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           &quot;segment_index&quot;: 0,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           &quot;voxel_key&quot;: null,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>           &quot;contact_time&quot;: null</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         },</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;elapsed_s&quot;: 7.857498712837696e-05</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>       }</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     ],</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>     &quot;repeated_clear_case&quot;: {</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>       &quot;count&quot;: 100,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>       &quot;median_s&quot;: 0.00027239706832915545,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>       &quot;max_s&quot;: 0.0005210200324654579</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     },</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     &quot;script_sha256&quot;: &quot;c6679a4fcb250bec45165486cff3bd4b37a2f59f5e9e359939eb1ea5629623a4&quot;,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     &quot;control_published&quot;: false,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>     &quot;real_free_space_or_vehicle_envelope_validated&quot;: false</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>   },</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>   &quot;tests&quot;: {</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     &quot;host_passed&quot;: 162,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>     &quot;noetic_passed&quot;: 159,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>     &quot;noetic_skipped&quot;: 3,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     &quot;new_static_geometry_tests&quot;: 12,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     &quot;logs&quot;: {</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>       &quot;runs/ffs_runtime/iteration41_host_tests.log&quot;: &quot;20e87d7364ae4dd7a5ac08ad2a4b8b11cbeb3add24b26f9ff408ad29f0ceb8d6&quot;,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>       &quot;runs/ffs_runtime/iteration41_noetic_tests.log&quot;: &quot;2ea10d248937f433fc7e938e99e8ecf502015795bed24b027dba6cbf8a6ba424&quot;</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     }</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>   },</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>   &quot;official_baseline_verification_reused_from_today&quot;: {</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     &quot;path&quot;: &quot;runs/ffs_runtime/iteration40_official_verification.json&quot;,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     &quot;sha256&quot;: &quot;8ec267ab0020bb2b4932a467b76dc5c873ed95c11de1581270e1a1a5ddbfd474&quot;,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     &quot;rules_and_design_sections_re_read&quot;: [</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>       &quot;6.1&quot;,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>       &quot;11.3&quot;,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>       &quot;16&quot;</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>     ]</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>   },</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>   &quot;final_changes_since_replay&quot;: {</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     &quot;modified&quot;: [</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>       &quot;README.md&quot;,</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>       &quot;docs/implementation_status.md&quot;</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     ],</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     &quot;new&quot;: [</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>       &quot;docs/static_swept_volume.md&quot;,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>       &quot;docs/evidence/p3_static_sweep.json&quot;</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     ],</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>     &quot;executable_code_unchanged&quot;: true</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>   },</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>   &quot;limits&quot;: [</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>     &quot;Synthetic world-axis boxes and known FREE cells; no actual vehicle dimensions or real sensor FREE validated.&quot;,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     &quot;Continuous acceleration and tracking bounds are producer assumptions, not proven by sampled accelerations.&quot;,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>     &quot;Static geometry only: no dynamic occupancy, road/forcefield, braking or control authority validation.&quot;,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>     &quot;Timing covers one small synthetic input, not worst-case system performance.&quot;,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>     &quot;P1/P2 and online gate traversal remain unaccepted.&quot;</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>   ]</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a> }</span></pre></body></html>

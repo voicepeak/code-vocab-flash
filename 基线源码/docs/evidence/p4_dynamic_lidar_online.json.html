@@ -1,0 +1,137 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p4_dynamic_lidar_online.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p4_dynamic_lidar_online.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>     {</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>       &quot;run&quot;: &quot;20261027T110055Z_83691ca3c8044a978a4970d352420b5a&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>         &quot;received&quot;: 77,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>           &quot;submitted&quot;: 77,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>           &quot;taken&quot;: 77,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         },</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &quot;results&quot;: 77,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>           &quot;REJECTED&quot;: 46,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>           &quot;PROCESSED&quot;: 31</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         },</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;veto_reasons&quot;: {</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>           &quot;DYNAMIC_CANDIDATE_CONFLICT&quot;: 16,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>           &quot;NO_DETECTED_DYNAMIC_CONFLICT_UNCERTIFIED&quot;: 15</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         },</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             &quot;/airsim_node/drone_1/lidar&quot;,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           ],</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>           ]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         },</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         &quot;settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>       },</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;rows&quot;: 77,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>           &quot;REJECTED&quot;: 46,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           &quot;PROCESSED&quot;: 31</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         },</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         &quot;rejection_reasons&quot;: {</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>           &quot;INPUT_SOURCE_LEASE_NOT_CURRENT&quot;: 46</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         },</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         &quot;safety_certified&quot;: false</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>       },</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>       &quot;results_sha256&quot;: &quot;040b7783bad7523433b332cb750b0c6eb22c246e76ad01e3b02dfe008680b974&quot;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>       &quot;manifest_sha256&quot;: &quot;201a57c89194b22d487c372b601fcc3a3f258fb04b19b0b5c18847e2ebaebe98&quot;,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>       &quot;processed_median_ms&quot;: 28.431654209271073,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>       &quot;processed_max_ms&quot;: 51.10816820524633,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>       &quot;matched_total&quot;: 42,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>       &quot;ambiguous_total&quot;: 309,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>       &quot;future_source_rejections&quot;: null,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>       &quot;future_source_lead_median_ms&quot;: null,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>       &quot;future_source_lead_max_ms&quot;: null</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     },</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     {</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>       &quot;run&quot;: &quot;20261027T110126Z_a00fd38a4a6948508a6bb83e55251eb0&quot;,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &quot;received&quot;: 78,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           &quot;submitted&quot;: 78,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>           &quot;taken&quot;: 78,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         },</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         &quot;results&quot;: 78,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>           &quot;REJECTED&quot;: 51,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>           &quot;PROCESSED&quot;: 27</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         },</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &quot;veto_reasons&quot;: {</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>           &quot;DYNAMIC_CANDIDATE_CONFLICT&quot;: 16,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           &quot;NO_DETECTED_DYNAMIC_CONFLICT_UNCERTIFIED&quot;: 11</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         },</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             &quot;/airsim_node/drone_1/lidar&quot;,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           ],</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>           ]</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         },</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         &quot;settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>       },</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         &quot;rows&quot;: 78,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>           &quot;REJECTED&quot;: 51,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>           &quot;PROCESSED&quot;: 27</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         },</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;rejection_reasons&quot;: {</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>           &quot;INPUT_SOURCE_LEASE_NOT_CURRENT&quot;: 51</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         },</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;safety_certified&quot;: false</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>       },</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>       &quot;results_sha256&quot;: &quot;8b632c2593fc4a03f5d42b9460b51c4526c772f0c6928cfcef25f211d3848d80&quot;,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>       &quot;manifest_sha256&quot;: &quot;cb52c266b3d5423238e605f6f2a0fa9220cd95534f896608ad21afa75fbf141a&quot;,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;processed_median_ms&quot;: 35.39645601995289,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>       &quot;processed_max_ms&quot;: 47.06032294780016,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>       &quot;matched_total&quot;: 30,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>       &quot;ambiguous_total&quot;: 279,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>       &quot;future_source_rejections&quot;: 51,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>       &quot;future_source_lead_median_ms&quot;: 3.0002593994140625,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>       &quot;future_source_lead_max_ms&quot;: 9.000301361083984</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     }</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>   ],</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>   &quot;interpretation&quot;: &quot;Diagnostic held-position probe only; candidate coverage, bounds and dynamic tracking are not certified.&quot;</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a> }</span></pre></body></html>

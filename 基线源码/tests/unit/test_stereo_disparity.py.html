@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_disparity.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_disparity.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import numpy as np</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from perception.stereo_depth.pairing import ImageFrame, StereoPairBuffer</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from perception.stereo_depth.sgbm import SgbmConfig, compute_diagnostic_disparity</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> def pair(left, right):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     buffer = StereoPairBuffer()</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     for side, image in ((&#x27;left&#x27;, left), (&#x27;right&#x27;, right)):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         frame = ImageFrame(Metadata(10., 10.2, 0, &#x27;synthetic&#x27;, &#x27;front_&#x27; + side + &#x27;_image&#x27;),</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>                            &#x27;mono8&#x27;, image[:, :, None])</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         buffer.add(side, frame, 20.)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return buffer.pop(10.01, 20.01)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def shifted(disparity=8):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     rng = np.random.RandomState(127)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     left = rng.randint(0, 256, (96, 320)).astype(np.uint8)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     right = rng.randint(0, 256, left.shape).astype(np.uint8)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     right[:, :-disparity] = left[:, disparity:]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     return left, right</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> class StereoDisparityTests(unittest.TestCase):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     def test_known_pixel_shift_recovered_without_metric_or_rectification_claim(self):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         for shift in (8, 16):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             result = compute_diagnostic_disparity(pair(*shifted(shift)), SgbmConfig(num_disparities=32))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             region = result.disparity_px[10:-10, 48:-48]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             valid = result.valid[10:-10, 48:-48]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             self.assertGreater(valid.mean(), .9)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             self.assertLess(np.sqrt(np.mean((region[valid] - shift) ** 2)), .2)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             self.assertFalse(result.metric_depth_verified)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             self.assertFalse(result.rectification_verified)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             self.assertFalse(result.acceptance_eligible)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             self.assertEqual(result.metadata.valid_until, 10.2)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             with self.assertRaises(ValueError): result.disparity_px.setflags(write=True)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     def test_uniform_and_occluded_regions_stay_unknown(self):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         blank = np.full((96, 320), 127, np.uint8)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         empty = compute_diagnostic_disparity(pair(blank, blank), SgbmConfig(num_disparities=32))</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertFalse(empty.valid.any())</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         self.assertTrue(np.isnan(empty.disparity_px).all())</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         left, right = shifted()</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         right[:, 120:180] = 0</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         result = compute_diagnostic_disparity(pair(left, right), SgbmConfig(num_disparities=32))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         self.assertFalse(result.valid[10:-10, 135:175].any())</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         self.assertTrue(np.isnan(result.disparity_px[10:-10, 135:175]).all())</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> </span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     def test_inconsistent_vertical_correspondence_is_rejected(self):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         left, right = shifted()</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         right = np.roll(right, 8, axis=0)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         result = compute_diagnostic_disparity(pair(left, right), SgbmConfig(num_disparities=32))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         self.assertLess(result.valid[10:-10, 48:-48].mean(), .05)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def test_invalid_search_parameters_and_too_small_images_are_rejected(self):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         for kwargs in ({&#x27;num_disparities&#x27;: 17}, {&#x27;block_size&#x27;: 4}, {&#x27;consistency_px&#x27;: 0},</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                        {&#x27;min_texture_std&#x27;: 0}, {&#x27;num_disparities&#x27;: 512}):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             with self.assertRaises(ValueError): SgbmConfig(**kwargs)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         small = np.zeros((20, 20), np.uint8)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         with self.assertRaises(ValueError): compute_diagnostic_disparity(pair(small, small))</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> </span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     unittest.main()</span></pre></body></html>

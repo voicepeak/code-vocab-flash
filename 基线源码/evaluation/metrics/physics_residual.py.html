@@ -1,0 +1,114 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/physics_residual.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/physics_residual.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline consistency diagnostics from IMU and recorded PWM commands.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Motor coefficients and actuator consumption are unverified. Residuals locate discrepancies; they do not</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> identify collision, wind, numerical faults, or prove an actuator latency bound.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import argparse</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import json</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from pathlib import Path</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from control.motor_allocator.allocator import MotorAllocator</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def pwm_samples(rows,model):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     samples={}</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     for row in rows:</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         data=row.get(&#x27;data&#x27;,{})</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         header=data.get(&#x27;header&#x27;,{}).get(&#x27;stamp&#x27;,{})</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         if &#x27;secs&#x27; not in header:continue</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         stamp=header[&#x27;secs&#x27;]+header.get(&#x27;nsecs&#x27;,0)*1e-9</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         try:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             pwm=np.array([data[&#x27;rotorPWM&#x27;+str(i)] for i in range(4)],dtype=float)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         except KeyError:continue</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         if np.all(np.isfinite(pwm)) and np.all((pwm&gt;=0)&amp;(pwm&lt;=1)):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             samples[stamp]=model.B @ (model.max_thrust*pwm)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     stamps=np.array(sorted(samples))</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     return stamps,np.array([samples[t] for t in stamps])</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> def interval_wrench(stamps,wrenches,start,end,max_gap=.04):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &quot;&quot;&quot;Integrate recorded PWM as a held model input; reject missing coverage.&quot;&quot;&quot;</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     index=int(np.searchsorted(stamps,start,side=&#x27;right&#x27;))-1</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     if index&lt;0 or not start&lt;end:return None</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     if end&gt;stamps[-1]+max_gap:return None</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     total=np.zeros(4)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     cursor=start</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     while cursor&lt;end:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if cursor-stamps[index]&gt;max_gap:return None</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         right=min(end,stamps[index+1] if index+1&lt;len(stamps) else end)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         if right-stamps[index]&gt;max_gap:return None</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         total+=(right-cursor)*wrenches[index]</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         cursor=right</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         index+=1</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     return total/(end-start)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> def evaluate(raw_rows,actuation,config):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     model=MotorAllocator(config)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     inertia=np.array(config[&#x27;inertia_kg_m2&#x27;])</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     stamps,wrenches=pwm_samples(actuation,model)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     raw=sorted({r[&#x27;stamp&#x27;]:r for r in raw_rows}.values(),key=lambda r:r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     residuals=[]</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     for a,b in zip(raw,raw[1:]):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         dt=b[&#x27;stamp&#x27;]-a[&#x27;stamp&#x27;]</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         if not .002&lt;=dt&lt;=.05 or not len(stamps):continue</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         mean=interval_wrench(stamps,wrenches,a[&#x27;stamp&#x27;],b[&#x27;stamp&#x27;])</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         if mean is None:continue</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         wa,wb=np.array(a[&#x27;omega_body&#x27;]),np.array(b[&#x27;omega_body&#x27;])</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         omega=(wa+wb)*.5</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         angular=inertia*(wb-wa)/dt+np.cross(omega,inertia*omega)-mean[1:]</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         # Trapezoidal endpoint approximation, not a collocated force sensor.</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         specific=(np.array(a[&#x27;acceleration_body&#x27;])+b[&#x27;acceleration_body&#x27;])*.5</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         linear=specific-np.array((0.,0.,-mean[0]/config[&#x27;mass_kg&#x27;]))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         residuals.append({&#x27;stamp&#x27;:b[&#x27;stamp&#x27;],&#x27;interval_s&#x27;:dt,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             &#x27;angular_residual_Nm&#x27;:angular.tolist(),&#x27;angular_norm_Nm&#x27;:float(np.linalg.norm(angular)),</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             &#x27;specific_force_residual_m_s2&#x27;:linear.tolist(),&#x27;mean_recorded_pwm_model_wrench&#x27;:mean.tolist(),</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             &#x27;omega_body_rad_s&#x27;:wb.tolist()})</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     result={&#x27;matched_intervals&#x27;:len(residuals),&#x27;candidate_intervals&#x27;:max(0,len(raw)-1),</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         &#x27;evaluation_only&#x27;:True,&#x27;cause_identified&#x27;:False,&#x27;motor_model_status&#x27;:config[&#x27;parameter_status&#x27;],</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         &#x27;actuation_latency_verified&#x27;:False,&#x27;actuator_consumption_verified&#x27;:False,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         &#x27;debug_pwm_temporal_fidelity_verified&#x27;:False,&#x27;official_result&#x27;:&#x27;UNKNOWN&#x27;}</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     if residuals:</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         magnitudes=[r[&#x27;angular_norm_Nm&#x27;] for r in residuals]</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         result[&#x27;angular_residual_p50_p95_p99_max_Nm&#x27;]=np.percentile(magnitudes,[50,95,99,100]).tolist()</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         result[&#x27;largest_angular_discrepancies&#x27;]=sorted(residuals,key=lambda r:r[&#x27;angular_norm_Nm&#x27;],reverse=True)[:5]</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     return result</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> def main():</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     parser.add_argument(&#x27;run&#x27;,type=Path)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     args=parser.parse_args()</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     def rows(name):return [json.loads(line) for line in (args.run/name).read_text().splitlines()]</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     imu_file=args.run/&#x27;evaluation_imu.jsonl&#x27;</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     raw=rows(&#x27;evaluation_imu.jsonl&#x27;) if imu_file.exists() else [r[&#x27;raw&#x27;] for r in rows(&#x27;pwm_telemetry.jsonl&#x27;)]</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     telemetry=rows(&#x27;pwm_telemetry.jsonl&#x27;)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     start=telemetry[0][&#x27;command&#x27;][&#x27;stamp&#x27;] if telemetry else float(&#x27;inf&#x27;)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     end=telemetry[-1][&#x27;command&#x27;][&#x27;stamp&#x27;] if telemetry else float(&#x27;-inf&#x27;)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     fault=args.run/&#x27;fault_observation.json&#x27;</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     if fault.exists():</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         value=json.loads(fault.read_text())</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         if value.get(&#x27;fresh_read_in_fault_iteration&#x27;) and value.get(&#x27;raw&#x27;):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             raw.append(value[&#x27;raw&#x27;]);end=max(end,value[&#x27;raw&#x27;][&#x27;stamp&#x27;])</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     raw=[r for r in raw if start&lt;=r[&#x27;stamp&#x27;]&lt;=end]</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     model_path=args.run/&#x27;vehicle_model.json&#x27;</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     if not model_path.exists():</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         # Historical runs did not emit their effective controller model. Refuse</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         # silent analysis with subsequently changed workspace coefficients.</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         manifest=json.loads((args.run/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         model_path=root/&#x27;configs/vehicle_identification.json&#x27;</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         expected=manifest[&#x27;source_sha256_before&#x27;][&#x27;configs/vehicle_identification.json&#x27;]</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         if file_hash(model_path)!=expected:raise ValueError(&#x27;historical motor model changed&#x27;)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     wire=args.run/&#x27;evaluation_pwm_commands.jsonl&#x27;</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     result=evaluate(raw,rows(wire.name if wire.exists() else &#x27;evaluation_actuation.jsonl&#x27;),json.loads(model_path.read_text()))</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     result[&#x27;pwm_source&#x27;]=&#x27;independent_ros_command_recorder&#x27; if wire.exists() else &#x27;unverified_debug_pwm_record&#x27;</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     result[&#x27;model_provenance&#x27;]=&#x27;controller_emitted_snapshot&#x27; if model_path.parent==args.run else &#x27;historical_source_hash_match&#x27;</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>     result[&#x27;imu_source&#x27;]=&#x27;independent_full_rate_recorder&#x27; if imu_file.exists() else &#x27;controller_sampled_imu&#x27;</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     (args.run/&#x27;physics_residual.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     print(json.dumps(result,indent=2))</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     return 0 if result[&#x27;matched_intervals&#x27;] else 2</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a> </span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a> </span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

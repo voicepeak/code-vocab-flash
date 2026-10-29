@@ -1,0 +1,49 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>configs/fast_foundation_stereo.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>configs/fast_foundation_stereo.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;schema_version&quot;: 1,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;role&quot;: &quot;offline_research_candidate_only&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;vendor&quot;: {</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>     &quot;url&quot;: &quot;https://github.com/NVlabs/Fast-FoundationStereo.git&quot;,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     &quot;commit&quot;: &quot;476f4249561f7c79ca707326954f9255643412a6&quot;,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     &quot;license_file&quot;: &quot;LICENSE.txt&quot;</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   },</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;checkpoint&quot;: {</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     &quot;repository&quot;: &quot;nvidia/c-fast-foundationstereo&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     &quot;revision&quot;: &quot;53a84e28a368f37e699776250215fcb450d6a109&quot;,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     &quot;filename&quot;: &quot;model_best_bp2_serialize.pth&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     &quot;sha256&quot;: &quot;7aee85948373da62b0503c2542507129a3e7cab9d97d10e6790d89512a7db214&quot;,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;bytes&quot;: 71105659,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     &quot;license_url&quot;: &quot;https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-agreement/&quot;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>   },</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   &quot;profile&quot;: {</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     &quot;scale&quot;: 0.5,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     &quot;iterations&quot;: 4,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     &quot;max_disparity_model_pixels&quot;: 192,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     &quot;input_order&quot;: &quot;RGB&quot;,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     &quot;input_range&quot;: [0, 255],</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;normalization&quot;: &quot;inside_upstream_pytorch_model&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     &quot;missing_volume_normalize_checkpoint_arg_default&quot;: true,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     &quot;padding_multiple&quot;: 32,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;amp_dtype&quot;: &quot;float16&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     &quot;reverse_method&quot;: &quot;swap_images_and_flip_both_horizontally_then_unflip_output&quot;,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     &quot;upsample_method&quot;: &quot;nearest_then_divide_disparity_by_scale&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     &quot;consistency_full_resolution_px&quot;: 1.0,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &quot;common_texture_std&quot;: 2.0</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>   },</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>   &quot;runtime&quot;: {</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     &quot;python&quot;: &quot;3.12.11&quot;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     &quot;torch&quot;: &quot;2.6.0+cu124&quot;,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     &quot;torchvision&quot;: &quot;0.21.0+cu124&quot;,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     &quot;numpy&quot;: &quot;1.26.4&quot;,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     &quot;timm&quot;: &quot;1.0.20&quot;,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     &quot;einops&quot;: &quot;0.8.1&quot;,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     &quot;omegaconf&quot;: &quot;2.3.0&quot;,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     &quot;opencv_python_headless&quot;: &quot;4.10.0.84&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     &quot;imageio&quot;: &quot;2.37.0&quot;,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     &quot;pyyaml&quot;: &quot;6.0.2&quot;</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>   },</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>   &quot;rectification_verified&quot;: false,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>   &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>   &quot;confidence_calibrated&quot;: false,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>   &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>   &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> }</span></pre></body></html>

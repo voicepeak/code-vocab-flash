@@ -1,0 +1,56 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_bridge_comparison.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_bridge_comparison.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import json</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from pathlib import Path</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import tempfile</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from evaluation.seed_runner.bridge_comparison import case_order, collect_case, MODES</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> class BridgeComparisonTests(unittest.TestCase):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     def test_rotating_order_keeps_every_seed_mode_and_repeat(self):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         protocol = {&#x27;schema_version&#x27;: 1, &#x27;seeds&#x27;: [2024, 2041], &#x27;repeats&#x27;: 3,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>                     &#x27;hover_seconds&#x27;: 14, &#x27;stationary_bootstrap&#x27;: True}</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         cases = case_order(protocol)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         self.assertEqual(len(cases), 18)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         for seed in protocol[&#x27;seeds&#x27;]:</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             for repeat in range(3):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                 group = [c[&#x27;mode&#x27;] for c in cases if c[&#x27;seed&#x27;] == seed and c[&#x27;repeat&#x27;] == repeat]</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 self.assertEqual(set(group), set(MODES))</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             first = [c[&#x27;mode&#x27;] for i, c in enumerate(cases) if i % 3 == 0 and c[&#x27;seed&#x27;] == seed]</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             self.assertEqual(set(first), set(MODES))</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         for change in ({&#x27;repeats&#x27;: 0}, {&#x27;repeats&#x27;: True}, {&#x27;seeds&#x27;: [True]}, {&#x27;seeds&#x27;: []},</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                        {&#x27;hover_seconds&#x27;: 300}, {&#x27;hover_seconds&#x27;: float(&#x27;nan&#x27;)},</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                        {&#x27;modes&#x27;: [&#x27;lifetime&#x27;]}, {&#x27;modes&#x27;: [&#x27;none&#x27;, &#x27;none&#x27;]},</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                        {&#x27;stationary_bootstrap&#x27;: False}):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             with self.subTest(change=change), self.assertRaises(ValueError):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                 case_order(dict(protocol, **change))</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     def test_lifetime_pair_rotates_each_seed_between_orders(self):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         cases = case_order({&#x27;schema_version&#x27;: 1, &#x27;seeds&#x27;: [2024, 2041], &#x27;repeats&#x27;: 2,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                             &#x27;hover_seconds&#x27;: 14, &#x27;stationary_bootstrap&#x27;: True,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                             &#x27;modes&#x27;: [&#x27;none&#x27;, &#x27;lifetime&#x27;]})</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         self.assertEqual(len(cases), 8)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         for seed in (2024, 2041):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             first = [c[&#x27;mode&#x27;] for i, c in enumerate(cases) if i % 2 == 0 and c[&#x27;seed&#x27;] == seed]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             self.assertEqual(set(first), {&#x27;none&#x27;, &#x27;lifetime&#x27;})</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> </span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     def test_missing_trace_and_control_fault_are_reported_separately(self):</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         with tempfile.TemporaryDirectory() as directory:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             run = Path(directory)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             (run / &#x27;manifest.json&#x27;).write_text(json.dumps({</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 &#x27;run_state&#x27;: &#x27;FAILED&#x27;, &#x27;observer_exit_code&#x27;: 0, &#x27;command_trace_audit_exit_code&#x27;: 2}))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             (run / &#x27;pwm_summary.json&#x27;).write_text(json.dumps({&#x27;commands&#x27;: 100, &#x27;fault&#x27;: None}))</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             result = collect_case(run)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             self.assertTrue(result[&#x27;controller_completed&#x27;])</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             self.assertEqual(result[&#x27;command_trace_audit_exit_code&#x27;], 2)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             self.assertFalse(result[&#x27;evaluation_valid&#x27;])</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             (run / &#x27;pwm_summary.json&#x27;).write_text(json.dumps({&#x27;commands&#x27;: 100, &#x27;fault&#x27;: &#x27;ANGULAR_RATE_LIMIT&#x27;}))</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             result = collect_case(run)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             self.assertFalse(result[&#x27;controller_completed&#x27;])</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             self.assertEqual(result[&#x27;controller_fault&#x27;], &#x27;ANGULAR_RATE_LIMIT&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             (run / &#x27;pwm_summary.json&#x27;).unlink()</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             self.assertEqual(collect_case(run)[&#x27;controller_fault&#x27;], &#x27;MISSING_SUMMARY&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     unittest.main()</span></pre></body></html>

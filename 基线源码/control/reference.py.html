@@ -1,0 +1,33 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/reference.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/reference.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Identical bounded position reference for independent PWM and VEL scenes.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import math</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import numpy as np</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> def benchmark_reference(origin, elapsed, step=False, braking=False):</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     if not math.isfinite(elapsed) or elapsed &lt; 0:</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>         raise ValueError(&#x27;invalid reference time&#x27;)</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     origin = np.asarray(origin, dtype=float)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     if origin.shape != (3,) or not np.all(np.isfinite(origin)):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         raise ValueError(&#x27;invalid reference origin&#x27;)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     s = min(1., elapsed/3.)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     h = 10*s**3-15*s**4+6*s**5</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     dh = (30*s**2-60*s**3+30*s**4)/3</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     ddh = (60*s-180*s**2+120*s**3)/9 if s &lt; 1 else 0.</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     position = origin+(0., 0., -h)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     if step and elapsed &gt;= 4:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         position[0] += .4 if elapsed &lt; 8 else -.4</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     vx = 0.</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     if braking:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         # Deliberate velocity steps identify response; not a mission trajectory.</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         position[0] += .4*min(2.,max(0.,elapsed-4.))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         vx = .4 if 4 &lt;= elapsed &lt; 6 else 0.</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     return tuple(position), (vx, 0., -dh), (0., 0., -ddh)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> def benchmark_yaw(initial_yaw, elapsed, enabled=False):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     if not math.isfinite(initial_yaw) or not math.isfinite(elapsed) or elapsed &lt; 0:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         raise ValueError(&#x27;invalid yaw reference&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     if not enabled:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         return initial_yaw, 0.</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     progress = min(2., max(0., elapsed-5.))</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     return initial_yaw+.1*progress, .1 if 5 &lt;= elapsed &lt; 7 else 0.</span></pre></body></html>

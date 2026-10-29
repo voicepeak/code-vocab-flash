@@ -1,0 +1,185 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p3_goal_observation.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p3_goal_observation.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 50,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;official_stage_completion_inferred&quot;: false,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     {</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>       &quot;path&quot;: &quot;runs/20261027T103539Z_981f49f8ebc44dffb945953a5a880d87&quot;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>       &quot;audit_exit_code&quot;: 0,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>       &quot;simulator_unchanged&quot;: true,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         &quot;events&quot;: {</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>           &quot;goal_received&quot;: 120</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         },</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;rows&quot;: 120,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             &quot;/airsim_node/end_goal&quot;</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>           ],</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>           ]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         },</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &quot;latest&quot;: {</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>           &quot;status&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;position&quot;: [</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             545.5599505719422,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             519.8547547745701,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             -30.21285629272461</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>           ],</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>           &quot;observation_count&quot;: 120,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>           &quot;last_arrival_wall&quot;: 1426967.307695735,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>           &quot;source_stamp&quot;: 0.0,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>           &quot;source_frame&quot;: &quot;&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>           &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           &quot;control_eligible&quot;: false</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         },</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &quot;stage_completion_inferred&quot;: false,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &quot;frame_calibration_verified&quot;: false,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>       },</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;rows&quot;: 120,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         &quot;source_stamp_zero_count&quot;: 120,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         &quot;control_eligible&quot;: false</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>       },</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>       &quot;hashes&quot;: {</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &quot;manifest.json&quot;: &quot;d21875346fed2b8b5ec9c06e160e6b393963fa7fe7732b9a54605a1cb695c5d9&quot;,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         &quot;goal_observations.jsonl&quot;: &quot;0deff7e5f399e6a51fa18447397d2d0f06498db62b86327ffa97497e0b1940c2&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         &quot;goal_summary.json&quot;: &quot;1f0caf0b48f33f33521cfeae80a5dec623e72073b4ffd0bb95627be84a6b0c9e&quot;,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         &quot;goal_audit.json&quot;: &quot;b6900b0b681990bca5d50edd5d97f3e67453bb27eefefb3609520d0e8f72e4f0&quot;</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>       }</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     },</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     {</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>       &quot;path&quot;: &quot;runs/20261027T103607Z_104582d55ebf46b78b2b2031b3369538&quot;,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>       &quot;audit_exit_code&quot;: 0,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>       &quot;simulator_unchanged&quot;: true,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;events&quot;: {</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>           &quot;goal_received&quot;: 100,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>           &quot;no_fresh_imu&quot;: 1</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         },</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;rows&quot;: 99,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             &quot;/airsim_node/end_goal&quot;</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>           ],</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>           ]</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         },</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         &quot;latest&quot;: {</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           &quot;status&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>           &quot;position&quot;: [</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             545.5599505719422,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             519.8547547745701,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             -30.21285629272461</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>           ],</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           &quot;observation_count&quot;: 99,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           &quot;last_arrival_wall&quot;: 1426993.079382087,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>           &quot;source_stamp&quot;: 0.0,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>           &quot;source_frame&quot;: &quot;&quot;,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           &quot;control_eligible&quot;: false</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         },</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;stage_completion_inferred&quot;: false,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         &quot;frame_calibration_verified&quot;: false,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>       },</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         &quot;rows&quot;: 99,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         &quot;source_stamp_zero_count&quot;: 99,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;control_eligible&quot;: false</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>       },</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>       &quot;hashes&quot;: {</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;manifest.json&quot;: &quot;b7fbeb3e06dff8e43e7775d9a9ca0f4f49dc199e9169861ce047d5bfd6435876&quot;,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;goal_observations.jsonl&quot;: &quot;af2fb462b6a8a2dfd3674b211ed7dc92aa34353d6506d09cbd7395cc5abce2c9&quot;,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         &quot;goal_summary.json&quot;: &quot;d403b2358d4e2e03e79ddc0fc77deb9555b67e2e6c2183faad3fcfcfc6ab3b70&quot;,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         &quot;goal_audit.json&quot;: &quot;788f7ccdde68dbbe910471e97cb42071904ecc8bc735c9507b14ec4ee1a86432&quot;</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>       }</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>     },</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     {</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       &quot;path&quot;: &quot;runs/20261027T103635Z_cb39f8e47fe543d6b5f9708bd525267b&quot;,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>       &quot;observer_exit_code&quot;: 0,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>       &quot;audit_exit_code&quot;: 0,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>       &quot;simulator_unchanged&quot;: true,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         &quot;events&quot;: {</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>           &quot;goal_received&quot;: 100</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         },</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         &quot;rows&quot;: 100,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>             &quot;/airsim_node/end_goal&quot;</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>           ],</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>           ]</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         },</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         &quot;latest&quot;: {</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>           &quot;status&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>           &quot;position&quot;: [</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>             545.5599505719422,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>             519.8547547745701,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>             -30.21285629272461</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           ],</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           &quot;observation_count&quot;: 100,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>           &quot;last_arrival_wall&quot;: 1427020.155794418,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>           &quot;source_stamp&quot;: 0.0,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>           &quot;source_frame&quot;: &quot;&quot;,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>           &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>           &quot;control_eligible&quot;: false</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>         },</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;stage_completion_inferred&quot;: false,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         &quot;frame_calibration_verified&quot;: false,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>       },</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>         &quot;rows&quot;: 100,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         &quot;source_stamp_zero_count&quot;: 100,</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;official_stage_confirmed&quot;: false,</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         &quot;control_eligible&quot;: false</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>       },</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>       &quot;hashes&quot;: {</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         &quot;manifest.json&quot;: &quot;d55a19eb386a692368017f08e0827dbe9f438bcbf44f01acd376b329a0f30a23&quot;,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         &quot;goal_observations.jsonl&quot;: &quot;c353b82bbed5b678f0a71eca6d9ad11b034e0dd218970a247af7669a2e55222b&quot;,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>         &quot;goal_summary.json&quot;: &quot;b56cd3ee802e668b93c5ab5ead2be1dd49f8516c12cbbf21ed3fa87a1310d147&quot;,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         &quot;goal_audit.json&quot;: &quot;362f61a2e90f7bbdbfe6e54db449f8ed02644d1e8266a3ad36eb5de0522b8912&quot;</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>       }</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>     }</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>   ]</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a> }</span></pre></body></html>

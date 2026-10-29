@@ -1,0 +1,111 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/p1_regression.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/p1_regression.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Frozen-source development reproduction; never labels a batch as stage acceptance.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from datetime import datetime,timezone</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import uuid</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.seed_runner.manifest import source_hashes, archive_sources</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def load_protocol(path):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     protocol=json.loads(path.read_text())</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     seeds=protocol.get(&#x27;seeds&#x27;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     if (protocol.get(&#x27;schema_version&#x27;)!=1 or not isinstance(seeds,list) or not 1&lt;=len(seeds)&lt;=50</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>             or any(type(seed) is not int or seed&lt;0 for seed in seeds)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             or protocol.get(&#x27;mode&#x27;) not in (&#x27;PWM&#x27;,&#x27;VEL&#x27;)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>             or not 10&lt;=protocol.get(&#x27;hover_seconds&#x27;,0)&lt;=20):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         raise ValueError(&#x27;invalid bounded reproduction protocol&#x27;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     for name in (&#x27;braking&#x27;,&#x27;yaw_motion&#x27;,&#x27;snapshot&#x27;):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if type(protocol.get(name)) is not bool:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             raise ValueError(&#x27;protocol flags must be booleans&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     if type(protocol.get(&#x27;angular_recovery&#x27;, False)) is not bool:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         raise ValueError(&#x27;angular recovery flag must be boolean&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     if type(protocol.get(&#x27;stationary_bootstrap&#x27;, False)) is not bool:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         raise ValueError(&#x27;stationary bootstrap flag must be boolean&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if protocol.get(&#x27;angular_recovery&#x27;) and protocol[&#x27;mode&#x27;]!=&#x27;PWM&#x27;:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         raise ValueError(&#x27;angular recovery requires PWM&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     profile=protocol.get(&#x27;angular_recovery_profile&#x27;,&#x27;standard&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     if profile not in (&#x27;standard&#x27;,&#x27;fast&#x27;) or (profile!=&#x27;standard&#x27; and not protocol.get(&#x27;angular_recovery&#x27;)):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         raise ValueError(&#x27;invalid angular recovery profile&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     if &#x27;angular_pulse_moments&#x27; in protocol:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         moments=protocol[&#x27;angular_pulse_moments&#x27;]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         if (not protocol.get(&#x27;angular_recovery&#x27;) or protocol[&#x27;mode&#x27;]!=&#x27;PWM&#x27;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 or protocol[&#x27;braking&#x27;] or protocol[&#x27;yaw_motion&#x27;]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 or not isinstance(moments,list) or not 1&lt;=len(moments)&lt;=4</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                 or any(type(v) not in (int,float) or not 0&lt;v&lt;=.8 for v in moments)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 or moments!=sorted(moments)):</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             raise ValueError(&#x27;invalid staged angular pulse protocol&#x27;)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     return protocol</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> def main():</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     parser.add_argument(&#x27;--protocol&#x27;,type=Path,default=root/&#x27;configs/p1_development_reproduction_v1.json&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     parser.add_argument(&#x27;--limit&#x27;,type=int)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     args=parser.parse_args()</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     protocol=load_protocol(args.protocol)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     plans=[{&#x27;seed&#x27;:seed,&#x27;angular_pulse_moment&#x27;:moment}</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>            for moment in protocol.get(&#x27;angular_pulse_moments&#x27;,[None]) for seed in protocol[&#x27;seeds&#x27;]]</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     if args.limit is not None:</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         if not 1&lt;=args.limit&lt;=len(plans):parser.error(&#x27;invalid case limit&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         plans=plans[:args.limit]</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     batch=root/&#x27;runs/batches&#x27;/(datetime.now(timezone.utc).strftime(&#x27;%Y%m%dT%H%M%SZ_&#x27;)+uuid.uuid4().hex)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     batch.mkdir(parents=True,exist_ok=False)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     frozen=source_hashes(root)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     report={&#x27;protocol&#x27;:protocol,&#x27;source_sha256_frozen&#x27;:frozen,&#x27;cases&#x27;:[],</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &#x27;planned_cases&#x27;:plans,&#x27;source_archive&#x27;:archive_sources(root,batch,frozen),</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &#x27;stage_acceptance&#x27;:False,&#x27;official_result&#x27;:&#x27;UNKNOWN&#x27;,&#x27;source_unchanged&#x27;:True}</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     def save():</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         (batch/&#x27;batch_report.json&#x27;).write_text(json.dumps(report,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     save()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     print(&#x27;Batch:&#x27;,batch,flush=True)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     for index,plan in enumerate(plans):</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         seed=plan[&#x27;seed&#x27;]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         command=[&#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;evaluation.seed_runner.pwm_identification&#x27;,&#x27;--seed&#x27;,str(seed),</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                  &#x27;--mode&#x27;,protocol[&#x27;mode&#x27;],&#x27;--hover-seconds&#x27;,str(protocol[&#x27;hover_seconds&#x27;]),&#x27;--evaluate-truth&#x27;]</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         for key,flag in ((&#x27;braking&#x27;,&#x27;--braking&#x27;),(&#x27;yaw_motion&#x27;,&#x27;--yaw-motion&#x27;),(&#x27;snapshot&#x27;,&#x27;--snapshot&#x27;)):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             if protocol[key]:command.append(flag)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         if protocol.get(&#x27;angular_recovery&#x27;):command.append(&#x27;--angular-recovery&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         if protocol.get(&#x27;angular_recovery_profile&#x27;,&#x27;standard&#x27;)!=&#x27;standard&#x27;:</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             command.extend([&#x27;--angular-recovery-profile&#x27;,protocol[&#x27;angular_recovery_profile&#x27;]])</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         if protocol.get(&#x27;stationary_bootstrap&#x27;):command.append(&#x27;--stationary-bootstrap&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         if plan[&#x27;angular_pulse_moment&#x27;] is not None:</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             command.extend([&#x27;--angular-pulse&#x27;,&#x27;--angular-pulse-moment&#x27;,str(plan[&#x27;angular_pulse_moment&#x27;])])</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         output=batch/(&#x27;case_%02d.console.log&#x27;%index)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         with output.open(&#x27;x&#x27;) as log:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             code=subprocess.call(command,cwd=root,stdout=log,stderr=subprocess.STDOUT)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         candidates=[Path(line.strip()) for line in output.read_text().splitlines()</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                     if line.startswith(str(root/&#x27;runs&#x27;)+&#x27;/&#x27;)]</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         candidates=[p for p in candidates if p.parent==root/&#x27;runs&#x27; and (p/&#x27;manifest.json&#x27;).exists()]</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         case={&#x27;index&#x27;:index,&#x27;seed&#x27;:seed,&#x27;exit_code&#x27;:code,&#x27;console&#x27;:output.name,&#x27;command&#x27;:command}</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         case[&#x27;angular_pulse_moment&#x27;]=plan[&#x27;angular_pulse_moment&#x27;]</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         if len(candidates)==1:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             run=candidates[0]</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             prefix=protocol[&#x27;mode&#x27;].lower()</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             case[&#x27;run_directory&#x27;]=str(run)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             summary=run/(prefix+&#x27;_summary.json&#x27;)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             if summary.exists():case[&#x27;summary&#x27;]=json.loads(summary.read_text())</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             if (run/&#x27;fault_observation.json&#x27;).exists():case[&#x27;fault_observation&#x27;]=&#x27;fault_observation.json&#x27;</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             manifest=json.loads((run/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             case[&#x27;run_source_unchanged&#x27;]=(manifest.get(&#x27;source_unchanged&#x27;,False)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                                          and manifest[&#x27;source_sha256_before&#x27;]==frozen)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         report[&#x27;cases&#x27;].append(case)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         report[&#x27;source_unchanged&#x27;]=source_hashes(root)==frozen</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         save()</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         print(&#x27;Case&#x27;,index+1,&#x27;seed&#x27;,seed,&#x27;exit&#x27;,code,&#x27;fault&#x27;,case.get(&#x27;summary&#x27;,{}).get(&#x27;fault&#x27;),</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>               &#x27;run&#x27;,case.get(&#x27;run_directory&#x27;),flush=True)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         if not report[&#x27;source_unchanged&#x27;] or code not in (0,2):break</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         if &#x27;angular_pulse_moments&#x27; in protocol and (code!=0 or not case.get(&#x27;run_source_unchanged&#x27;)):</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             report[&#x27;staged_pulse_stopped_on_failed_case&#x27;]=True</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             break</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     report[&#x27;completed_cases&#x27;]=len(report[&#x27;cases&#x27;])</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     report[&#x27;all_cases_completed&#x27;]=len(report[&#x27;cases&#x27;])==len(plans)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     report[&#x27;control_fault_cases&#x27;]=sum(c.get(&#x27;summary&#x27;,{}).get(&#x27;fault&#x27;) is not None for c in report[&#x27;cases&#x27;])</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     save()</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     return 0 if report[&#x27;source_unchanged&#x27;] and report[&#x27;all_cases_completed&#x27;] else 1</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> </span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a> </span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     raise SystemExit(main())</span></pre></body></html>

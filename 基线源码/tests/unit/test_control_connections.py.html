@@ -1,0 +1,15 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_control_connections.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_control_connections.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from adapters.ros_noetic.control_connections import expected_control_connections</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> class BackendConnectionTests(unittest.TestCase):</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     def test_an_evaluator_reader_cannot_replace_the_simulator_connection(self):</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>         imu=&#x27;/airsim_node/drone_1/imu/imu&#x27;;pwm=&#x27;/airsim_node/drone_1/rotor_pwm_cmd&#x27;</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>         publishers=[(imu,[&#x27;/simulator&#x27;])]</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>         with self.assertRaises(RuntimeError):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>             expected_control_connections((publishers,[(pwm,[&#x27;/evaluator&#x27;])],[]),pwm)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         self.assertEqual(expected_control_connections((publishers,[(pwm,[&#x27;/simulator&#x27;,&#x27;/evaluator&#x27;])],[]),pwm),</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>                          (2,[&#x27;/simulator&#x27;]))</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

@@ -1,0 +1,82 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/integration/test_native_input_probe.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/integration/test_native_input_probe.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Native callback forwarding and bounded read using owned mocks only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import json</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import struct</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import subprocess</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import tempfile</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import unittest</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from tests.integration.test_bridge_lifetime_probe import MOCK</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from tests.integration.test_bridge_probe import DECLARATIONS</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> DRIVER = DECLARATIONS + r&#x27;&#x27;&#x27;</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> #include &lt;boost/shared_ptr.hpp&gt;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> #include &lt;thread&gt;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> namespace ros {struct TimerEvent{};}</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> using NativeCallback=void(*)(void*,void*);</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> extern &quot;C&quot; void mock_init(int,char**,NativeCallback,bool,bool,int,const char*,const char*,const char*,int)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>   asm(&quot;_ZN10airsim_ros13InitAirSimROSEiPPcPFvPvS2_EbbNS_17AirSimROSGameTypeEPKcS7_S7_i&quot;);</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> extern &quot;C&quot; int mock_peak();</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> extern &quot;C&quot; void owned_native_handler(void*,void*);</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> extern &quot;C&quot; void mock_native_counts();</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> int main(){char arg[]=&quot;argv&quot;;char* argv[]={arg,nullptr};</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>   mock_init(7,argv,owned_native_handler,true,false,17,&quot;c&quot;,&quot;d&quot;,&quot;e&quot;,101);</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>   std::thread update([]{boost::shared_ptr&lt;const airsim_ros::RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt; message;</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     airsim_ros::commands_impl::ROTOR_PWM_Callback(message);});</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>   ros::TimerEvent event;airsim_ros::PublishAsyncCommands(event);update.join();mock_native_counts();return mock_peak();}</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> class NativeInputTests(unittest.TestCase):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def test_native_arguments_results_and_float_bits_survive_and_unreadable_snapshot_does_not_crash(self):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         root = Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         build = Path(subprocess.check_output([&#x27;bash&#x27;, str(root/&#x27;tools/build_bridge_probe.sh&#x27;), &#x27;native-input&#x27;],</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                                             cwd=root, text=True).strip())</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         probe = &#x27;/workspace/main/&#x27; + str(build.relative_to(root))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         with tempfile.TemporaryDirectory(prefix=&#x27;native_input_test_&#x27;, dir=root/&#x27;runs&#x27;) as directory:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             path = Path(directory)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             inside = &#x27;/workspace/main/&#x27; + str(path.relative_to(root))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             (path/&#x27;mock.cpp&#x27;).write_text(MOCK)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             (path/&#x27;driver.cpp&#x27;).write_text(DRIVER)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             def run(*args):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 return subprocess.check_output([str(root/&#x27;tools/enter_env.sh&#x27;), *args], cwd=root,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                                                text=True, stderr=subprocess.STDOUT, timeout=30)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             run(&#x27;g++&#x27;,&#x27;-std=c++14&#x27;,&#x27;-shared&#x27;,&#x27;-fPIC&#x27;,&#x27;-pthread&#x27;,inside+&#x27;/mock.cpp&#x27;,&#x27;-o&#x27;,inside+&#x27;/mock.so&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             run(&#x27;g++&#x27;,&#x27;-std=c++14&#x27;,&#x27;-pthread&#x27;,inside+&#x27;/driver.cpp&#x27;,&#x27;-L&#x27;+inside,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 &#x27;-Wl,-rpath,&#x27;+inside,&#x27;-l:mock.so&#x27;,&#x27;-o&#x27;,inside+&#x27;/driver&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             for bad_pointer, free_in_native in ((False, False),(True, False),(False, True)):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 name = &#x27;during_native&#x27; if free_in_native else (&#x27;unreadable&#x27; if bad_pointer else &#x27;valid&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 command = [&#x27;env&#x27;,&#x27;LD_PRELOAD=&#x27;+probe,&#x27;RMUA_BRIDGE_PROBE_ORIGINAL=&#x27;+inside+&#x27;/mock.so&#x27;,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                            &#x27;RMUA_BRIDGE_PROBE_OUTPUT=&#x27;+inside+&#x27;/&#x27;+name+&#x27;.jsonl&#x27;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                            &#x27;RMUA_BRIDGE_PROBE_MODE=native-input&#x27;,&#x27;MOCK_SAFE=1&#x27;]</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 if bad_pointer:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     command.append(&#x27;MOCK_BAD_POINTER=1&#x27;)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 if free_in_native:</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                     command.append(&#x27;MOCK_FREE_IN_NATIVE=1&#x27;)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 self.assertEqual(run(*command,inside+&#x27;/driver&#x27;).split(), [&#x27;1&#x27;,&#x27;1&#x27;,&#x27;1&#x27;,&#x27;1&#x27;,&#x27;1&#x27;,&#x27;1&#x27;])</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                 records = [json.loads(x) for x in (path/(name+&#x27;.jsonl&#x27;)).read_text().splitlines()]</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 entries = [r for r in records if r[&#x27;event&#x27;]==&#x27;native_pwm_entry&#x27;]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                 exits = [r for r in records if r[&#x27;event&#x27;]==&#x27;native_pwm_exit&#x27;]</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 self.assertEqual(len(entries),1)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 self.assertEqual(len(exits),1)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 self.assertTrue(exits[0][&#x27;native_call_interval_measured&#x27;])</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 self.assertEqual(sum(r[&#x27;event&#x27;]==&#x27;native_callback_bound&#x27; for r in records),1)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 self.assertEqual(entries[0][&#x27;parameter_read_ok&#x27;], not bad_pointer)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 self.assertEqual(entries[0][&#x27;bridge_span&#x27;], exits[0][&#x27;bridge_span&#x27;])</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 self.assertEqual(records[-1][&#x27;write_errors&#x27;],0)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 if not bad_pointer:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                     self.assertEqual(entries[0][&#x27;parameter_float32_hex&#x27;], struct.pack(&#x27;&lt;4f&#x27;,.1,.2,.3,.4).hex())</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                     from evaluation.metrics.native_input import evaluate</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                     start=entries[0][&#x27;start_monotonic_ns&#x27;]*1e-9</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                     telemetry=[{&#x27;command&#x27;:{&#x27;values&#x27;:(.1,.2,.3,.4),&#x27;sequence&#x27;:0},</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                                 &#x27;publish_begin_wall_monotonic&#x27;:start-.001,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                                 &#x27;publish_end_wall_monotonic&#x27;:start-.0009}]</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                     audit=evaluate(records,telemetry,start+.01)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                     self.assertEqual(audit[&#x27;parameters_freed_during_original_callback&#x27;],int(free_in_native))</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> </span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> </span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> if __name__==&#x27;__main__&#x27;:</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     unittest.main()</span></pre></body></html>

@@ -1,0 +1,56 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_native_input.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_native_input.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import struct</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import unittest</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from evaluation.metrics.native_input import evaluate</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> def records(values=(.1,.2,.3,.4),read_ok=True):</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     base={&#x27;write_errors&#x27;:0,&#x27;bridge_span&#x27;:1,&#x27;parameter_address&#x27;:&#x27;0x123&#x27;}</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     return [dict(base,event=&#x27;native_callback_bound&#x27;),</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>             dict(base,event=&#x27;native_pwm_entry&#x27;,start_monotonic_ns=10003000000,end_monotonic_ns=10003001000,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>                  parameter_read_ok=read_ok,parameter_float32_hex=struct.pack(&#x27;&lt;4f&#x27;,*values).hex()),</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>             dict(base,event=&#x27;native_pwm_exit&#x27;,start_monotonic_ns=10004000000,end_monotonic_ns=10004000000)]</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> def telemetry(begin=10.,end=10.001):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return [{&#x27;publish_begin_wall_monotonic&#x27;:begin,&#x27;publish_end_wall_monotonic&#x27;:end,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>              &#x27;command&#x27;:{&#x27;values&#x27;:(.1,.2,.3,.4),&#x27;sequence&#x27;:7}}]</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> class NativeInputAuditTests(unittest.TestCase):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def test_float32_conversion_and_monotonic_interval_bounds(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         result=evaluate(records(),telemetry(),10.004)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertEqual(result[&#x27;matched_entries&#x27;],1)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertTrue(result[&#x27;snapshot_coverage_valid&#x27;])</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.assertEqual(result[&#x27;matched&#x27;][0][&#x27;source_sequence&#x27;],7)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.assertAlmostEqual(result[&#x27;publish_to_snapshot_lower_min_s&#x27;],.002)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         self.assertAlmostEqual(result[&#x27;publish_to_snapshot_upper_max_s&#x27;],.003001)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertFalse(result[&#x27;actual_actuator_consumption_verified&#x27;])</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def test_post_control_hold_is_excluded_and_free_is_linked_to_the_exact_original_call(self):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         rs=records()</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         rs[-1].update(start_monotonic_ns=10003002000,end_monotonic_ns=10004000000,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                       native_call_interval_measured=True)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         rs.append(dict(rs[-1],event=&#x27;parameter_free_end&#x27;,start_monotonic_ns=10003500000,end_monotonic_ns=10003600000))</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         rs.append(dict(rs[1],bridge_span=2,start_monotonic_ns=11003000000,end_monotonic_ns=11003001000))</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         rs.append(dict(rs[2],bridge_span=2,start_monotonic_ns=11004000000,end_monotonic_ns=11004000000))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         result=evaluate(rs,telemetry(),10.004)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertEqual(result[&#x27;parameters_freed_during_original_callback&#x27;],1)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertEqual(result[&#x27;native_entries_after_control&#x27;],1)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self.assertLess(result[&#x27;publish_to_snapshot_upper_max_s&#x27;],.01)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def test_unknown_payload_and_future_sender_are_not_matched(self):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         self.assertEqual(evaluate(records((1.,1.,1.,1.)),telemetry())[&#x27;unmatched_entries&#x27;],1)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertEqual(evaluate(records(),telemetry(11.,11.001))[&#x27;unmatched_entries&#x27;],1)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         result=evaluate(records((float(&#x27;nan&#x27;),.2,.3,.4)),telemetry())</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         self.assertIsNone(result[&#x27;unmatched&#x27;][0][&#x27;snapshot_values&#x27;][0])</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertFalse(result[&#x27;unmatched&#x27;][0][&#x27;finite_unit_range&#x27;])</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     def test_missing_read_or_exit_cannot_certify_snapshot_coverage(self):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         self.assertFalse(evaluate(records(read_ok=False),telemetry())[&#x27;snapshot_coverage_valid&#x27;])</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         result=evaluate(records()[:-1],telemetry())</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         self.assertEqual(result[&#x27;incomplete_native_calls&#x27;],1)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertFalse(result[&#x27;snapshot_coverage_valid&#x27;])</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

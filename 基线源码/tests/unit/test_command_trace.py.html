@@ -1,0 +1,32 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_command_trace.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_command_trace.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import json</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from evaluation.metrics.command_trace import evaluate,MD5</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> def record(seq,value):</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     return {&#x27;md5sum&#x27;:MD5,&#x27;data&#x27;:{&#x27;header&#x27;:{&#x27;seq&#x27;:seq,&#x27;stamp&#x27;:{&#x27;secs&#x27;:10,&#x27;nsecs&#x27;:seq*10000000}},</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>             **{&#x27;rotorPWM&#x27;+str(i):value for i in range(4)}}}</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class CommandTraceTests(unittest.TestCase):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     def test_float64_wire_matches_but_sampled_debug_can_miss_a_real_command(self):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         telemetry=[{&#x27;command&#x27;:{&#x27;sequence&#x27;:i,&#x27;stamp&#x27;:10+i*.01,&#x27;values&#x27;:[value]*4},</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>                     &#x27;collective_pulse_applied&#x27;:i==1} for i,value in enumerate((.2,.4,.2))]</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         wire=[record(i,value) for i,value in enumerate((.2,.4,.2))]</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         report=evaluate(telemetry,wire,[record(i,.2) for i in range(5)])</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.assertTrue(report[&#x27;wire_trace_valid&#x27;])</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         self.assertEqual(report[&#x27;experiment_pulses&#x27;][0][&#x27;debug_samples_matching_pulse&#x27;],0)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         json.dumps(report)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         self.assertFalse(report[&#x27;actuator_consumption_verified&#x27;])</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         rounded=[record(i,value) for i,value in enumerate((.20000000298023224,.4000000059604645,.20000000298023224))]</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.assertFalse(evaluate(telemetry,rounded,[])[&#x27;wire_trace_valid&#x27;])</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         shifted=[record(i,value) for i,value in enumerate((.2,.4,.2))]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         for item in shifted:item[&#x27;data&#x27;][&#x27;header&#x27;][&#x27;seq&#x27;]+=1</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.assertTrue(evaluate(telemetry,shifted,[])[&#x27;wire_trace_valid&#x27;])</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.assertEqual(evaluate(telemetry,shifted,[])[&#x27;ros_header_sequence_offset&#x27;],1)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         self.assertFalse(evaluate(telemetry,wire[:-1],[])[&#x27;wire_trace_valid&#x27;])</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         wire[1]=record(1,.6)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertEqual(evaluate(telemetry,wire,[])[&#x27;mismatched_sequences&#x27;],[1])</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

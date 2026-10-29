@@ -1,0 +1,350 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p0_pwm_wire_observability.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p0_pwm_wire_observability.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;cases&quot;: [</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>     {</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>       &quot;name&quot;: &quot;wire_04&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>       &quot;run_directory&quot;: &quot;runs/20261020T090218Z_c01d59f000a0464d85aaaf57cb004080&quot;,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;excitation&quot;: {</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         &quot;pwm&quot;: 0.4,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         &quot;sent&quot;: true,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         &quot;stamp&quot;: 1792486956.092479</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>       },</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>       &quot;trace_reanalysis&quot;: {</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         &quot;sender_commands&quot;: 835,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &quot;wire_records&quot;: 835,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &quot;matched_commands&quot;: 835,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;wire_match_fraction&quot;: 1.0,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;mismatched_sequences&quot;: [],</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;unexpected_sequences&quot;: [],</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         &quot;invalid_records&quot;: 0,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         &quot;duplicate_sequences&quot;: 0,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         &quot;actuator_consumption_verified&quot;: false,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         &quot;debug_pwm_is_verified_actual_motor_output&quot;: false,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         &quot;ros_header_sequence_offset&quot;: 1,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &quot;debug_message_stamp_interval_median_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         &quot;observed_debug_value_change_interval_p10_p50_p90_s&quot;: [</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           0.04800105094909668,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           0.05100107192993164,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>           0.060001373291015625</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         ],</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &quot;experiment_pulses&quot;: [</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>           {</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             &quot;sequence&quot;: 394,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             &quot;stamp&quot;: 1792486956.092479,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             &quot;values&quot;: [</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>               0.4,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>               0.4,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>               0.4,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>               0.4</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             ],</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             &quot;next_command_after_sensor_s&quot;: 0.012000322341918945,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &quot;debug_samples_in_window&quot;: 10,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &quot;debug_samples_matching_pulse&quot;: 0</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           }</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         ],</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         &quot;analysis_code_sha256&quot;: &quot;078f200379ba3522b3cf8c200edd334a97d5d1de75528f104aa4346c4267aca7&quot;,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &quot;analysis_matches_run_source_snapshot&quot;: false</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>       },</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>       &quot;runtime_input_audit&quot;: {</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         &quot;node&quot;: &quot;/rmua_next_pwm_identification_44939_1792486949695&quot;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         &quot;topics&quot;: [</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>           &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>           &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>           &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         ],</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         &quot;debug_inputs&quot;: false,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         &quot;expected_control_connections&quot;: 2,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         &quot;control_connections&quot;: 2,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         &quot;backend_subscriber_nodes&quot;: [</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>           &quot;/airsim_node&quot;</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         ]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>       },</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>       &quot;body_specific_force_z_minmax_150ms_m_s2&quot;: [</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         -21.407304763793945,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         -9.281149864196777</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>       ]</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     },</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     {</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>       &quot;name&quot;: &quot;wire_06_failed_before_pulse&quot;,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>       &quot;run_directory&quot;: &quot;runs/20261020T090605Z_113eb3bb66c2468bba807c25b8cef711&quot;,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>       &quot;fault&quot;: &quot;ANGULAR_RATE_LIMIT&quot;,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>       &quot;excitation&quot;: {</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &quot;pwm&quot;: 0.6,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;sent&quot;: false,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &quot;stamp&quot;: null</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>       },</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>       &quot;trace_reanalysis&quot;: {</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;sender_commands&quot;: 135,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &quot;wire_records&quot;: 135,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &quot;matched_commands&quot;: 135,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &quot;wire_match_fraction&quot;: 1.0,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         &quot;mismatched_sequences&quot;: [],</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         &quot;unexpected_sequences&quot;: [],</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;invalid_records&quot;: 0,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         &quot;duplicate_sequences&quot;: 0,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &quot;actuator_consumption_verified&quot;: false,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &quot;debug_pwm_is_verified_actual_motor_output&quot;: false,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &quot;ros_header_sequence_offset&quot;: 1,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         &quot;debug_message_stamp_interval_median_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         &quot;observed_debug_value_change_interval_p10_p50_p90_s&quot;: [</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>           0.04800105094909668,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           0.05700111389160156,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           0.06840143203735352</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         ],</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;experiment_pulses&quot;: [],</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;analysis_code_sha256&quot;: &quot;078f200379ba3522b3cf8c200edd334a97d5d1de75528f104aa4346c4267aca7&quot;,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;analysis_matches_run_source_snapshot&quot;: false</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>       },</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>       &quot;runtime_input_audit&quot;: {</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         &quot;node&quot;: &quot;/rmua_next_pwm_identification_45648_1792487176899&quot;,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         &quot;topics&quot;: [</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>           &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>           &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>           &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         ],</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         &quot;debug_inputs&quot;: false,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;expected_control_connections&quot;: 2,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &quot;control_connections&quot;: 2,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &quot;backend_subscriber_nodes&quot;: [</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>           &quot;/airsim_node&quot;</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         ]</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>       }</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     },</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     {</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>       &quot;name&quot;: &quot;wire_10&quot;,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>       &quot;run_directory&quot;: &quot;runs/20261020T090622Z_5e73b25faee14af680c7532e2500a2f8&quot;,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>       &quot;excitation&quot;: {</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;pwm&quot;: 1.0,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;sent&quot;: true,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         &quot;stamp&quot;: 1792487198.4210312</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>       },</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>       &quot;trace_reanalysis&quot;: {</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         &quot;sender_commands&quot;: 813,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         &quot;wire_records&quot;: 813,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         &quot;matched_commands&quot;: 813,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         &quot;wire_match_fraction&quot;: 1.0,</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>         &quot;mismatched_sequences&quot;: [],</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &quot;unexpected_sequences&quot;: [],</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         &quot;invalid_records&quot;: 0,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &quot;duplicate_sequences&quot;: 0,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;actuator_consumption_verified&quot;: false,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &quot;debug_pwm_is_verified_actual_motor_output&quot;: false,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         &quot;ros_header_sequence_offset&quot;: 1,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         &quot;debug_message_stamp_interval_median_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         &quot;observed_debug_value_change_interval_p10_p50_p90_s&quot;: [</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>           0.04800097942352295,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>           0.05100131034851074,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>           0.060001373291015625</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>         ],</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>         &quot;experiment_pulses&quot;: [</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           {</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             &quot;sequence&quot;: 388,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>             &quot;stamp&quot;: 1792487198.4210312,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>             &quot;values&quot;: [</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>               1.0,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>               1.0,</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>               1.0,</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>               1.0</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>             ],</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>             &quot;next_command_after_sensor_s&quot;: 0.009000062942504883,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>             &quot;debug_samples_in_window&quot;: 10,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>             &quot;debug_samples_matching_pulse&quot;: 5</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>           }</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         ],</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         &quot;analysis_code_sha256&quot;: &quot;078f200379ba3522b3cf8c200edd334a97d5d1de75528f104aa4346c4267aca7&quot;,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         &quot;analysis_matches_run_source_snapshot&quot;: false</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>       },</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>       &quot;runtime_input_audit&quot;: {</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;node&quot;: &quot;/rmua_next_pwm_identification_46359_1792487192198&quot;,</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         &quot;topics&quot;: [</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>           &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>           &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>           &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         ],</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>         &quot;debug_inputs&quot;: false,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         &quot;expected_control_connections&quot;: 2,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         &quot;control_connections&quot;: 2,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>         &quot;backend_subscriber_nodes&quot;: [</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>           &quot;/airsim_node&quot;</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>         ]</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>       },</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>       &quot;body_specific_force_z_minmax_150ms_m_s2&quot;: [</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         -53.78862380981445,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         -7.995436191558838</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>       ]</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>     },</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>     {</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>       &quot;name&quot;: &quot;wire_00&quot;,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>       &quot;run_directory&quot;: &quot;runs/20261020T090648Z_b99c04ecd2d443abb0aff46d3a147731&quot;,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>       &quot;excitation&quot;: {</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         &quot;pwm&quot;: 0.0,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         &quot;sent&quot;: true,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>         &quot;stamp&quot;: 1792487223.979858</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>       },</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>       &quot;trace_reanalysis&quot;: {</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>         &quot;sender_commands&quot;: 808,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>         &quot;wire_records&quot;: 808,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>         &quot;matched_commands&quot;: 808,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>         &quot;wire_match_fraction&quot;: 1.0,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>         &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>         &quot;mismatched_sequences&quot;: [],</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>         &quot;unexpected_sequences&quot;: [],</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>         &quot;invalid_records&quot;: 0,</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         &quot;duplicate_sequences&quot;: 0,</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         &quot;actuator_consumption_verified&quot;: false,</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>         &quot;debug_pwm_is_verified_actual_motor_output&quot;: false,</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>         &quot;ros_header_sequence_offset&quot;: 1,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>         &quot;debug_message_stamp_interval_median_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>         &quot;observed_debug_value_change_interval_p10_p50_p90_s&quot;: [</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>           0.0480008602142334,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>           0.05100131034851074,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>           0.060001373291015625</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>         ],</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>         &quot;experiment_pulses&quot;: [</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>           {</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>             &quot;sequence&quot;: 389,</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>             &quot;stamp&quot;: 1792487223.979858,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>             &quot;values&quot;: [</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>               0.0,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>               0.0,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>               0.0,</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>               0.0</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>             ],</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>             &quot;next_command_after_sensor_s&quot;: 0.012000322341918945,</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>             &quot;debug_samples_in_window&quot;: 12,</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>             &quot;debug_samples_matching_pulse&quot;: 0</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>           }</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>         ],</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>         &quot;analysis_code_sha256&quot;: &quot;078f200379ba3522b3cf8c200edd334a97d5d1de75528f104aa4346c4267aca7&quot;,</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>         &quot;analysis_matches_run_source_snapshot&quot;: false</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>       },</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>       &quot;runtime_input_audit&quot;: {</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>         &quot;node&quot;: &quot;/rmua_next_pwm_identification_47069_1792487217663&quot;,</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         &quot;topics&quot;: [</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>           &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>           &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>           &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         ],</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;debug_inputs&quot;: false,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>         &quot;expected_control_connections&quot;: 2,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>         &quot;control_connections&quot;: 2,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>         &quot;backend_subscriber_nodes&quot;: [</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>           &quot;/airsim_node&quot;</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         ]</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>       },</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>       &quot;body_specific_force_z_minmax_150ms_m_s2&quot;: [</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>         -9.933150291442871,</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>         -1.629423975944519</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>       ]</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>     },</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>     {</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>       &quot;name&quot;: &quot;wire_06_repeat&quot;,</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>       &quot;run_directory&quot;: &quot;runs/20261020T090922Z_24c772f8a6fd4afa8b86481a6f477e6e&quot;,</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>       &quot;seed&quot;: 2042,</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>       &quot;excitation&quot;: {</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>         &quot;pwm&quot;: 0.6,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>         &quot;sent&quot;: true,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>         &quot;stamp&quot;: 1792487380.1998086</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>       },</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>       &quot;trace_reanalysis&quot;: {</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;sender_commands&quot;: 826,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &quot;wire_records&quot;: 826,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>         &quot;matched_commands&quot;: 826,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>         &quot;wire_match_fraction&quot;: 1.0,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>         &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>         &quot;mismatched_sequences&quot;: [],</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>         &quot;unexpected_sequences&quot;: [],</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>         &quot;invalid_records&quot;: 0,</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>         &quot;duplicate_sequences&quot;: 0,</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>         &quot;actuator_consumption_verified&quot;: false,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>         &quot;debug_pwm_is_verified_actual_motor_output&quot;: false,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>         &quot;ros_header_sequence_offset&quot;: 1,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>         &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>         &quot;debug_message_stamp_interval_median_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>         &quot;observed_debug_value_change_interval_p10_p50_p90_s&quot;: [</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>           0.04800105094909668,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>           0.05100107192993164,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>           0.060001373291015625</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>         ],</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>         &quot;experiment_pulses&quot;: [</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>           {</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>             &quot;sequence&quot;: 388,</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>             &quot;stamp&quot;: 1792487380.1998086,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>             &quot;values&quot;: [</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>               0.6,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>               0.6,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>               0.6,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>               0.6</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>             ],</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>             &quot;next_command_after_sensor_s&quot;: 0.012000083923339844,</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>             &quot;debug_samples_in_window&quot;: 10,</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>             &quot;debug_samples_matching_pulse&quot;: 0</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>           }</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>         ],</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>         &quot;analysis_code_sha256&quot;: &quot;078f200379ba3522b3cf8c200edd334a97d5d1de75528f104aa4346c4267aca7&quot;,</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>         &quot;analysis_matches_run_source_snapshot&quot;: false</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>       },</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>       &quot;runtime_input_audit&quot;: {</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>         &quot;node&quot;: &quot;/rmua_next_pwm_identification_47841_1792487373831&quot;,</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>         &quot;topics&quot;: [</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>           &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>           &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>           &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>         ],</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>         &quot;debug_inputs&quot;: false,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>         &quot;expected_control_connections&quot;: 2,</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>         &quot;control_connections&quot;: 2,</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>         &quot;backend_subscriber_nodes&quot;: [</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>           &quot;/airsim_node&quot;</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>         ]</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>       },</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>       &quot;body_specific_force_z_minmax_150ms_m_s2&quot;: [</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>         -32.46516799926758,</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>         -8.945795059204102</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>       ]</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>     }</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>   ],</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>   &quot;total_matched_wire_commands&quot;: 3417,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>   &quot;unit_tests_passed&quot;: 63,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>   &quot;noetic_new_tests_passed&quot;: 3,</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>   &quot;old_image_compatibility&quot;: {</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>     &quot;run_directory&quot;: &quot;runs/20261020T090949Z_0ffe2669545c4c2a90ecce1a039c30f2&quot;,</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>     &quot;image_revision&quot;: &quot;e14b2650d14a79a3182ae5eb16dc5885a94db4ac&quot;,</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>     &quot;fault&quot;: null,</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>     &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>     &quot;wire_recorder_enabled&quot;: false</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>   },</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>   &quot;conclusion&quot;: &quot;Header.seq is reassigned by rospy. After aligning its one constant offset from matching stamps and exact float64 payloads, every recorded ROS command matches the sender log. Debug values change at about 20Hz despite about 100Hz message stamps, and can miss or extend a single-command pulse. They are not verified instantaneous applied motor inputs.&quot;,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>   &quot;withdrawn_inference&quot;: &quot;Earlier debug-based torque residuals and claims of steady actual actuator output cannot exclude changes in applied PWM. Original observations are preserved.&quot;,</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>   &quot;wire_record_does_not_prove_actuator_consumption&quot;: true,</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>   &quot;full_range_steady_state_curve_verified&quot;: false,</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>   &quot;normal_pwm_ceiling_unchanged&quot;: 0.6,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>   &quot;physical_impulse_root_cause_resolved&quot;: false,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>   &quot;stage_acceptance&quot;: false,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>   &quot;offline_reanalysis_note&quot;: &quot;The first trace analyzer incorrectly equated the logical sender sequence with rospy Header.seq. Raw flight data were not modified. Corrected analysis code hashes and source-snapshot agreement are included per case. Official RotorPWM wire fields are float64; corrected comparison uses four IEEE float64 values. Debug pulse comparison permits its observed internal quantization.&quot;,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>   &quot;official_pwm_scalar_type&quot;: &quot;float64&quot;</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a> }</span></pre></body></html>

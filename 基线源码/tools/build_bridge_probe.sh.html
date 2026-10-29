@@ -1,0 +1,26 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tools/build_bridge_probe.sh · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tools/build_bridge_probe.sh</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> #!/usr/bin/env bash</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> # Diagnostics only. Build with the simulator container&#x27;s C++/glibc ABI.</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> set -euo pipefail</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> root=$(cd -- &quot;$(dirname -- &quot;${BASH_SOURCE[0]}&quot;)/..&quot; &amp;&amp; pwd)</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> variant=${1:-concurrency}</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> [[ &quot;$variant&quot; == concurrency || &quot;$variant&quot; == lifetime || &quot;$variant&quot; == native-input ]] || { echo &#x27;Variant: concurrency|lifetime|native-input&#x27; &gt;&amp;2; exit 2; }</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> compile_flags=()</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> if [[ &quot;$variant&quot; == lifetime ]]; then compile_flags=(-DRMUA_LIFETIME_PROBE); fi</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> if [[ &quot;$variant&quot; == native-input ]]; then compile_flags=(-DRMUA_LIFETIME_PROBE -DRMUA_NATIVE_INPUT_PROBE); fi</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> source_hash=$(sha256sum &quot;$root/tools/diagnostics/bridge_probe.cpp&quot; | cut -d&#x27; &#x27; -f1)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> output=&quot;$root/runs/probe_builds/$source_hash/$variant&quot;</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> mkdir -p &quot;$output&quot;</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> probe_build_dir=$(mktemp -d &quot;$output/.build.XXXXXX&quot;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> trap &#x27;rm -rf -- &quot;$probe_build_dir&quot;&#x27; EXIT</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> cp &quot;$root/tools/diagnostics/bridge_probe.cpp&quot; &quot;$probe_build_dir/bridge_probe.cpp&quot;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> [[ $(sha256sum &quot;$probe_build_dir/bridge_probe.cpp&quot; | cut -d&#x27; &#x27; -f1) == &quot;$source_hash&quot; ]] || {</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   echo &#x27;Probe source changed during snapshot.&#x27; &gt;&amp;2; exit 2;</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> }</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> container_build_dir=&quot;/workspace/main/${probe_build_dir#&quot;$root/&quot;}&quot;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> bash &quot;$root/tools/enter_env.sh&quot; g++ -std=c++14 -O2 -fPIC -shared -Wall -Wextra -Werror \</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>   &quot;${compile_flags[@]}&quot; &quot;$container_build_dir/bridge_probe.cpp&quot; -pthread -ldl -o &quot;$container_build_dir/bridge_probe.so&quot;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> # Atomic replacement leaves any already-loaded inode intact. Preserve the exact</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> # source copy as well as its hash; never rebuild into a running library&#x27;s inode.</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> mv -f -- &quot;$probe_build_dir/bridge_probe.so&quot; &quot;$output/bridge_probe.so&quot;</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> mv -f -- &quot;$probe_build_dir/bridge_probe.cpp&quot; &quot;$output/bridge_probe_source.cpp&quot;</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> echo &quot;$output/bridge_probe.so&quot;</span></pre></body></html>

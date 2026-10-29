@@ -1,0 +1,70 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_lidar_static_probe.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_lidar_static_probe.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import replace</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import unittest</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numpy as np</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from adapters.ros_noetic.lidar_cloud import LidarCloud</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from estimation.history import PoseHistory</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.pipeline.lidar_static import LidarStaticProbe</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from interfaces.contracts import Health, Metadata, StateEstimate, TrajectorySample</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from perception.stereo_depth.geometry import SensorPose</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from planning.spacetime_local.static_candidates import LocalPlannerLimits</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from planning.trajectory_validator.static_sweep import SweepBounds</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> class LidarStaticProbeTests(unittest.TestCase):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def setUp(self):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.history = PoseHistory()</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         covariance = tuple(np.eye(15).flatten())</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         self.state = StateEstimate(Metadata(10., 10.15, 0, &#x27;state&#x27;, covariance_or_bounds=covariance),</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             (0., 0., 0.), (0., 0., 0.), (1., 0., 0., 0.), (0., 0., 0.), Health.OK)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         self.history.append(self.state, 20.)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.cloud = LidarCloud(Metadata(10., 10.2, 0, &#x27;scan&#x27;, &#x27;lidar&#x27;),</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             np.array([[1., .1, .1]]), 1, 0)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.ref = TrajectorySample(10., (0., 0., 0.), (0., 0., 0.), (0., 0., 0.), 0.)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         mount = SensorPose((0., 0., 0.), ((1., 0., 0.), (0., 1., 0.), (0., 0., 1.)))</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         limits = LocalPlannerLimits(SweepBounds((.1, .1, .1), .02, 2.), 1.,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             segment_durations_s=(.1,), lateral_offsets_m=())</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.probe = LidarStaticProbe(self.history, mount, limits)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def run_probe(self, cloud=None, state=None, now=10., wall=20., epoch=0):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         return self.probe.evaluate(cloud or self.cloud, state or self.state, self.ref,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                                    (.001, 0., 0.), now, wall, epoch)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     def test_sensor_to_map_to_planner_fails_closed_on_unknown(self):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         result = self.run_probe()</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         self.assertEqual(result.reason, &#x27;NO_STATIC_CANDIDATE&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         self.assertEqual(result.map_cells, 1)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertEqual(result.candidate_reasons, (&#x27;UNKNOWN_SPACE&#x27;,))</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertFalse(result.control_eligible)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self.assertFalse(hasattr(result, &#x27;trajectory&#x27;))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         self.assertEqual(self.run_probe().reason, &#x27;SCAN_DUPLICATE&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def test_stale_scan_and_state_rejected_before_map_update(self):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertEqual(self.run_probe(now=10.2).reason, &#x27;SCAN_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         other = replace(self.state, position_ned=(1., 0., 0.))</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         self.assertEqual(self.run_probe(state=other).reason, &#x27;STATE_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertEqual(self.probe.map.snapshot(10., 0).cells, ())</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     def test_stale_arrival_and_missing_pose_do_not_map(self):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         self.assertEqual(self.run_probe(wall=20.11).reason, &#x27;POSE_STALE_STATE_ARRIVAL&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         cloud = replace(self.cloud, metadata=replace(self.cloud.metadata, stamp=9.99))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         self.assertEqual(self.run_probe(cloud=cloud).reason, &#x27;POSE_NO_BRACKET&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertEqual(self.probe.map.snapshot(10., 0).cells, ())</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     def test_epoch_reset_requires_history_reset(self):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         with self.assertRaises(ValueError): self.probe.reset(1)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         self.history.reset(1)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         self.probe.reset(1)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         self.assertEqual(self.run_probe().reason, &#x27;EPOCH_MISMATCH&#x27;)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         self.assertEqual(self.probe.map.snapshot(1., 1).cells, ())</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> </span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     def test_capacity_failure_does_not_commit_partial_scan(self):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.probe = LidarStaticProbe(self.history, self.probe.sensor_pose, self.probe.limits, capacity=1)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         cloud = LidarCloud(self.cloud.metadata, np.array([[1., .1, .1], [2., .1, .1]]), 2, 0)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         self.assertEqual(self.run_probe(cloud=cloud).reason, &#x27;MAP_REJECTED&#x27;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         self.assertEqual(self.probe.map.snapshot(10., 0).cells, ())</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> </span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     unittest.main()</span></pre></body></html>

@@ -1,0 +1,360 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/pwm_identification.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/pwm_identification.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Own a fresh local scene, run bounded PWM experiment, always stop the scene.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import os</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.seed_runner.manifest import prepare_run, source_hashes,file_hash</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.simulator_preflight import verify_local_simulator</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def main():</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     root = Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     parser.add_argument(&#x27;--seed&#x27;, type=int, required=True)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     parser.add_argument(&#x27;--levels&#x27;, default=&#x27;.10,.15,.20,.25,.30,.35,.40&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     parser.add_argument(&#x27;--pulse-seconds&#x27;, type=float, default=.3)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     parser.add_argument(&#x27;--motor-pulses&#x27;, action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     parser.add_argument(&#x27;--hover-seconds&#x27;, type=float, default=0.)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     parser.add_argument(&#x27;--evaluate-truth&#x27;, action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     parser.add_argument(&#x27;--step&#x27;, action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     parser.add_argument(&#x27;--mode&#x27;, choices=(&#x27;PWM&#x27;, &#x27;VEL&#x27;), default=&#x27;PWM&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     parser.add_argument(&#x27;--sensor-fault&#x27;, choices=(&#x27;GPS_ZERO&#x27;,&#x27;IMU_DROP&#x27;,&#x27;IMU_ROLLBACK&#x27;))</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     parser.add_argument(&#x27;--fault-seconds&#x27;, type=float, default=.15)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     parser.add_argument(&#x27;--gps-bridge&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     parser.add_argument(&#x27;--yaw-motion&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     parser.add_argument(&#x27;--braking&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     parser.add_argument(&#x27;--snapshot&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     parser.add_argument(&#x27;--scene-trace&#x27;,action=&#x27;store_true&#x27;,help=&#x27;isolated, bounded camera/LiDAR recording&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     parser.add_argument(&#x27;--stationary-bootstrap&#x27;,action=&#x27;store_true&#x27;,help=&#x27;experimental resting initialization before PWM&#x27;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     parser.add_argument(&#x27;--angular-recovery&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     parser.add_argument(&#x27;--angular-recovery-profile&#x27;,choices=(&#x27;standard&#x27;,&#x27;fast&#x27;),default=&#x27;standard&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     parser.add_argument(&#x27;--angular-pulse&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     parser.add_argument(&#x27;--angular-pulse-moment&#x27;,type=float)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     parser.add_argument(&#x27;--isolated-reference&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     parser.add_argument(&#x27;--reference-stall-seconds&#x27;,type=float,default=0.)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     parser.add_argument(&#x27;--collective-pulse-pwm&#x27;,type=float)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     parser.add_argument(&#x27;--record-pwm-commands&#x27;,action=&#x27;store_true&#x27;,help=&#x27;opt in for a new observer-compatible standalone image&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     parser.add_argument(&#x27;--bridge-probe&#x27;,choices=(&#x27;observe&#x27;,&#x27;serialize&#x27;,&#x27;lifetime&#x27;,&#x27;native-input&#x27;),help=&#x27;instrumented simulator, never acceptance eligible&#x27;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     parser.add_argument(&#x27;--controller-image&#x27;,help=&#x27;locally built immutable standalone image; no beta bind mount&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     parser.add_argument(&#x27;--contract-audit-only&#x27;,action=&#x27;store_true&#x27;,help=&#x27;read-only service handshake; no controller&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     args = parser.parse_args()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     if args.mode == &#x27;VEL&#x27; and (args.motor_pulses or not 3 &lt;= args.hover_seconds &lt;= 20):</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         parser.error(&#x27;VEL requires hover-seconds [3,20] and no motor pulses&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     if args.sensor_fault and args.mode != &#x27;PWM&#x27;:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         parser.error(&#x27;sensor injection currently available for PWM experiments only&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     if args.stationary_bootstrap and (args.mode!=&#x27;PWM&#x27; or not args.hover_seconds):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         parser.error(&#x27;stationary bootstrap requires bounded PWM hover&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     if args.angular_recovery and (args.mode!=&#x27;PWM&#x27; or args.hover_seconds&lt;10 or args.gps_bridge or args.sensor_fault):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         parser.error(&#x27;angular recovery requires &gt;=10s healthy-state PWM hover without GPS/fault modes&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     if args.angular_recovery_profile!=&#x27;standard&#x27; and not args.angular_recovery:</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         parser.error(&#x27;fast recovery profile requires angular-recovery&#x27;)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     if args.angular_pulse and (not args.angular_recovery or args.step or args.braking or args.yaw_motion):</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         parser.error(&#x27;angular pulse requires isolated angular-recovery hover&#x27;)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     if args.angular_pulse_moment is not None and (not args.angular_pulse or not 0&lt;args.angular_pulse_moment&lt;=.8):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         parser.error(&#x27;angular-pulse-moment requires angular-pulse, moment (0,.8] Nm&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     if args.isolated_reference and (args.mode!=&#x27;PWM&#x27; or args.hover_seconds&lt;10 or args.angular_recovery</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                                    or args.gps_bridge or args.sensor_fault):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         parser.error(&#x27;isolated reference requires &gt;=10s healthy-state PWM hover without other fault modes&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     if args.reference_stall_seconds and (not args.isolated_reference or not .1&lt;=args.reference_stall_seconds&lt;=1.):</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         parser.error(&#x27;reference stall requires isolated reference and duration [.1,1]&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     if args.collective_pulse_pwm is not None and (args.mode!=&#x27;PWM&#x27; or not 0&lt;=args.collective_pulse_pwm&lt;=1</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             or args.hover_seconds&lt;10 or args.step or args.braking or args.yaw_motion or args.sensor_fault</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             or args.gps_bridge or args.angular_recovery or args.isolated_reference):</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         parser.error(&#x27;collective pulse requires isolated &gt;=10s healthy-state PWM hover, input in [0,1]&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     if args.record_pwm_commands and (not args.evaluate_truth or args.mode!=&#x27;PWM&#x27;):</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         parser.error(&#x27;record-pwm-commands requires evaluated PWM experiment&#x27;)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     if args.bridge_probe and (args.mode!=&#x27;PWM&#x27; or not args.evaluate_truth or args.hover_seconds&lt;10</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             or args.controller_image or args.sensor_fault or args.gps_bridge or args.angular_recovery</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             or args.angular_pulse or args.isolated_reference or args.collective_pulse_pwm is not None):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         parser.error(&#x27;bridge probe requires evaluated healthy-state workspace PWM hover without other fault modes&#x27;)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     if args.gps_bridge and (args.mode != &#x27;PWM&#x27; or args.hover_seconds &lt; 3):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         parser.error(&#x27;GPS bridge is only available in bounded PWM hover&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     if (args.braking or args.yaw_motion or args.step) and args.hover_seconds &lt; 10:</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         parser.error(&#x27;response identification requires hover-seconds &gt;=10&#x27;)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     if args.braking and args.step:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         parser.error(&#x27;braking and step are separate experiments&#x27;)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     if args.contract_audit_only and (args.controller_image or args.hover_seconds or args.motor_pulses</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             or args.step or args.sensor_fault or args.gps_bridge or args.yaw_motion or args.braking</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             or args.evaluate_truth or args.snapshot or args.scene_trace or args.stationary_bootstrap</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             or args.angular_recovery or args.angular_pulse or args.isolated_reference or args.reference_stall_seconds</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             or args.collective_pulse_pwm is not None or args.record_pwm_commands or args.bridge_probe):</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         parser.error(&#x27;contract-audit-only cannot be combined with flight/recording modes&#x27;)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     container = os.environ.get(&#x27;RMUA_CONTAINER&#x27;, &#x27;rmua_noetic&#x27;)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     simulator_digest = subprocess.check_output([&#x27;docker&#x27;, &#x27;inspect&#x27;, container, &#x27;--format&#x27;, &#x27;{{.Image}}&#x27;], text=True).strip()</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     image_info=None</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     if args.controller_image:</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         image_info=json.loads(subprocess.check_output([&#x27;docker&#x27;,&#x27;image&#x27;,&#x27;inspect&#x27;,args.controller_image],text=True))[0]</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     digest=image_info[&#x27;Id&#x27;] if image_info else simulator_digest</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     record_commands=args.mode==&#x27;PWM&#x27; and (not image_info or args.record_pwm_commands)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     simulator_evidence=verify_local_simulator(root)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     probe_path=None</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     if args.bridge_probe:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         probe_variant=args.bridge_probe if args.bridge_probe in (&#x27;lifetime&#x27;,&#x27;native-input&#x27;) else &#x27;concurrency&#x27;</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         probe_path=Path(subprocess.check_output([&#x27;bash&#x27;,str(root/&#x27;tools/build_bridge_probe.sh&#x27;),probe_variant],cwd=root,text=True).strip()).resolve()</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         if not probe_path.is_file() or root/&#x27;runs/probe_builds&#x27; not in probe_path.parents:</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             raise ValueError(&#x27;invalid owned probe build path&#x27;)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     config = json.loads((root/&#x27;configs/official_baseline.yaml&#x27;).read_text())</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     config[&#x27;control_mode&#x27;] = args.mode</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     config[&#x27;experiment&#x27;] = {&#x27;levels&#x27;: args.levels, &#x27;pulse_seconds&#x27;: args.pulse_seconds,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                             &#x27;motor_pulses&#x27;: args.motor_pulses, &#x27;hover_seconds&#x27;: args.hover_seconds,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                             &#x27;evaluate_truth&#x27;: args.evaluate_truth, &#x27;step&#x27;: args.step,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                             &#x27;sensor_fault&#x27;:args.sensor_fault, &#x27;fault_seconds&#x27;:args.fault_seconds,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                             &#x27;gps_bridge&#x27;:args.gps_bridge,&#x27;yaw_motion&#x27;:args.yaw_motion,&#x27;braking&#x27;:args.braking,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                             &#x27;snapshot&#x27;:args.snapshot,&#x27;scene_trace&#x27;:args.scene_trace,&#x27;controller_image&#x27;:args.controller_image,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                             &#x27;contract_audit_only&#x27;:args.contract_audit_only,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                             &#x27;stationary_bootstrap&#x27;:args.stationary_bootstrap,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                             &#x27;angular_recovery&#x27;:args.angular_recovery,&#x27;angular_pulse&#x27;:args.angular_pulse,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                             &#x27;angular_recovery_profile&#x27;:args.angular_recovery_profile,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                             &#x27;angular_pulse_moment&#x27;:args.angular_pulse_moment if args.angular_pulse_moment is not None else (.5 if args.angular_pulse else None),</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                             &#x27;isolated_reference&#x27;:args.isolated_reference,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                             &#x27;reference_stall_seconds&#x27;:args.reference_stall_seconds,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                             &#x27;collective_pulse_pwm&#x27;:args.collective_pulse_pwm,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                             &#x27;record_pwm_commands&#x27;:record_commands if args.evaluate_truth else False,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                             &#x27;bridge_probe&#x27;:args.bridge_probe}</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>     run, manifest = prepare_run(root, root/&#x27;runs&#x27;, args.seed, digest, config)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>     manifest[&#x27;stage&#x27;] = (&#x27;P1_PWM_CLOSED_LOOP&#x27; if args.hover_seconds else &#x27;P0_PWM_IDENTIFICATION&#x27;) if args.mode == &#x27;PWM&#x27; else &#x27;P1_VEL_BENCHMARK&#x27;</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     if args.contract_audit_only:manifest[&#x27;stage&#x27;]=&#x27;P0_READ_ONLY_SERVICE_CONTRACT&#x27;</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>     if probe_path:</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         manifest[&#x27;stage&#x27;]=&#x27;P0_INSTRUMENTED_BRIDGE_DIAGNOSIS&#x27;</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         manifest[&#x27;acceptance_eligible&#x27;]=False</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         manifest[&#x27;simulator_runtime_instrumentation&#x27;]={&#x27;mode&#x27;:args.bridge_probe,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             &#x27;build_variant&#x27;:probe_variant,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             &#x27;source_sha256&#x27;:file_hash(root/&#x27;tools/diagnostics/bridge_probe.cpp&#x27;),</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             &#x27;binary_sha256&#x27;:file_hash(probe_path),&#x27;original_simulator_files_modified&#x27;:False}</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     manifest[&#x27;simulator_preflight&#x27;]=simulator_evidence</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     manifest[&#x27;simulator_container_image_digest&#x27;]=simulator_digest</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     manifest[&#x27;controller_source_kind&#x27;]=&#x27;immutable_docker_image&#x27; if image_info else &#x27;workspace_bind_mount&#x27;</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     if args.contract_audit_only:manifest[&#x27;controller_source_kind&#x27;]=&#x27;none_read_only_observer&#x27;</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     if image_info:</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         manifest[&#x27;controller_git_revision&#x27;]=(image_info[&#x27;Config&#x27;].get(&#x27;Labels&#x27;) or {}).get(&#x27;org.opencontainers.image.revision&#x27;,&#x27;unknown&#x27;)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     manifest[&#x27;run_state&#x27;]=&#x27;PREPARED&#x27;</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     (run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>     print(run, flush=True)</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     code = 1</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     evaluator = None</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     evaluation_log = None</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     scene_recorder=None</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     scene_log=None</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     controller_name=&#x27;rmua-next-flight-&#x27;+run.name</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     module=&#x27;adapters.ros_noetic.pwm_experiment&#x27; if args.mode == &#x27;PWM&#x27; else &#x27;adapters.ros_noetic.vel_experiment&#x27;</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     if args.contract_audit_only:module=&#x27;adapters.ros_noetic.service_contract_audit&#x27;</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>     readiness_marker=&#x27;rmua_next_sensor_readiness&#x27;</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     container_run=&#x27;/workspace/main/&#x27;+str(run.relative_to(root))</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>     simulator_command=[str(root/&#x27;tools/run_sim.sh&#x27;),str(args.seed),&#x27;offscreen&#x27;]</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     simulator_environment=os.environ.copy()</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>     if probe_path:</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         simulator_command.append(&#x27;diagnostic-bridge-probe&#x27;)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         simulator_environment.update({&#x27;RMUA_BRIDGE_PROBE_SO&#x27;:&#x27;/workspace/main/&#x27;+str(probe_path.relative_to(root)),</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>             &#x27;RMUA_BRIDGE_PROBE_MODE&#x27;:args.bridge_probe,&#x27;RMUA_BRIDGE_PROBE_OUTPUT&#x27;:container_run+&#x27;/bridge_probe.jsonl&#x27;})</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>     with (run/&#x27;simulator.log&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         simulator = subprocess.Popen(simulator_command,env=simulator_environment,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>                                      stdout=output, stderr=subprocess.STDOUT)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>         try:</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>             # Wait for live official inputs, never a fixed blind startup delay.</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             deadline = time.monotonic()+90</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>             while time.monotonic() &lt; deadline:</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>                 if simulator.poll() is not None:</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>                     raise RuntimeError(&#x27;fresh simulator failed; see simulator.log&#x27;)</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>                 try:</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>                     probe = subprocess.run([str(root/&#x27;tools/enter_env.sh&#x27;), &#x27;python3&#x27;, &#x27;-c&#x27;,</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>                         &#x27;import socket,sys; socket.setdefaulttimeout(2.); import rosgraph,rospy; from sensor_msgs.msg import Imu; &#x27;</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>                         &#x27;sys.exit(2) if not rosgraph.is_master_online() else None; &#x27;</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>                         &#x27;rospy.init_node(&quot;pwm_ready&quot;, anonymous=True); rospy.wait_for_message(&quot;/airsim_node/drone_1/imu/imu&quot;, Imu, timeout=2)&#x27;,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>                         readiness_marker,&#x27;--run-dir&#x27;,container_run],</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>                 except subprocess.TimeoutExpired:</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>                     stop_bound_controller(container,readiness_marker,container_run)</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>                     continue</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>                 if probe.returncode == 0:</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>                     break</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>             else:</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>                 raise RuntimeError(&#x27;simulator sensor readiness timeout&#x27;)</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>             if args.snapshot:</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>                 subprocess.run([str(root/&#x27;tools/enter_env.sh&#x27;),&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>                     &#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;adapters.ros_noetic.scene_snapshot&#x27;,&#x27;--run-dir&#x27;,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>                     &#x27;/workspace/main/&#x27;+str(run.relative_to(root))],check=True,timeout=25)</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>             if args.evaluate_truth:</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>                 evaluation_log = (run/&#x27;truth_evaluator.log&#x27;).open(&#x27;x&#x27;)</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>                 evaluation_command=[str(root/&#x27;tools/enter_env.sh&#x27;), &#x27;python3&#x27;, &#x27;-m&#x27;,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>                     &#x27;evaluation.metrics.truth_recorder&#x27;, &#x27;--run-dir&#x27;,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>                     &#x27;/workspace/main/&#x27;+str(run.relative_to(root))]</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>                 if record_commands:evaluation_command.append(&#x27;--record-pwm-commands&#x27;)</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>                 evaluator = subprocess.Popen(evaluation_command, stdout=evaluation_log, stderr=subprocess.STDOUT)</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>                 ready_deadline = time.monotonic()+5</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>                 while not (run/&#x27;truth_ready&#x27;).exists() and time.monotonic() &lt; ready_deadline:</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>                     if evaluator.poll() is not None:</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>                         break</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>                     time.sleep(.05)</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>                 if not (run/&#x27;truth_ready&#x27;).exists():</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>                     raise RuntimeError(&#x27;hidden truth evaluator failed to receive truth&#x27;)</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>             if args.scene_trace:</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>                 scene_log=(run/&#x27;scene_recorder.log&#x27;).open(&#x27;x&#x27;)</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>                 scene_recorder=subprocess.Popen([str(root/&#x27;tools/enter_env.sh&#x27;),&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>                     &#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;adapters.ros_noetic.scene_trace&#x27;,&#x27;--run-dir&#x27;,container_run],</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>                     stdout=scene_log,stderr=subprocess.STDOUT)</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>                 ready_deadline=time.monotonic()+8</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>                 while not (run/&#x27;scene_ready&#x27;).exists() and time.monotonic()&lt;ready_deadline:</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>                     if scene_recorder.poll() is not None:break</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>                     time.sleep(.05)</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>                 if not (run/&#x27;scene_ready&#x27;).exists():raise RuntimeError(&#x27;scene recorder not ready&#x27;)</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>             if image_info:</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>                 (run/&#x27;ros_home&#x27;).mkdir()</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>                 command=[&#x27;docker&#x27;,&#x27;run&#x27;,&#x27;--rm&#x27;,&#x27;--name&#x27;,controller_name,&#x27;--network&#x27;,&#x27;host&#x27;,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>                          &#x27;--user&#x27;,str(os.getuid())+&#x27;:&#x27;+str(os.getgid()),&#x27;-e&#x27;,&#x27;ROS_HOME=/rmua-run/ros_home&#x27;,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>                          &#x27;--mount&#x27;,&#x27;type=bind,source=&#x27;+str(run)+&#x27;,target=/rmua-run&#x27;,digest,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>                          &#x27;python3&#x27;,&#x27;-m&#x27;,module,&#x27;--run-dir&#x27;,&#x27;/rmua-run&#x27;]</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>             else:</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>                 command = [str(root/&#x27;tools/enter_env.sh&#x27;), &#x27;env&#x27;, &#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>                         &#x27;python3&#x27;,&#x27;-m&#x27;,module,&#x27;--run-dir&#x27;,&#x27;/workspace/main/&#x27;+str(run.relative_to(root))]</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>             if args.mode == &#x27;PWM&#x27; and not args.contract_audit_only:</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>                 command.extend([&#x27;--levels&#x27;, args.levels, &#x27;--pulse-seconds&#x27;, str(args.pulse_seconds)])</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>             if args.motor_pulses:</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>                 command.append(&#x27;--motor-pulses&#x27;)</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>             if args.hover_seconds:</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>                 command.extend([&#x27;--hover-seconds&#x27;, str(args.hover_seconds)])</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>             if args.step:</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>                 command.append(&#x27;--step&#x27;)</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>             if args.sensor_fault:</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>                 command.extend([&#x27;--sensor-fault&#x27;,args.sensor_fault,&#x27;--fault-seconds&#x27;,str(args.fault_seconds)])</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>             if args.gps_bridge:</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>                 command.append(&#x27;--gps-bridge&#x27;)</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>             if args.yaw_motion:</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>                 command.append(&#x27;--yaw-motion&#x27;)</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>             if args.braking:</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>                 command.append(&#x27;--braking&#x27;)</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>             if args.stationary_bootstrap:command.append(&#x27;--stationary-bootstrap&#x27;)</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>             if args.angular_recovery:command.append(&#x27;--angular-recovery&#x27;)</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>             if args.angular_recovery_profile!=&#x27;standard&#x27;:</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>                 command.extend([&#x27;--angular-recovery-profile&#x27;,args.angular_recovery_profile])</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>             if args.angular_pulse:command.append(&#x27;--angular-pulse&#x27;)</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>             if args.angular_pulse_moment is not None:command.extend([&#x27;--angular-pulse-moment&#x27;,str(args.angular_pulse_moment)])</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>             if args.isolated_reference:command.append(&#x27;--isolated-reference&#x27;)</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>             if args.reference_stall_seconds:command.extend([&#x27;--reference-stall-seconds&#x27;,str(args.reference_stall_seconds)])</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>             if args.collective_pulse_pwm is not None:command.extend([&#x27;--collective-pulse-pwm&#x27;,str(args.collective_pulse_pwm)])</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>             manifest[&#x27;controller_command&#x27;]=command</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>             manifest[&#x27;run_state&#x27;]=&#x27;AUDIT_RUNNING&#x27; if args.contract_audit_only else &#x27;CONTROL_RUNNING&#x27;</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>             (run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>             code = subprocess.call(command, timeout=40)</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>         except Exception as error:</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>             manifest[&#x27;error&#x27;] = str(error)</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>             print(str(error), flush=True)</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         finally:</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>             try:</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>                 manifest[&#x27;terminated_owned_readiness_pids&#x27;]=stop_bound_controller(container,readiness_marker,container_run)</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>             except Exception as error:</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>                 manifest[&#x27;readiness_cleanup_error&#x27;]=str(error)</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>                 code=1</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>             if image_info:</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>                 # The UUID name belongs exclusively to this host invocation.</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>                 subprocess.run([&#x27;docker&#x27;,&#x27;rm&#x27;,&#x27;-f&#x27;,controller_name],stdout=subprocess.DEVNULL,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>                                stderr=subprocess.DEVNULL,timeout=10)</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>             else:</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>                 try:</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>                     manifest[&#x27;terminated_owned_controller_pids&#x27;]=stop_bound_controller(container,module,</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>                                         container_run)</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>                 except Exception as error:</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>                     manifest[&#x27;controller_cleanup_error&#x27;]=str(error)</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>                     code=1</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>             if scene_recorder:</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>                 (run/&#x27;scene_stop&#x27;).touch()</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>                 try:</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>                     manifest[&#x27;scene_recorder_exit_code&#x27;]=scene_recorder.wait(timeout=5)</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>                 except subprocess.TimeoutExpired:</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>                     manifest[&#x27;scene_recorder_exit_code&#x27;]=&#x27;TIMEOUT&#x27;</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>                     stop_bound_controller(container,&#x27;adapters.ros_noetic.scene_trace&#x27;,container_run)</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>                     scene_recorder.terminate()</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>                 scene_log.close()</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>             if evaluator:</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>                 (run/&#x27;truth_stop&#x27;).touch()</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>                 try:</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>                     manifest[&#x27;truth_evaluator_exit_code&#x27;] = evaluator.wait(timeout=5)</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>                 except subprocess.TimeoutExpired:</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>                     evaluator.terminate()</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>                     manifest[&#x27;truth_evaluator_exit_code&#x27;] = &#x27;TIMEOUT&#x27;</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>                 evaluation_log.close()</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>             # Only stop a process group launched by this invocation.</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>             if simulator.poll() is None:</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>                 subprocess.run([str(root/&#x27;tools/stop_sim.sh&#x27;)], timeout=15)</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>                 try:</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>                     simulator.wait(timeout=10)</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>                 except subprocess.TimeoutExpired:</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>                     simulator.terminate()</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>             manifest[&#x27;source_sha256_after&#x27;] = source_hashes(root)</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>             if probe_path:</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>                 try:</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>                     after=verify_local_simulator(root)</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>                     manifest[&#x27;original_simulator_files_unchanged&#x27;]=after==simulator_evidence</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>                     probe_file=run/&#x27;bridge_probe.jsonl&#x27;</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>                     observations=[json.loads(line) for line in probe_file.read_text().splitlines()]</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>                     manifest[&#x27;bridge_probe_summary&#x27;]={key:max(r[key] for r in observations)</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>                         for key in (&#x27;pwm_calls&#x27;,&#x27;bridge_calls&#x27;,&#x27;overlap_entries&#x27;,&#x27;write_errors&#x27;)}</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>                     manifest[&#x27;bridge_probe_summary&#x27;][&#x27;complete_exit_record&#x27;]=any(r[&#x27;event&#x27;]==&#x27;exit&#x27; for r in observations)</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>                     if args.bridge_probe in (&#x27;lifetime&#x27;,&#x27;native-input&#x27;):</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>                         required=(&#x27;parameter_borrow&#x27;,&#x27;command_constructed&#x27;,&#x27;command_handoff&#x27;,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>                                   &#x27;parameter_free_begin&#x27;,&#x27;parameter_free_end&#x27;,&#x27;bridge_begin&#x27;,&#x27;bridge_end&#x27;)</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>                         counts={event:sum(r[&#x27;event&#x27;]==event for r in observations) for event in required}</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>                         manifest[&#x27;bridge_lifetime_event_counts&#x27;]=counts</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>                         if min(counts.values())==0:raise RuntimeError(&#x27;lifetime hook coverage missing&#x27;)</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>                         from evaluation.metrics.bridge_lifetime import evaluate as evaluate_lifetime</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>                         lifetime=evaluate_lifetime(observations)</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>                         (run/&#x27;bridge_lifetime_audit.json&#x27;).write_text(json.dumps(lifetime,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>                         if not lifetime[&#x27;hook_coverage_valid&#x27;]:raise RuntimeError(&#x27;lifetime handoff coverage missing&#x27;)</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>                     if args.bridge_probe==&#x27;native-input&#x27;:</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>                         from evaluation.metrics.native_input import evaluate as evaluate_native_input</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>                         sender=[json.loads(x) for x in (run/&#x27;pwm_telemetry.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>                         controller_summary=json.loads((run/&#x27;pwm_summary.json&#x27;).read_text())</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>                         native=evaluate_native_input(observations,sender,controller_summary.get(&#x27;control_end_wall_monotonic&#x27;))</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>                         (run/&#x27;native_input_audit.json&#x27;).write_text(json.dumps(native,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>                         if not native[&#x27;snapshot_coverage_valid&#x27;]:</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>                             raise RuntimeError(&#x27;native input snapshot coverage incomplete&#x27;)</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>                     if (not manifest[&#x27;original_simulator_files_unchanged&#x27;] or</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>                             min(manifest[&#x27;bridge_probe_summary&#x27;][key] for key in (&#x27;pwm_calls&#x27;,&#x27;bridge_calls&#x27;))==0</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>                             or manifest[&#x27;bridge_probe_summary&#x27;][&#x27;write_errors&#x27;]</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>                             or any(r[&#x27;mode&#x27;]!=args.bridge_probe for r in observations)):</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>                         raise RuntimeError(&#x27;probe inactive or original simulator files changed&#x27;)</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>                 except Exception as error:</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>                     manifest[&#x27;bridge_probe_error&#x27;]=str(error);code=2</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>             manifest[&#x27;source_unchanged&#x27;] = manifest[&#x27;source_sha256_before&#x27;] == manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>             manifest[&#x27;observer_exit_code&#x27;] = code</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>             manifest[&#x27;run_state&#x27;]=(&#x27;AUDIT_COMPLETE&#x27; if args.contract_audit_only else &#x27;CONTROL_COMPLETE&#x27;) if code==0 else &#x27;FAILED&#x27;</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>             prefix = &#x27;pwm&#x27; if args.mode == &#x27;PWM&#x27; else &#x27;vel&#x27;</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>             manifest[&#x27;telemetry&#x27;] = [prefix+&#x27;_telemetry.jsonl&#x27;, prefix+&#x27;_summary.json&#x27;, &#x27;simulator.log&#x27;]</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>             if args.contract_audit_only:manifest[&#x27;telemetry&#x27;]=[&#x27;service_contract_audit.json&#x27;,&#x27;simulator.log&#x27;]</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>             if args.evaluate_truth:</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>                 manifest[&#x27;evaluation_only_inputs&#x27;] = [&#x27;/airsim_node/drone_1/debug/pose_gt&#x27;,</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>                                                      &#x27;/airsim_node/drone_1/debug/rotor_pwm&#x27;,</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>                                                      &#x27;/airsim_node/drone_1/debug/wind&#x27;,</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>                                                      &#x27;/airsim_node/drone_1/imu/imu&#x27;,&#x27;/rosout_agg&#x27;]</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>                 manifest[&#x27;telemetry&#x27;].extend([&#x27;evaluation_truth.jsonl&#x27;,&#x27;evaluation_actuation.jsonl&#x27;,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>                                              &#x27;evaluation_wind.jsonl&#x27;,&#x27;evaluation_imu.jsonl&#x27;,&#x27;evaluation_rosout.jsonl&#x27;])</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>                 if record_commands:</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>                     manifest[&#x27;evaluation_only_inputs&#x27;].append(&#x27;/airsim_node/drone_1/rotor_pwm_cmd&#x27;)</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>                     manifest[&#x27;telemetry&#x27;].append(&#x27;evaluation_pwm_commands.jsonl&#x27;)</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>             manifest[&#x27;artifacts&#x27;]=sorted(p.name for p in run.iterdir() if p.is_file() and p.name!=&#x27;manifest.json&#x27;)</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>             (run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest, indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>     if args.evaluate_truth and (run/(prefix+&#x27;_telemetry.jsonl&#x27;)).exists() and (run/&#x27;evaluation_truth.jsonl&#x27;).exists():</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         metric_code = subprocess.call([&#x27;python3&#x27;, &#x27;-m&#x27;, &#x27;evaluation.metrics.closed_loop&#x27;, str(run)], cwd=root)</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>         manifest[&#x27;evaluation_exit_code&#x27;]=metric_code</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         if code == 0:</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>             code = metric_code</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         if args.mode==&#x27;PWM&#x27;:</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>             manifest[&#x27;physics_diagnostic_exit_code&#x27;]=subprocess.call(</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>                 [&#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;evaluation.metrics.physics_residual&#x27;,str(run)],cwd=root,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>                 stdout=subprocess.DEVNULL)</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>             if record_commands:</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>                 manifest[&#x27;command_trace_audit_exit_code&#x27;]=subprocess.call(</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>                     [&#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;evaluation.metrics.command_trace&#x27;,str(run)],cwd=root,</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>                     stdout=subprocess.DEVNULL)</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>                 if code==0 and manifest[&#x27;command_trace_audit_exit_code&#x27;]!=0:</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>                     code=manifest[&#x27;command_trace_audit_exit_code&#x27;]</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>         manifest[&#x27;run_state&#x27;]=&#x27;EVALUATED&#x27; if code==0 else &#x27;FAILED&#x27;</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>         manifest[&#x27;artifacts&#x27;]=sorted(p.name for p in run.iterdir() if p.is_file() and p.name!=&#x27;manifest.json&#x27;)</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         (run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>     return code</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a> </span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a> </span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>     raise SystemExit(main())</span></pre></body></html>

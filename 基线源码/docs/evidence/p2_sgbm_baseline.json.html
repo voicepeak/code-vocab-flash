@@ -1,0 +1,207 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_sgbm_baseline.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_sgbm_baseline.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 30,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-23&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P2_OFFLINE_DISPARITY_DIAGNOSIS&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;same_frozen_code_for_both_benchmarks&quot;: true,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;verification&quot;: {</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     &quot;host_unit_tests_passed&quot;: 95,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     &quot;noetic_unit_tests_passed&quot;: 92,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     &quot;noetic_host_git_tests_skipped&quot;: 3,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     &quot;post_contract_change_targeted_tests_passed_each_environment&quot;: 10</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>   },</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>   &quot;synthetic_checks&quot;: {</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;checks&quot;: [</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>       {</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &quot;expected_disparity_px&quot;: 8,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &quot;interior_valid_fraction&quot;: 1.0,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;interior_rmse_px&quot;: 0.0020879784133285284</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>       },</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>       {</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;expected_disparity_px&quot;: 16,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         &quot;interior_valid_fraction&quot;: 1.0,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         &quot;interior_rmse_px&quot;: 0.0020879784133285284</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       }</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     ],</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;metric_depth_verified&quot;: false</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>   },</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     {</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>       &quot;run&quot;: &quot;runs/20261023T054645Z_04403454babc467688ab3701dc5bea9c&quot;,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         &quot;sha256&quot;: &quot;60f53598fe6e53bd47439f6fc732232c5800f8b9c12e624f72663210717632b7&quot;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         &quot;files&quot;: 242,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &quot;uncompressed_bytes&quot;: 865171,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>       },</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>       &quot;independently_rehashed_source_files&quot;: 242,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>       &quot;input_unchanged&quot;: true,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>       &quot;report&quot;: {</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         &quot;computed&quot;: true,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         &quot;historical_input_only&quot;: true,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &quot;opencv_version&quot;: &quot;4.2.0&quot;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;opencv_threads&quot;: 1,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &quot;settings&quot;: {</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>           &quot;num_disparities&quot;: 128,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           &quot;block_size&quot;: 5,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>           &quot;uniqueness_ratio&quot;: 10,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>           &quot;consistency_px&quot;: 1.0,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>           &quot;min_texture_std&quot;: 2.0</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         },</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;input_shape&quot;: [</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>           720,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>           960,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>           3</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         ],</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         &quot;source_run&quot;: &quot;runs/20261023T053533Z_a98296d2effb4c81946ab6c75d32e5b5&quot;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &quot;input_sha256&quot;: {</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>           &quot;stereo_first_pair.npz&quot;: &quot;995346f3edb70236d6c3e602f8e81bc4a205e3f173ee4c730816e87587337b30&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>           &quot;stereo_pairs.jsonl&quot;: &quot;8ac1ec3d2c63d2b7d32ca4794380b76a6c54c370fb93a032769b9c5e23ad95f0&quot;,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>           &quot;stereo_summary.json&quot;: &quot;c1ba0b7550b7ac9b5e32f335946c93175113a201379898c9b3e5ec0b3e4d3f10&quot;,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>           &quot;manifest.json&quot;: &quot;be6899f5ae58d6adf9e6248484bb784654ddccde92bd84cee9c3fc60a0cc41cc&quot;</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         },</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         &quot;input_unchanged&quot;: true,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         &quot;warmup_runs&quot;: 1,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         &quot;measured_runs&quot;: 3,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         &quot;compute_durations_s&quot;: [</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>           0.2868898611050099,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>           0.2752252861391753,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>           0.2736988721881062</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         ],</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &quot;compute_median_s&quot;: 0.2752252861391753,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;compute_max_s&quot;: 0.2868898611050099,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &quot;output_sha256_per_repeat&quot;: [</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>           &quot;d035cea8b9b1958054d8293fac37cf4f9216ad4e5a397b7f1ebaeb459ff46e18&quot;,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           &quot;d035cea8b9b1958054d8293fac37cf4f9216ad4e5a397b7f1ebaeb459ff46e18&quot;,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>           &quot;d035cea8b9b1958054d8293fac37cf4f9216ad4e5a397b7f1ebaeb459ff46e18&quot;</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         ],</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;repeat_deterministic&quot;: true,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &quot;valid_pixels&quot;: 61883,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         &quot;pixels&quot;: 691200,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &quot;valid_fraction&quot;: 0.08952980324074074,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;disparity_p10_p50_p90_px&quot;: [</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>           2.125,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>           11.0,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>           14.875</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         ],</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         &quot;source_metadata&quot;: {</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           &quot;stamp&quot;: 1792733743.3014345,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>           &quot;valid_until&quot;: 1792733743.5014346,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>           &quot;source&quot;: &quot;opencv_sgbm_diagnostic_pixels&quot;,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>           &quot;frame_id&quot;: &quot;front_left_image&quot;,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>           &quot;covariance_or_bounds&quot;: []</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         },</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         &quot;left_measurement_stamp&quot;: 1792733743.3014345,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         &quot;right_measurement_stamp&quot;: 1792733743.3014345,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         &quot;unknown_pixels_are_nan&quot;: true,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         &quot;rectification_verified&quot;: false,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         &quot;real_scene_accuracy_measured&quot;: false,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;online_latency_verified&quot;: false,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;interpretation&quot;: &quot;Pixel disparity under unverified rectification. Coverage is not accuracy. Compute timing excludes input decoding/transport, simulator contention and GPU inference. Original validity is preserved, not refreshed by offline processing.&quot;</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>       },</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         &quot;manifest.json&quot;: &quot;70e6b3c125fa582bc775c17f83c291152ecbd7dd06f39e416f9195f17ff6460d&quot;,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         &quot;stereo_disparity_report.json&quot;: &quot;2e9b9463b430d4ffbee3bace43b787d4bceda69a85816d36b6ff83814ba0f658&quot;,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         &quot;diagnostic_disparity.npz&quot;: &quot;582cf760bd94c415f863259427b6f411a26d7a28618cf40b1857d2f542a8dc4c&quot;</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>       }</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     },</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     {</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>       &quot;run&quot;: &quot;runs/20261023T054657Z_d4005e0034614b7ebc4ab134f0a64e0b&quot;,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &quot;sha256&quot;: &quot;60f53598fe6e53bd47439f6fc732232c5800f8b9c12e624f72663210717632b7&quot;,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;files&quot;: 242,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;uncompressed_bytes&quot;: 865171,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>       },</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>       &quot;independently_rehashed_source_files&quot;: 242,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>       &quot;input_unchanged&quot;: true,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       &quot;report&quot;: {</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         &quot;computed&quot;: true,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         &quot;historical_input_only&quot;: true,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &quot;opencv_version&quot;: &quot;4.2.0&quot;,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;opencv_threads&quot;: 1,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;settings&quot;: {</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>           &quot;num_disparities&quot;: 128,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>           &quot;block_size&quot;: 5,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>           &quot;uniqueness_ratio&quot;: 10,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>           &quot;consistency_px&quot;: 1.0,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>           &quot;min_texture_std&quot;: 2.0</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         },</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         &quot;input_shape&quot;: [</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>           720,</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>           960,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>           3</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         ],</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &quot;source_run&quot;: &quot;runs/20261023T053653Z_58ccb0439090433bb3c4e23fbb637c84&quot;,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;input_sha256&quot;: {</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>           &quot;stereo_first_pair.npz&quot;: &quot;55be29b2090f5d9fc99691bc6070360f64e4a447497d4af58f9ee530e6e580a6&quot;,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>           &quot;stereo_pairs.jsonl&quot;: &quot;e070a734feec902842e17043bff81dc999e43302e2f8d367ab691208b42b6b91&quot;,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>           &quot;stereo_summary.json&quot;: &quot;fd0e33765df92782132d30746299718fd57da0e00cf5790e872ee1b0956618e3&quot;,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>           &quot;manifest.json&quot;: &quot;87aea112771cdcf0070f41064ec3bba185910a2ee34167b6525228d6c58487e5&quot;</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         },</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         &quot;input_unchanged&quot;: true,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         &quot;warmup_runs&quot;: 1,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         &quot;measured_runs&quot;: 3,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         &quot;compute_durations_s&quot;: [</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           0.3381301611661911,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           0.3284739700611681,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           0.32592646521516144</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>         ],</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>         &quot;compute_median_s&quot;: 0.3284739700611681,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>         &quot;compute_max_s&quot;: 0.3381301611661911,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>         &quot;output_sha256_per_repeat&quot;: [</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>           &quot;e2810d781a5698aebf120bb1f33620d1c6c13960ee0afcab99dae614c2b353f9&quot;,</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           &quot;e2810d781a5698aebf120bb1f33620d1c6c13960ee0afcab99dae614c2b353f9&quot;,</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           &quot;e2810d781a5698aebf120bb1f33620d1c6c13960ee0afcab99dae614c2b353f9&quot;</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         ],</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;repeat_deterministic&quot;: true,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         &quot;valid_pixels&quot;: 61312,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>         &quot;pixels&quot;: 691200,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         &quot;valid_fraction&quot;: 0.0887037037037037,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         &quot;disparity_p10_p50_p90_px&quot;: [</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>           2.0625,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>           11.0,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>           14.875</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         ],</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;source_metadata&quot;: {</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>           &quot;stamp&quot;: 1792733823.594143,</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>           &quot;valid_until&quot;: 1792733823.794143,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>           &quot;source&quot;: &quot;opencv_sgbm_diagnostic_pixels&quot;,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>           &quot;frame_id&quot;: &quot;front_left_image&quot;,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>           &quot;covariance_or_bounds&quot;: []</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         },</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         &quot;left_measurement_stamp&quot;: 1792733823.594143,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>         &quot;right_measurement_stamp&quot;: 1792733823.594143,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>         &quot;unknown_pixels_are_nan&quot;: true,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>         &quot;rectification_verified&quot;: false,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>         &quot;metric_depth_verified&quot;: false,</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         &quot;real_scene_accuracy_measured&quot;: false,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         &quot;online_latency_verified&quot;: false,</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>         &quot;interpretation&quot;: &quot;Pixel disparity under unverified rectification. Coverage is not accuracy. Compute timing excludes input decoding/transport, simulator contention and GPU inference. Original validity is preserved, not refreshed by offline processing.&quot;</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>       },</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>         &quot;manifest.json&quot;: &quot;f1d12032c64baeaf24c44da85594c4ea53e03bc02980f6818f7dafcfdcf1029b&quot;,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>         &quot;stereo_disparity_report.json&quot;: &quot;3b92d1d3f86ea5940da7391ce4fd20313e8f108ae1f205ccf4bc2faf4f255883&quot;,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>         &quot;diagnostic_disparity.npz&quot;: &quot;deea4ae3ce2262bd93ef2c143fcad56e81d894e41103b84b318b02037a5ee254&quot;</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>       }</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>     }</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>   ],</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>   &quot;limitations&quot;: [</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>     &quot;Only diagnostic pixel disparity under unverified rectification/exposure alignment. No metric depth or real-scene accuracy claim.&quot;,</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>     &quot;Valid-pixel coverage around 8.9% is not accuracy or free-space evidence.&quot;,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>     &quot;Single-thread offline compute timing excludes image generation/transport, simulator contention and inference on GPU.&quot;,</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>     &quot;Original source validity is preserved; offline computation does not refresh historical input.&quot;,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>     &quot;No online depth, historical-pose compensation, VIO, gate or flight-clearance acceptance.&quot;</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>   ]</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a> }</span></pre></body></html>

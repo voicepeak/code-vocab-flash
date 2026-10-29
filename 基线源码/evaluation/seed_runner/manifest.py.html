@@ -1,0 +1,100 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/manifest.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/manifest.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Exclusive run directories and complete source/config hashes; no flight execution.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from datetime import datetime, timezone</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import gzip</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import hashlib</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import io</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import json</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import os</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from pathlib import Path</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import stat</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import subprocess</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import tarfile</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import tempfile</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> import uuid</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def file_hash(path):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     value = hashlib.sha256()</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     with Path(path).open(&quot;rb&quot;) as handle:</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         for chunk in iter(lambda: handle.read(1024 * 1024), b&quot;&quot;):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             value.update(chunk)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     return value.hexdigest()</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> def source_hashes(root):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     names = subprocess.check_output(</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         [&quot;git&quot;, &quot;ls-files&quot;, &quot;-z&quot;, &quot;--cached&quot;, &quot;--others&quot;, &quot;--exclude-standard&quot;], cwd=root)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     result = {}</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     for name in sorted(set(n.decode() for n in names.split(b&quot;\0&quot;) if n)):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         path = Path(root) / name</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if path.is_file():</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             result[name] = file_hash(path)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     return result</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> def archive_sources(root, run, expected):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     &quot;&quot;&quot;Retain the exact bytes, including dirty files, before starting a scene.</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     Only regular, repository-relative sources are accepted. Atomic exclusive</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     publication prevents either a partial archive or replacement of old evidence.</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     Metadata is normalized so the same bytes and modes produce the same archive.</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     root, run = Path(root).resolve(), Path(run)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     destination = run / &quot;source_snapshot.tar.gz&quot;</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     temporary = None</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     total = 0</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     try:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         with tempfile.NamedTemporaryFile(dir=run, suffix=&quot;.tmp&quot;, delete=False) as output:</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             temporary = Path(output.name)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             with gzip.GzipFile(filename=&quot;&quot;, mode=&quot;wb&quot;, fileobj=output, mtime=0) as compressed:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 with tarfile.open(fileobj=compressed, mode=&quot;w&quot;, format=tarfile.PAX_FORMAT) as archive:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                     for name, expected_hash in sorted(expected.items()):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                         relative = Path(name)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                         path = root / relative</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                         if (relative.is_absolute() or &quot;..&quot; in relative.parts</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                                 or relative.as_posix() != name or path.resolve() != path</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                                 or path.is_symlink()):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                             raise ValueError(&quot;source must be a regular repository-relative file: &quot; + name)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                         with path.open(&quot;rb&quot;) as source:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                             metadata = os.fstat(source.fileno())</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                             if not stat.S_ISREG(metadata.st_mode):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                                 raise ValueError(&quot;nonregular source: &quot; + name)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                             data = source.read()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                         if hashlib.sha256(data).hexdigest() != expected_hash:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                             raise RuntimeError(&quot;source changed before archival: &quot; + name)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                         member = tarfile.TarInfo(name)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                         member.size = len(data)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                         member.mode = stat.S_IMODE(metadata.st_mode)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                         archive.addfile(member, io.BytesIO(data))</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                         total += len(data)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             output.flush()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             os.fsync(output.fileno())</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         if source_hashes(root) != expected:</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             raise RuntimeError(&quot;source set changed during archival&quot;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         temporary.chmod(0o444)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         os.link(str(temporary), str(destination))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         return {&quot;path&quot;: destination.name, &quot;sha256&quot;: file_hash(destination),</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 &quot;files&quot;: len(expected), &quot;uncompressed_bytes&quot;: total,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;}</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     finally:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         if temporary is not None:</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             temporary.unlink()</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a> def prepare_run(root, output, seed, image_digest, config):</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     root = Path(root).resolve()</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     run = Path(output).resolve() / (datetime.now(timezone.utc).strftime(&quot;%Y%m%dT%H%M%SZ_&quot;)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                                   + uuid.uuid4().hex)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     run.mkdir(parents=True, exist_ok=False)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     status = subprocess.check_output([&quot;git&quot;, &quot;status&quot;, &quot;--porcelain&quot;], cwd=root, text=True)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     manifest = {</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;schema_version&quot;: 1, &quot;seed&quot;: seed, &quot;seed_evidence&quot;: &quot;operator_declared&quot;,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         &quot;git_sha&quot;: subprocess.check_output([&quot;git&quot;, &quot;rev-parse&quot;, &quot;HEAD&quot;], cwd=root, text=True).strip(),</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &quot;git_status&quot;: status, &quot;image_digest&quot;: image_digest,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &quot;config&quot;: config, &quot;source_sha256_before&quot;: source_hashes(root),</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &quot;model_hashes&quot;: {}, &quot;telemetry&quot;: [], &quot;safety_events&quot;: [],</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;, &quot;stage&quot;: &quot;P0_READ_ONLY_AUDIT&quot;,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     }</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     manifest[&quot;source_archive&quot;] = archive_sources(root, run, manifest[&quot;source_sha256_before&quot;])</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     (run / &quot;manifest.json&quot;).write_text(json.dumps(manifest, indent=2) + &quot;\n&quot;)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     return run, manifest</span></pre></body></html>

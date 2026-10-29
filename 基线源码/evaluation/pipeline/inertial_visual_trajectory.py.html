@@ -1,0 +1,51 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/inertial_visual_trajectory.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/inertial_visual_trajectory.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline nominal visual-inertial diagnostic from official recorded sensors.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import bisect</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import sys</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from estimation.history import slerp</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from perception.visual_odometry.inertial_fusion import InertialVisualTrajectory</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def build(estimate_path,telemetry_path):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     estimate_path,telemetry_path=Path(estimate_path),Path(telemetry_path)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     estimates=json.loads(estimate_path.read_text());groups={}</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     for line in telemetry_path.read_text().splitlines():</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         row=json.loads(line);raw=row[&#x27;raw&#x27;];epoch=row[&#x27;command&#x27;][&#x27;epoch&#x27;]</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         groups.setdefault(epoch,{}).setdefault(raw[&#x27;stamp&#x27;],(tuple(raw[&#x27;acceleration_body&#x27;]),tuple(raw[&#x27;imu_orientation_wxyz&#x27;])))</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     groups={epoch:sorted((stamp,a,q) for stamp,(a,q) in group.items()) for epoch,group in groups.items()}</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     def anchor(samples,stamp):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         stamps=[s[0] for s in samples];i=bisect.bisect_right(stamps,stamp)-1</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if i&lt;0 or i+1&gt;=len(samples) or samples[i+1][0]-samples[i][0]&gt;.04:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             raise ValueError(&#x27;initial imu orientation not bracketed&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         a,b=samples[i],samples[i+1];f=(stamp-a[0])/(b[0]-a[0]);return slerp(a[2],b[2],f)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     segments=[];breaks=[];fusion=None</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     for row in estimates[&#x27;results&#x27;]:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         if row[&#x27;status&#x27;]!=&#x27;ESTIMATED&#x27;:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             breaks.append({&#x27;previous_stamp&#x27;:row[&#x27;previous_stamp&#x27;],&#x27;current_stamp&#x27;:row[&#x27;current_stamp&#x27;],</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                            &#x27;reason&#x27;:row.get(&#x27;reason&#x27;,&#x27;MOTION_REJECTED&#x27;)});fusion=None;continue</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         m=row[&#x27;motion&#x27;];start,end,epoch=m[&#x27;previous_stamp&#x27;],m[&#x27;current_stamp&#x27;],m[&#x27;epoch&#x27;];samples=groups.get(epoch,[])</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         try:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             if fusion is None:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                 fusion=InertialVisualTrajectory(start,epoch,anchor(samples,start))</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 segments.append({&#x27;anchor_stamp&#x27;:start,&#x27;epoch&#x27;:epoch,&#x27;poses&#x27;:[]})</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             if epoch!=fusion.epoch or abs(start-fusion.stamp)&gt;1e-6:raise ValueError(&#x27;visual interval discontinuity&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             pose=fusion.append(end,m[&#x27;translation_previous_body_m&#x27;],samples)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             segments[-1][&#x27;poses&#x27;].append(pose)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         except (ValueError,ArithmeticError) as error:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             breaks.append({&#x27;previous_stamp&#x27;:start,&#x27;current_stamp&#x27;:end,&#x27;reason&#x27;:str(error)});fusion=None</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     return {&#x27;source&#x27;:estimates[&#x27;source&#x27;],&#x27;segments&#x27;:segments,&#x27;breaks&#x27;:breaks,&#x27;truth_accessed&#x27;:False,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             &#x27;control_eligible&#x27;:False,&#x27;metric_calibration_verified&#x27;:False,&#x27;initial_velocity_assumption&#x27;:&#x27;zero&#x27;,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             &#x27;position_gain&#x27;:.5,&#x27;velocity_gain&#x27;:.3,&#x27;imu_bias_correction&#x27;:&#x27;none&#x27;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             &#x27;estimate_sha256&#x27;:hashlib.sha256(estimate_path.read_bytes()).hexdigest(),</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             &#x27;imu_telemetry_sha256&#x27;:hashlib.sha256(telemetry_path.read_bytes()).hexdigest()}</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> def main():</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     result=build(sys.argv[1],sys.argv[2]);output=Path(sys.argv[3])</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     with output.open(&#x27;x&#x27;) as f:json.dump(result,f,indent=2,allow_nan=False);f.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     print(json.dumps({&#x27;output&#x27;:str(output),&#x27;segments&#x27;:len(result[&#x27;segments&#x27;]),&#x27;breaks&#x27;:len(result[&#x27;breaks&#x27;])}))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> </span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

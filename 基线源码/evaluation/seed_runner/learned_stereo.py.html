@@ -1,0 +1,99 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/learned_stereo.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/learned_stereo.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Freeze sources, image-only GPU inference, then independent sparse evaluation.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import os</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import shutil</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import subprocess</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from evaluation.seed_runner.manifest import file_hash, prepare_run, source_hashes</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def main():</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser.add_argument(&#x27;--source-run&#x27;,type=Path,action=&#x27;append&#x27;,required=True)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     args=parser.parse_args(); root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     runtime=root/&#x27;runs/ffs_runtime&#x27;;vendor=runtime/&#x27;Fast-FoundationStereo&#x27;</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     checkpoint=runtime/&#x27;model/model_best_bp2_serialize.pth&#x27;</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     profile_path=root/&#x27;configs/fast_foundation_stereo.json&#x27;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     profile=json.loads(profile_path.read_text())</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     commit=subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     dirty=subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     if commit!=profile[&#x27;vendor&#x27;][&#x27;commit&#x27;] or dirty:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         raise ValueError(&#x27;vendor checkout must be clean and match pinned commit&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     if (file_hash(checkpoint)!=profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             or checkpoint.stat().st_size!=profile[&#x27;checkpoint&#x27;][&#x27;bytes&#x27;]):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         raise ValueError(&#x27;checkpoint differs from pinned publisher digest&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     inputs={};sources=[]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     for item in args.source_run:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         source=item.resolve()</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         if root/&#x27;runs&#x27; not in source.parents or source.is_symlink():</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             raise ValueError(&#x27;source must be an owned retained run&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         sources.append(str(source.relative_to(root)))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         names=[&#x27;manifest.json&#x27;,&#x27;joint_summary.json&#x27;,&#x27;joint_audit.json&#x27;]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         names += [str(p.relative_to(source)) for p in sorted((source/&#x27;joint&#x27;).rglob(&#x27;*&#x27;)) if p.is_file()]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         inputs[str(source.relative_to(root))]={name:file_hash(source/name) for name in names}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     container=os.environ.get(&#x27;RMUA_CONTAINER&#x27;,&#x27;rmua_noetic&#x27;)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     digest=subprocess.check_output([&#x27;docker&#x27;,&#x27;inspect&#x27;,container,&#x27;--format&#x27;,&#x27;{{.Image}}&#x27;],text=True).strip()</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     config={&#x27;learned_stereo&#x27;:{&#x27;source_runs&#x27;:sources,&#x27;input_sha256&#x27;:inputs,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &#x27;profile_sha256&#x27;:file_hash(profile_path),&#x27;historical_only&#x27;:True}}</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     run,manifest=prepare_run(root,root/&#x27;runs&#x27;,None,digest,config)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     shutil.copyfile(profile_path,run/&#x27;profile.json&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     subprocess.run([&#x27;git&#x27;,&#x27;archive&#x27;,&#x27;--format=tar.gz&#x27;,&#x27;--output=&#x27;+str(run/&#x27;vendor_source.tar.gz&#x27;),commit],cwd=vendor,check=True)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     manifest.update(stage=&#x27;P2_OFFLINE_LEARNED_STEREO_COMPARISON&#x27;,acceptance_eligible=False,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         control_published=False,run_state=&#x27;PREPARED&#x27;,model_hashes={checkpoint.name:file_hash(checkpoint)},</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         vendor={&#x27;commit&#x27;:commit,&#x27;dirty&#x27;:dirty,&#x27;source_archive_sha256&#x27;:file_hash(run/&#x27;vendor_source.tar.gz&#x27;),</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                 &#x27;license_sha256&#x27;:file_hash(vendor/&#x27;LICENSE.txt&#x27;)})</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     inside=&#x27;/workspace/main/&#x27;+str(run.relative_to(root)); rt=&#x27;/workspace/main/runs/ffs_runtime&#x27;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     driver_dir=os.environ.get(&#x27;RMUA_TRITON_LIBCUDA_PATH&#x27;,&#x27;/opt/rmua-driver/usr/lib/x86_64-linux-gnu&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     modules=(&#x27;evaluation.metrics.learned_stereo&#x27;,&#x27;evaluation.metrics.learned_stereo_worker&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     python=rt+&#x27;/venv/bin/python&#x27;</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     env=[&#x27;-e&#x27;,&#x27;PYTHONNOUSERSITE=1&#x27;,&#x27;-e&#x27;,&#x27;PYTHONPATH=/workspace/main:&#x27;+rt+&#x27;/Fast-FoundationStereo&#x27;,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>          &#x27;-e&#x27;,&#x27;OMP_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;UV_CACHE_DIR=&#x27;+rt+&#x27;/uv_cache&#x27;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>          &#x27;-e&#x27;,&#x27;TORCH_HOME=&#x27;+rt+&#x27;/cache/torch&#x27;,&#x27;-e&#x27;,&#x27;CUDA_CACHE_PATH=&#x27;+rt+&#x27;/cache/cuda&#x27;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>          &#x27;-e&#x27;,&#x27;TRITON_LIBCUDA_PATH=&#x27;+driver_dir,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>          &#x27;-e&#x27;,&#x27;TRITON_CACHE_DIR=&#x27;+rt+&#x27;/cache/triton_driver_bound&#x27;,&#x27;-e&#x27;,&#x27;TORCHINDUCTOR_CACHE_DIR=&#x27;+rt+&#x27;/cache/inductor&#x27;]</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     docker=[&#x27;docker&#x27;,&#x27;exec&#x27;,&#x27;-u&#x27;,&#x27;1000:1000&#x27;,&#x27;-w&#x27;,&#x27;/workspace/main&#x27;]+env+[container]</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def save():</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         (run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     save();print(run,flush=True);code=1</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     try:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         probe=&#x27;import hashlib,json,pathlib,sys; p=pathlib.Path(sys.argv[1])/&quot;libcuda.so.1&quot;; print(json.dumps({&quot;python&quot;:sys.version,&quot;libcuda_path&quot;:str(p.resolve()),&quot;libcuda_sha256&quot;:hashlib.sha256(p.read_bytes()).hexdigest()}))&#x27;</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         manifest[&#x27;runtime_provenance&#x27;]={</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             &#x27;portable_python_sha256&#x27;:file_hash(runtime/&#x27;python/cpython-3.12.11-linux-x86_64-gnu/bin/python3.12&#x27;),</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             &#x27;uv_sha256&#x27;:file_hash(runtime/&#x27;uv&#x27;),</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             &#x27;uv_source&#x27;:json.loads((runtime/&#x27;uv_source.json&#x27;).read_text()),</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             &#x27;checkpoint_source&#x27;:json.loads((runtime/&#x27;checkpoint_source.json&#x27;).read_text()),</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             &#x27;packages&#x27;:subprocess.check_output(docker+[rt+&#x27;/uv&#x27;,&#x27;pip&#x27;,&#x27;freeze&#x27;,&#x27;--python&#x27;,python],text=True),</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             &#x27;driver&#x27;:json.loads(subprocess.check_output(docker+[python,&#x27;-c&#x27;,probe,driver_dir],text=True)),</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             &#x27;nvidia_smi&#x27;:subprocess.check_output(docker+[&#x27;nvidia-smi&#x27;],text=True)}</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         save()</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         commands=[(&#x27;prepare&#x27;,[str(root/&#x27;tools/enter_env.sh&#x27;),&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;python3&#x27;,&#x27;-m&#x27;,modules[0],</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             &#x27;--run-dir&#x27;,inside,&#x27;--stage&#x27;,&#x27;prepare&#x27;],120),</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             (&#x27;candidate&#x27;,docker+[python,&#x27;-m&#x27;,modules[1],&#x27;--run-dir&#x27;,inside,&#x27;--vendor&#x27;,rt+&#x27;/Fast-FoundationStereo&#x27;,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                 &#x27;--checkpoint&#x27;,rt+&#x27;/model/&#x27;+checkpoint.name],600),</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             (&#x27;evaluate&#x27;,[str(root/&#x27;tools/enter_env.sh&#x27;),&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;python3&#x27;,&#x27;-m&#x27;,modules[0],</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 &#x27;--run-dir&#x27;,inside,&#x27;--stage&#x27;,&#x27;evaluate&#x27;],120)]</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         for stage,command,timeout in commands:</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             with (run/(stage+&#x27;.log&#x27;)).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 subprocess.run(command,stdout=output,stderr=subprocess.STDOUT,check=True,timeout=timeout)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         code=0;manifest[&#x27;run_state&#x27;]=&#x27;COMPUTED&#x27;</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     except Exception as error:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         manifest.update(run_state=&#x27;FAILED&#x27;,error=str(error))</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     finally:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         manifest[&#x27;terminated_owned_worker_pids&#x27;]={module:stop_bound_controller(container,module,inside) for module in modules}</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         manifest[&#x27;source_sha256_after&#x27;]=source_hashes(root)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         manifest[&#x27;source_unchanged&#x27;]=manifest[&#x27;source_sha256_before&#x27;]==manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         manifest[&#x27;input_unchanged&#x27;]=all(hashes=={name:file_hash(root/source/name) for name in hashes} for source,hashes in inputs.items())</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         manifest[&#x27;vendor_unchanged&#x27;]=(not subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             and subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()==commit)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         manifest[&#x27;checkpoint_unchanged&#x27;]=file_hash(checkpoint)==profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         manifest[&#x27;worker_exit_code&#x27;]=code</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         manifest[&#x27;telemetry&#x27;]=[&#x27;inputs/index.json&#x27;,&#x27;predictions/runtime.json&#x27;,&#x27;learned_stereo_report.json&#x27;]</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         save()</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     return code if all(manifest[name] for name in (&#x27;source_unchanged&#x27;,&#x27;input_unchanged&#x27;,&#x27;vendor_unchanged&#x27;,&#x27;checkpoint_unchanged&#x27;)) else 2</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> </span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a> </span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> if __name__==&#x27;__main__&#x27;:</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     raise SystemExit(main())</span></pre></body></html>

@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/braking.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/braking.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Truth-only response measurement, never exported as a certified braking bound.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> def measure_braking(telemetry,truth,brake_elapsed=6.,stop_speed=.08,hold_seconds=.35):</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     result={&#x27;valid&#x27;:False,&#x27;certified_deceleration_bound&#x27;:False,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>             &#x27;stop_speed_threshold_m_s&#x27;:stop_speed,&#x27;hold_seconds&#x27;:hold_seconds}</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     commands=[r for r in telemetry if r.get(&#x27;sim_elapsed&#x27;,-1) &gt;= brake_elapsed]</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     ordered=sorted({r[&#x27;stamp&#x27;]:r for r in truth if r[&#x27;stamp&#x27;]&gt;0}.values(),key=lambda r:r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     if not commands or len(ordered)&lt;20:</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         return {**result,&#x27;reason&#x27;:&#x27;MISSING_DATA&#x27;}</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     stamp=commands[0][&#x27;command&#x27;][&#x27;stamp&#x27;]</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     times=np.array([r[&#x27;stamp&#x27;] for r in ordered])</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     positions=np.array([r[&#x27;position&#x27;] for r in ordered])</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     roi=(times &gt;= stamp-.1) &amp; (times &lt;= stamp+4.5)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     times,positions=times[roi],positions[roi]</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     if (len(times)&lt;20 or times[0]&gt;stamp or times[-1]&lt;stamp+hold_seconds</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>             or np.max(np.diff(times))&gt;.05):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         return {**result,&#x27;reason&#x27;:&#x27;TRUTH_COVERAGE_OR_GAP&#x27;}</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     vx=np.gradient(positions[:,0],times)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     v0=float(np.interp(stamp,times,vx))</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     x0=float(np.interp(stamp,times,positions[:,0]))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     if v0 &lt; .15:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         return {**result,&#x27;reason&#x27;:&#x27;INSUFFICIENT_INITIAL_SPEED&#x27;,&#x27;initial_speed_m_s&#x27;:v0}</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     stop=None</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     for i,t in enumerate(times):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         if t&lt;stamp or t+hold_seconds&gt;times[-1]:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             continue</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         window=(times&gt;=t)&amp;(times&lt;=t+hold_seconds)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if np.all(np.abs(vx[window])&lt;=stop_speed):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             stop=i</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             break</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     if stop is None:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         return {**result,&#x27;reason&#x27;:&#x27;DID_NOT_SETTLE_WITHIN_OBSERVATION&#x27;,&#x27;initial_speed_m_s&#x27;:v0}</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     window=(times&gt;=stamp)&amp;(times&lt;=times[stop]+hold_seconds)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     distance=float(max(0.,np.max(positions[window,0])-x0))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     if distance&lt;=1e-5:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         return {**result,&#x27;reason&#x27;:&#x27;INVALID_FORWARD_DISTANCE&#x27;}</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     effective=max(0.,v0*v0-vx[stop]*vx[stop])/(2*distance)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     result.update(valid=True,reference_sensor_stamp=stamp,initial_speed_m_s=v0,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                   stop_time_s=float(times[stop]-stamp),forward_excursion_m=distance,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                   effective_average_deceleration_m_s2=float(effective),</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                   peak_speed_after_reference_m_s=float(np.max(vx[window])),</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                   lateral_excursion_m=float(np.ptp(positions[window,1])),</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                   note=&#x27;Includes controller/sensing lag; effective average is not an instantaneous lower bound.&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     return result</span></pre></body></html>

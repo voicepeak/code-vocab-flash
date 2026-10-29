@@ -1,0 +1,352 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/dataset_capture/publish_archive.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/dataset_capture/publish_archive.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Prepare reviewed simulation data; publish deterministic, verified public shards.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Raw source archives are read only. Credentials are read by huggingface_hub, never</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> accepted as command arguments, logged, or included in the publication directory.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import argparse</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from collections import Counter</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import gzip</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import hashlib</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import json</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import os</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from pathlib import Path</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> import re</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> import shutil</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> import tarfile</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> import time</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> ROOTS = {&quot;experiments&quot;, &quot;frames&quot;, &quot;runs&quot;, &quot;tracked_iteration_artifacts&quot;}</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> SKIP_DIRS = {</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     &quot;.git&quot;, &quot;__pycache__&quot;, &quot;.cache&quot;, &quot;.venv&quot;, &quot;venv&quot;, &quot;node_modules&quot;,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     &quot;build&quot;, &quot;devel&quot;, &quot;install&quot;, &quot;checkouts&quot;, &quot;controller_sources&quot;,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     &quot;vision_sources&quot;, &quot;tool_sources&quot;, &quot;sim_launch_sources&quot;, &quot;driver_root&quot;,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;runtime_before_demo&quot;, &quot;native&quot;, &quot;weights&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> }</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> SUFFIXES = {</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;.jpg&quot;, &quot;.jpeg&quot;, &quot;.png&quot;, &quot;.webp&quot;, &quot;.bmp&quot;, &quot;.tif&quot;, &quot;.tiff&quot;, &quot;.xwd&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     &quot;.npz&quot;, &quot;.npy&quot;, &quot;.pcd&quot;, &quot;.bag&quot;, &quot;.csv&quot;, &quot;.json&quot;, &quot;.jsonl&quot;,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     &quot;.yaml&quot;, &quot;.yml&quot;, &quot;.txt&quot;, &quot;.log&quot;, &quot;.md&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> }</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> TEXT = {&quot;.csv&quot;, &quot;.json&quot;, &quot;.jsonl&quot;, &quot;.yaml&quot;, &quot;.yml&quot;, &quot;.txt&quot;, &quot;.log&quot;, &quot;.md&quot;}</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> SECRET = re.compile(</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     rb&quot;hf_[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|&quot;</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     rb&quot;github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16}|&quot;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     rb&quot;-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----|&quot;</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     rb&quot;(?i:authorization\s*[:=]\s*[\&quot;&#x27;]?bearer\s+[A-Za-z0-9._-]{16,})|&quot;</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     rb&quot;https?://[^\s/:@]{1,100}:[^\s/@]{1,200}@&quot;</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> )</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> def write_json(path, value):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     path = Path(path)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     tmp = path.with_suffix(path.suffix + &quot;.tmp&quot;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     tmp.write_text(json.dumps(value, ensure_ascii=False, indent=2) + &quot;\n&quot;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     tmp.replace(path)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> def sha256(path):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     h = hashlib.sha256()</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     with Path(path).open(&quot;rb&quot;) as f:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         for block in iter(lambda: f.read(1024 * 1024), b&quot;&quot;):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             h.update(block)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     return h.hexdigest()</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> def contains_secret(path):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     tail = b&quot;&quot;</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     with path.open(&quot;rb&quot;) as f:</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         for block in iter(lambda: f.read(1024 * 1024), b&quot;&quot;):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             combined = tail + block</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             if SECRET.search(combined):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 return True</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             tail = combined[-4096:]</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     return False</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> </span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> def scan(root):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     root = Path(root).resolve()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     accepted, excluded = [], []</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     reasons = Counter()</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     last = time.monotonic()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     for top in sorted(ROOTS):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         base = root / top</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         if not base.is_dir():</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             continue</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         for directory, dirs, files in os.walk(base, followlinks=False):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             current = Path(directory)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             kept = []</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             for name in sorted(dirs):</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                 p = current / name</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 if p.is_symlink() or name.lower() in SKIP_DIRS:</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                     reasons[&quot;excluded_directory&quot;] += 1</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                 else:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                     kept.append(name)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             dirs[:] = kept</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             for name in sorted(files):</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 p = current / name</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 rel = p.relative_to(root).as_posix()</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                 reason = None</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 if p.is_symlink():</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                     reason = &quot;symlink&quot;</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                 elif p.suffix.lower() not in SUFFIXES:</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                     reason = &quot;not_observation_or_metadata&quot;</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                 elif name.startswith(&quot;.&quot;) or any(v in name.lower() for v in (</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                         &quot;credential&quot;, &quot;private_key&quot;, &quot;id_rsa&quot;, &quot;id_ed25519&quot;, &quot;.env&quot;)):</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                     reason = &quot;credential_filename&quot;</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                 elif p.suffix.lower() in TEXT and contains_secret(p):</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                     reason = &quot;possible_credential_content&quot;</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                 if reason:</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                     reasons[reason] += 1</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                     excluded.append({&quot;path&quot;: rel, &quot;reason&quot;: reason})</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>                     continue</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                 info = p.stat()</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                 accepted.append({&quot;path&quot;: rel, &quot;size&quot;: info.st_size, &quot;mtime_ns&quot;: info.st_mtime_ns})</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             if time.monotonic() - last &gt; 20:</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                 print(&quot;Scanned eligible files:&quot;, len(accepted), flush=True)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                 last = time.monotonic()</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     return sorted(accepted, key=lambda r: r[&quot;path&quot;]), excluded, dict(reasons)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> </span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a> </span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a> def prepare(root, output, target):</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     output.mkdir(parents=True, exist_ok=True)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     plan_path = output / &quot;plan.json&quot;</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     if plan_path.exists():</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         raise FileExistsError(&quot;Existing plan: use pack/upload to resume, or choose a new output&quot;)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     entries, excluded, reasons = scan(root)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>     if not entries:</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         raise ValueError(&quot;No eligible observations&quot;)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>     shards, group, size = [], [], 0</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     for entry in entries:</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         # Estimate tar header, PAX header, padded payload; bounded near target.</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         estimate = ((entry[&quot;size&quot;] + 511) // 512 + 4) * 512</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         if group and size + estimate &gt; target:</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             shards.append({&quot;name&quot;: &quot;data-%05d.tar&quot; % len(shards), &quot;entries&quot;: group})</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             group, size = [], 0</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         group.append(entry)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         size += estimate</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     if group:</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         shards.append({&quot;name&quot;: &quot;data-%05d.tar&quot; % len(shards), &quot;entries&quot;: group})</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     plan = {&quot;schema_version&quot;: 1, &quot;source_root&quot;: str(root.resolve()),</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>             &quot;file_count&quot;: len(entries), &quot;source_bytes&quot;: sum(e[&quot;size&quot;] for e in entries),</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             &quot;target_shard_bytes&quot;: target, &quot;excluded_counts&quot;: reasons, &quot;shards&quot;: shards}</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     write_json(plan_path, plan)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     write_json(output / &quot;exclusions.local.json&quot;, excluded)</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     public = output / &quot;public&quot;</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>     public.mkdir(exist_ok=True)</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     write_json(public / &quot;dataset_summary.json&quot;, {</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         k: v for k, v in plan.items() if k not in {&quot;source_root&quot;, &quot;shards&quot;}})</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     write_json(public / &quot;shard_plan.json&quot;, [</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         {&quot;name&quot;: s[&quot;name&quot;], &quot;file_count&quot;: len(s[&quot;entries&quot;]),</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>          &quot;source_bytes&quot;: sum(e[&quot;size&quot;] for e in s[&quot;entries&quot;])} for s in shards])</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     (public / &quot;README.md&quot;).write_text(&quot;&quot;&quot;---</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a> pretty_name: RMUA 2026 Legacy Simulation Observations</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a> language:</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a> - zh</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a> tags:</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a> - robotics</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a> - drone</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a> - simulation</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a> - stereo</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a> - lidar</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a> ---</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a> </span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> # RMUA 2026 legacy simulation observations</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a> </span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a> Historical development observations and telemetry from RMUA simulator experiments.</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a> This dataset contains successful and failed development runs. Directory names,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a> local gate ledgers and screenshots are not certified official competition results.</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a> Seeds and configurations are recorded where present in each run&#x27;s original metadata;</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a> missing values remain unknown. These historical runs are development data, not an</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a> independent held-out evaluation split. Do not randomly split adjacent video frames.</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a> </span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a> Images, NPZ point/trace arrays, telemetry, configurations and related records retain</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a> their original relative paths inside deterministic tar shards. This is a file archive,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a> not a claim of synchronized, calibrated or uniformly labeled training samples.</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a> Original source code is maintained separately in voicepeak/RMUA2026-demo on GitHub.</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a> Generated data and source references do not relicense any third-party materials.</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a> </span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a> ## Layout and integrity</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a> </span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a> - `data/data-NNNNN.tar`: observations with original relative paths.</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a> - `indices/data-NNNNN.tar.files.jsonl.gz`: each member&#x27;s path, size and SHA256.</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a> - `shard_plan.json`: complete planned set of shards.</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a> - `shards.json`: committed and checksum-verified shards; compare with the plan.</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a> - `dataset_summary.json`: selected data volume and exclusion counts.</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a> </span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a> Uploads are incremental. The dataset is complete only when `publication_status.json`</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a> reports `COMPLETE`; do not assume a newly created repository is a complete archive.</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a> Download selected shards from Hugging Face, verify their SHA256 from `shards.json`,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a> and extract into a new directory with `tar -xf data-NNNNN.tar -C &lt;destination&gt;`.</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a> No symlinks, absolute paths or parent-directory members are included.</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a> </span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a> Git repositories, repeated code snapshots, model weights, drivers, executable packages,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a> caches, credential filenames and text containing recognized credential patterns are</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a> excluded. Automated pattern scanning is not a guarantee of exhaustive detection.</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a> Raw local archives are retained; publishing never deletes source observations.</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a> &quot;&quot;&quot;)</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>     write_json(public / &quot;publication_status.json&quot;, {&quot;state&quot;: &quot;PREPARED&quot;, &quot;shards_expected&quot;: len(shards)})</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>     print(json.dumps({k: v for k, v in plan.items() if k not in {&quot;source_root&quot;, &quot;shards&quot;}}), flush=True)</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>     print(&quot;Planned shards:&quot;, len(shards), flush=True)</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>     return plan</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a> </span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a> </span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a> class HashingReader:</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>     def __init__(self, source):</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>         self.source, self.digest = source, hashlib.sha256()</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a> </span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>     def read(self, size=-1):</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>         value = self.source.read(size)</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         self.digest.update(value)</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         return value</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a> </span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a> </span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a> def pack(plan, output, shard):</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>     staging = output / &quot;staging&quot;</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>     staging.mkdir(exist_ok=True)</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>     target = staging / shard[&quot;name&quot;]</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>     index = staging / (shard[&quot;name&quot;] + &quot;.files.jsonl.gz&quot;)</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>     receipt = staging / (shard[&quot;name&quot;] + &quot;.receipt.json&quot;)</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>     if target.exists() and index.exists() and receipt.exists():</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>         info = json.loads(receipt.read_text())</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>         if sha256(target) == info[&quot;sha256&quot;] and sha256(index) == info[&quot;index_sha256&quot;]:</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>             return target, index, info</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         raise ValueError(&quot;Existing staging shard does not match its receipt&quot;)</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>     required = sum(e[&quot;size&quot;] + 2048 for e in shard[&quot;entries&quot;])</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>     if shutil.disk_usage(output).free &lt; required + 1024 ** 3:</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>         raise RuntimeError(&quot;Insufficient free disk space for staging one shard&quot;)</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>     root = Path(plan[&quot;source_root&quot;])</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>     tmp = target.with_suffix(&quot;.tar.tmp&quot;)</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>     index_tmp = index.with_suffix(&quot;.gz.tmp&quot;)</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>     with tarfile.open(tmp, &quot;w&quot;, format=tarfile.PAX_FORMAT) as tar, \</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>             index_tmp.open(&quot;wb&quot;) as raw, gzip.GzipFile(filename=&quot;&quot;, mode=&quot;wb&quot;, fileobj=raw, mtime=0) as z:</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>         for entry in shard[&quot;entries&quot;]:</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>             rel = Path(entry[&quot;path&quot;])</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>             if rel.is_absolute() or &quot;..&quot; in rel.parts:</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>                 raise ValueError(&quot;Invalid archive member path&quot;)</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>             source = root / rel</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>             before = source.stat()</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>             if source.is_symlink() or (before.st_size, before.st_mtime_ns) != (entry[&quot;size&quot;], entry[&quot;mtime_ns&quot;]):</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>                 raise RuntimeError(&quot;Source changed since review: &quot; + str(rel))</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>             info = tarfile.TarInfo(entry[&quot;path&quot;])</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>             info.size, info.mode, info.mtime = entry[&quot;size&quot;], 0o644, 0</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>             with source.open(&quot;rb&quot;) as handle:</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>                 reader = HashingReader(handle)</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>                 tar.addfile(info, reader)</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>             after = source.stat()</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>             if (after.st_size, after.st_mtime_ns) != (before.st_size, before.st_mtime_ns):</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>                 raise RuntimeError(&quot;Source changed during packing: &quot; + str(rel))</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>             z.write((json.dumps({&quot;path&quot;: entry[&quot;path&quot;], &quot;size&quot;: entry[&quot;size&quot;],</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>                                 &quot;sha256&quot;: reader.digest.hexdigest()}) + &quot;\n&quot;).encode())</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>     tmp.replace(target)</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>     index_tmp.replace(index)</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>     result = {&quot;name&quot;: shard[&quot;name&quot;], &quot;size&quot;: target.stat().st_size,</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>               &quot;sha256&quot;: sha256(target), &quot;file_count&quot;: len(shard[&quot;entries&quot;]),</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>               &quot;index_size&quot;: index.stat().st_size,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>               &quot;index_sha256&quot;: sha256(index)}</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>     write_json(receipt, result)</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>     return target, index, result</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a> </span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a> </span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a> def verify_remote(api, repo_id, path, size, digest, revision=&quot;main&quot;):</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>     from huggingface_hub import hf_hub_url</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>     rows = api.get_paths_info(repo_id, [path], repo_type=&quot;dataset&quot;, revision=revision)</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>     if len(rows) != 1 or rows[0].size != size:</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         raise RuntimeError(&quot;Remote size mismatch: &quot; + path)</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>     lfs = rows[0].lfs</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>     if lfs is not None:</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>         if lfs.sha256 != digest:</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>             raise RuntimeError(&quot;Remote SHA256 mismatch: &quot; + path)</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>         return</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>     # Small files may be regular Git blobs. Read them back to verify their content.</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>     import urllib.request</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>     h = hashlib.sha256()</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>     url = hf_hub_url(repo_id, path, repo_type=&quot;dataset&quot;, revision=revision)</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>     with urllib.request.urlopen(url, timeout=60) as response:</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>         for block in iter(lambda: response.read(1024 * 1024), b&quot;&quot;):</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>             h.update(block)</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>     if h.hexdigest() != digest:</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>         raise RuntimeError(&quot;Remote content mismatch: &quot; + path)</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a> </span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a> </span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a> def publish(output, plan, repo_id):</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>     from huggingface_hub import CommitOperationAdd, HfApi, get_token</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>     if not get_token():</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         raise RuntimeError(&quot;Hugging Face login required; run hf auth login locally&quot;)</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>     api = HfApi()</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>     who = api.whoami()</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>     owner = repo_id.split(&quot;/&quot;)[0]</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>     if owner.lower() != who[&quot;name&quot;].lower():</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>         raise RuntimeError(&quot;Logged-in account does not match requested owner: &quot; + who[&quot;name&quot;])</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>     # Use authenticated canonical casing; never change another existing private repo.</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>     repo_id = who[&quot;name&quot;] + &quot;/&quot; + repo_id.split(&quot;/&quot;, 1)[1]</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>     api.create_repo(repo_id, repo_type=&quot;dataset&quot;, private=False, exist_ok=True)</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>     if api.repo_info(repo_id, repo_type=&quot;dataset&quot;).private:</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>         raise RuntimeError(&quot;Existing repository is private; refusing to change its visibility implicitly&quot;)</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>     public = output / &quot;public&quot;</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>     state_file = output / &quot;upload_state.local.json&quot;</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>     state = json.loads(state_file.read_text()) if state_file.exists() else {&quot;repo_id&quot;: repo_id, &quot;verified&quot;: {}}</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>     if state[&quot;repo_id&quot;] != repo_id:</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>         raise RuntimeError(&quot;Existing upload state belongs to another repository&quot;)</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>     write_json(public / &quot;shards.json&quot;, list(state[&quot;verified&quot;].values()))</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>     write_json(public / &quot;publication_status.json&quot;, {&quot;state&quot;: &quot;UPLOADING&quot;, &quot;shards_expected&quot;: len(plan[&quot;shards&quot;])})</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>     api.upload_folder(repo_id=repo_id, repo_type=&quot;dataset&quot;, folder_path=public,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>                       commit_message=&quot;Document public legacy simulation dataset and shard plan&quot;)</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>     for shard in plan[&quot;shards&quot;]:</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>         name = shard[&quot;name&quot;]</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>         if name in state[&quot;verified&quot;]:</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>             existing = state[&quot;verified&quot;][name]</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>             verify_remote(api, repo_id, &quot;data/&quot; + name, existing[&quot;size&quot;], existing[&quot;sha256&quot;])</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>             verify_remote(api, repo_id, &quot;indices/&quot; + name + &quot;.files.jsonl.gz&quot;,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>                           existing[&quot;index_size&quot;], existing[&quot;index_sha256&quot;])</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>             print(&quot;Already verified:&quot;, name, flush=True)</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>             continue</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>         target, index, receipt = pack(plan, output, shard)</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>         commit = api.create_commit(repo_id, repo_type=&quot;dataset&quot;, operations=[</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>             CommitOperationAdd(path_in_repo=&quot;data/&quot; + name, path_or_fileobj=target),</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>             CommitOperationAdd(path_in_repo=&quot;indices/&quot; + index.name, path_or_fileobj=index),</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>         ], commit_message=&quot;Add observation shard &quot; + name)</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>         verify_remote(api, repo_id, &quot;data/&quot; + name, receipt[&quot;size&quot;], receipt[&quot;sha256&quot;], commit.oid)</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>         verify_remote(api, repo_id, &quot;indices/&quot; + index.name, index.stat().st_size, receipt[&quot;index_sha256&quot;], commit.oid)</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>         receipt[&quot;revision&quot;] = commit.oid</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>         state[&quot;verified&quot;][name] = receipt</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>         write_json(state_file, state)</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>         write_json(public / &quot;shards.json&quot;, list(state[&quot;verified&quot;].values()))</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>         api.upload_file(repo_id=repo_id, repo_type=&quot;dataset&quot;, path_or_fileobj=public / &quot;shards.json&quot;,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>                         path_in_repo=&quot;shards.json&quot;, commit_message=&quot;Record verified shard &quot; + name)</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>         # Only disposable staging copies are removed. Original archived data is untouched.</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>         target.unlink()</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>         index.unlink()</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>         print(&quot;Verified remote shard:&quot;, name, flush=True)</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>     api.upload_file(repo_id=repo_id, repo_type=&quot;dataset&quot;, path_or_fileobj=public / &quot;shards.json&quot;,</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>                     path_in_repo=&quot;shards.json&quot;, commit_message=&quot;Finalize verified shard index&quot;)</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>     write_json(public / &quot;publication_status.json&quot;, {&quot;state&quot;: &quot;COMPLETE&quot;, &quot;shards_expected&quot;: len(plan[&quot;shards&quot;]),</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>                                                    &quot;shards_verified&quot;: len(state[&quot;verified&quot;])})</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>     api.upload_file(repo_id=repo_id, repo_type=&quot;dataset&quot;, path_or_fileobj=public / &quot;publication_status.json&quot;,</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>                     path_in_repo=&quot;publication_status.json&quot;, commit_message=&quot;Complete verified archive publication&quot;)</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>     print(&quot;Published:&quot;, &quot;https://huggingface.co/datasets/&quot; + repo_id, flush=True)</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a> </span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a> </span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a> def main():</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>     parser.add_argument(&quot;action&quot;, choices=(&quot;prepare&quot;, &quot;pack&quot;, &quot;upload&quot;))</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>     parser.add_argument(&quot;--source&quot;, type=Path, default=Path(&quot;/home/tianbot/RUMA-legacy-archive-20261019&quot;))</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>     parser.add_argument(&quot;--output&quot;, type=Path, default=Path(&quot;/home/tianbot/RUMA-hf-public-20261019&quot;))</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>     parser.add_argument(&quot;--shard-gib&quot;, type=float, default=1.0)</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>     parser.add_argument(&quot;--shard-index&quot;, type=int, default=0)</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>     parser.add_argument(&quot;--repo-id&quot;, default=&quot;Vociepeak/rmua2026-legacy-data&quot;)</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>     args = parser.parse_args()</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>     if not 0 &lt; args.shard_gib &lt;= 4:</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         parser.error(&quot;shard-gib must be in (0, 4]&quot;)</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>     if args.action == &quot;prepare&quot;:</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         prepare(args.source, args.output, int(args.shard_gib * 1024 ** 3))</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>     else:</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         plan = json.loads((args.output / &quot;plan.json&quot;).read_text())</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>         if args.action == &quot;pack&quot;:</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>             _, _, receipt = pack(plan, args.output, plan[&quot;shards&quot;][args.shard_index])</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>             print(json.dumps(receipt, indent=2))</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>         else:</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>             publish(args.output, plan, args.repo_id)</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a> </span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a> </span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>     main()</span></pre></body></html>

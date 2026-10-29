@@ -1,0 +1,199 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_visual_gyro_consistency.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_visual_gyro_consistency.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;source&quot;: &quot;runs/20261020T082058Z_e20f9b9fcb094e0bb6463b65555c7871&quot;,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;estimate_sha256&quot;: &quot;11eae81f2083c176785beb988a1d6d5dea9c24c4d03fb28a9913707cb806f2fa&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;imu_telemetry_sha256&quot;: &quot;423ae1d9137975d7f82890cb1de650b1fdfbc7c120b98a01a36c282c15784aa6&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;input_role&quot;: &quot;official image VO and recorded official IMU angular velocity only&quot;,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;gyro_bias_correction&quot;: &quot;none&quot;,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;truth_accessed&quot;: false,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;status_counts&quot;: {</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     &quot;REJECTED&quot;: 2,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     &quot;COMPARED&quot;: 24</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>   },</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>   &quot;results&quot;: [</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     {</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>       &quot;previous_stamp&quot;: 1792484469.0502892,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>       &quot;current_stamp&quot;: 1792484469.5032988,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>       &quot;status&quot;: &quot;REJECTED&quot;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>       &quot;reason&quot;: &quot;gyro interval not bracketed&quot;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     },</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     {</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>       &quot;previous_stamp&quot;: 1792484469.9953094,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>       &quot;current_stamp&quot;: 1792484470.49332,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       &quot;status&quot;: &quot;REJECTED&quot;,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>       &quot;reason&quot;: &quot;gyro interval not bracketed&quot;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     },</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     {</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>       &quot;previous_stamp&quot;: 1792484470.49332,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>       &quot;current_stamp&quot;: 1792484470.9493296,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>       &quot;rotation_residual_rad&quot;: 0.0008718501821125081</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     },</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     {</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>       &quot;previous_stamp&quot;: 1792484470.9493296,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>       &quot;current_stamp&quot;: 1792484471.4413402,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>       &quot;rotation_residual_rad&quot;: 0.0024758677189117033</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     },</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     {</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>       &quot;previous_stamp&quot;: 1792484471.4413402,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>       &quot;current_stamp&quot;: 1792484471.9183502,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>       &quot;rotation_residual_rad&quot;: 0.0018490159848054378</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     },</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     {</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>       &quot;previous_stamp&quot;: 1792484471.9183502,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>       &quot;current_stamp&quot;: 1792484472.37136,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>       &quot;rotation_residual_rad&quot;: 0.0017888955392018724</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     },</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     {</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>       &quot;previous_stamp&quot;: 1792484472.37136,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>       &quot;current_stamp&quot;: 1792484472.83337,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>       &quot;rotation_residual_rad&quot;: 0.0009314726559025648</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     },</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     {</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>       &quot;previous_stamp&quot;: 1792484472.83337,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>       &quot;current_stamp&quot;: 1792484473.3223803,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>       &quot;rotation_residual_rad&quot;: 0.001296444875717553</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     },</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     {</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>       &quot;previous_stamp&quot;: 1792484473.3223803,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>       &quot;current_stamp&quot;: 1792484473.77539,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>       &quot;rotation_residual_rad&quot;: 0.0004689586643895476</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     },</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     {</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>       &quot;previous_stamp&quot;: 1792484473.77539,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>       &quot;current_stamp&quot;: 1792484474.2734005,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>       &quot;rotation_residual_rad&quot;: 0.0008058650509778274</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     },</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     {</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>       &quot;previous_stamp&quot;: 1792484474.2734005,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>       &quot;current_stamp&quot;: 1792484474.762411,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>       &quot;rotation_residual_rad&quot;: 0.0008603913731655575</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     },</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     {</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>       &quot;previous_stamp&quot;: 1792484474.762411,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>       &quot;current_stamp&quot;: 1792484475.230421,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>       &quot;rotation_residual_rad&quot;: 0.0013785791957694063</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     },</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     {</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>       &quot;previous_stamp&quot;: 1792484475.230421,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>       &quot;current_stamp&quot;: 1792484475.707431,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>       &quot;rotation_residual_rad&quot;: 0.0008578890061282497</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     },</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     {</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>       &quot;previous_stamp&quot;: 1792484475.707431,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>       &quot;current_stamp&quot;: 1792484476.2024417,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>       &quot;rotation_residual_rad&quot;: 0.0005023848675084742</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     },</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     {</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>       &quot;previous_stamp&quot;: 1792484476.2024417,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>       &quot;current_stamp&quot;: 1792484476.6974523,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>       &quot;rotation_residual_rad&quot;: 0.001789144366024034</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>     },</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     {</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>       &quot;previous_stamp&quot;: 1792484476.6974523,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>       &quot;current_stamp&quot;: 1792484477.201463,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>       &quot;rotation_residual_rad&quot;: 0.0020859410822626785</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     },</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     {</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;previous_stamp&quot;: 1792484477.201463,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>       &quot;current_stamp&quot;: 1792484477.669473,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>       &quot;rotation_residual_rad&quot;: 0.0013252553085868844</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     },</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     {</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>       &quot;previous_stamp&quot;: 1792484477.669473,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>       &quot;current_stamp&quot;: 1792484478.1254828,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>       &quot;rotation_residual_rad&quot;: 0.002804342975682892</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     },</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     {</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>       &quot;previous_stamp&quot;: 1792484478.1254828,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>       &quot;current_stamp&quot;: 1792484478.608493,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>       &quot;rotation_residual_rad&quot;: 0.000850092719623105</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>     },</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     {</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>       &quot;previous_stamp&quot;: 1792484478.608493,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>       &quot;current_stamp&quot;: 1792484479.082503,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>       &quot;rotation_residual_rad&quot;: 0.00028486771046899154</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>     },</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>     {</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>       &quot;previous_stamp&quot;: 1792484479.082503,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>       &quot;current_stamp&quot;: 1792484479.5505133,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>       &quot;rotation_residual_rad&quot;: 0.0005659748021397178</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>     },</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>     {</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>       &quot;previous_stamp&quot;: 1792484479.5505133,</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>       &quot;current_stamp&quot;: 1792484480.015523,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>       &quot;rotation_residual_rad&quot;: 0.001374590528052325</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     },</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>     {</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>       &quot;previous_stamp&quot;: 1792484480.015523,</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>       &quot;current_stamp&quot;: 1792484480.4865332,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>       &quot;rotation_residual_rad&quot;: 0.0003819337918266721</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>     },</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>     {</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>       &quot;previous_stamp&quot;: 1792484480.4865332,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>       &quot;current_stamp&quot;: 1792484480.9455428,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>       &quot;rotation_residual_rad&quot;: 0.0007056012256584088</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>     },</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>     {</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>       &quot;previous_stamp&quot;: 1792484480.9455428,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>       &quot;current_stamp&quot;: 1792484481.4465537,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>       &quot;rotation_residual_rad&quot;: 0.0008884070051589715</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>     },</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>     {</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>       &quot;previous_stamp&quot;: 1792484481.4465537,</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>       &quot;current_stamp&quot;: 1792484481.9115636,</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>       &quot;epoch&quot;: 0,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>       &quot;status&quot;: &quot;COMPARED&quot;,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>       &quot;rotation_residual_rad&quot;: 0.000735501738543172</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>     }</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>   ],</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>   &quot;iteration&quot;: 62,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>   &quot;limitations&quot;: &quot;Offline low-speed data, controller-sampled raw IMU and uncorrected gyro bias; no calibrated residual threshold, fusion, control or acceptance.&quot;</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a> }</span></pre></body></html>

@@ -1,0 +1,502 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p3_static_local_planner.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p3_static_local_planner.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 42,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-24&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P3_STATIC_LOCAL_CANDIDATE_SOFTWARE_REPLAY&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;control_published&quot;: false,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;run&quot;: &quot;runs/20261024T071035Z_e01a6e2e7eaf4d6e9147f804c5bdf662&quot;,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>   &quot;run_state&quot;: &quot;COMPUTED&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>   &quot;source_archive&quot;: {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     &quot;sha256&quot;: &quot;eba91785f5e808fc2dc656a2468192644a80ed86b6136ab2f1fc77ed42134441&quot;,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;files&quot;: 322,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     &quot;uncompressed_bytes&quot;: 1958215,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   },</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>   &quot;source_unchanged_during_replay&quot;: true,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>   &quot;archive_files_independently_verified&quot;: 322,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>   &quot;previous_replay&quot;: {</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     &quot;run&quot;: &quot;runs/20261024T070833Z_cfceff215037426c8a7d0e1772e3f8b1&quot;,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     &quot;source_archive&quot;: {</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>       &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       &quot;sha256&quot;: &quot;dd2cb9541d4897991ddeb254cbd50bc3c6f073a401d9fac7abf2e35df99e5ef8&quot;,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       &quot;files&quot;: 322,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>       &quot;uncompressed_bytes&quot;: 1957830,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>       &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     },</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     &quot;archive_files_independently_verified&quot;: 322,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &quot;same_model_outputs_as_final&quot;: true</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>   },</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>   &quot;replay&quot;: {</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     &quot;role&quot;: &quot;synthetic_static_local_planner_replay&quot;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     &quot;python&quot;: &quot;3.8.10&quot;,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     &quot;cases&quot;: [</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>       {</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         &quot;case&quot;: &quot;clear_direct&quot;,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         &quot;reason&quot;: &quot;STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &quot;pieces&quot;: 1,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &quot;elapsed_s&quot;: 0.024157393956556916,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         &quot;checks&quot;: [</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           {</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &quot;speed_bound_m_s&quot;: 1.875000000001875,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &quot;acceleration_bound_m_s2&quot;: 2.9687500000029687,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>           },</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>           {</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             &quot;speed_bound_m_s&quot;: 0.937500000001,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             &quot;acceleration_bound_m_s2&quot;: 0.742187500001,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             &quot;voxel_tests&quot;: 352</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>           },</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>           {</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>           },</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>           {</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             &quot;voxel_tests&quot;: 760</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>           },</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>           {</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           },</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>           {</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             &quot;voxel_tests&quot;: 760</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           },</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           {</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           },</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           {</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             &quot;voxel_tests&quot;: 752</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>           },</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>           {</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>           },</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>           {</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             &quot;voxel_tests&quot;: 752</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>           }</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         ],</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         &quot;lease&quot;: {</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>           &quot;stamp&quot;: 10.0,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>           &quot;valid_until&quot;: 10.08,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>           &quot;source&quot;: &quot;static_local_quintic&quot;,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>           &quot;frame_id&quot;: &quot;world_ned&quot;,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>           &quot;covariance_or_bounds&quot;: []</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         },</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;full_reference_end&quot;: 14.0,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         &quot;waypoints&quot;: [</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>           [</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>             2.5,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             0.5,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             0.5</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>           ]</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         ],</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;dense_spotcheck_points&quot;: 201</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>       },</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>       {</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         &quot;case&quot;: &quot;wall_detour&quot;,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &quot;reason&quot;: &quot;STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;pieces&quot;: 2,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &quot;elapsed_s&quot;: 0.01968802511692047,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &quot;checks&quot;: [</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>           {</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>             &quot;speed_bound_m_s&quot;: 1.875000000001875,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>             &quot;acceleration_bound_m_s2&quot;: 2.9687500000029687,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           },</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           {</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>             &quot;reason&quot;: &quot;OCCUPIED_SPACE&quot;,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>             &quot;speed_bound_m_s&quot;: 0.937500000001,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>             &quot;acceleration_bound_m_s2&quot;: 0.742187500001,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>             &quot;voxel_tests&quot;: 108</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           },</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           {</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>           },</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>           {</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>             &quot;reason&quot;: &quot;OCCUPIED_SPACE&quot;,</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>             &quot;voxel_tests&quot;: 152</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>           },</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>           {</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>           },</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>           {</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>             &quot;reason&quot;: &quot;OCCUPIED_SPACE&quot;,</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>             &quot;voxel_tests&quot;: 154</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>           },</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>           {</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>           },</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>           {</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>             &quot;voxel_tests&quot;: 752</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>           },</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>           {</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>           },</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>           {</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>             &quot;reason&quot;: &quot;CLEAR_STATIC_MODEL&quot;,</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>             &quot;voxel_tests&quot;: 752</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>           }</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>         ],</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>         &quot;lease&quot;: {</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>           &quot;stamp&quot;: 10.0,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>           &quot;valid_until&quot;: 10.08,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>           &quot;epoch&quot;: 0,</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>           &quot;source&quot;: &quot;static_local_quintic&quot;,</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>           &quot;frame_id&quot;: &quot;world_ned&quot;,</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>           &quot;covariance_or_bounds&quot;: []</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>         },</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>         &quot;full_reference_end&quot;: 18.0,</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>         &quot;waypoints&quot;: [</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>           [</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>             1.5,</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>             2.5,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>             0.5</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>           ],</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>           [</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>             2.5,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>             0.5,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>             0.5</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>           ]</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         ],</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;dense_spotcheck_points&quot;: 402</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>       },</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>       {</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>         &quot;case&quot;: &quot;unknown&quot;,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>         &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         &quot;pieces&quot;: 0,</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>         &quot;elapsed_s&quot;: 0.01515376497991383,</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         &quot;checks&quot;: [</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>           {</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>             &quot;speed_bound_m_s&quot;: 1.875000000001875,</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>             &quot;acceleration_bound_m_s2&quot;: 2.9687500000029687,</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>           },</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>           {</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>             &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>             &quot;speed_bound_m_s&quot;: 0.937500000001,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>             &quot;acceleration_bound_m_s2&quot;: 0.742187500001,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>             &quot;voxel_tests&quot;: 8</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>           },</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>           {</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>           },</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>           {</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>             &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>             &quot;voxel_tests&quot;: 8</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>           },</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>           {</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>             &quot;speed_bound_m_s&quot;: 1.3258252147261025,</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>             &quot;acceleration_bound_m_s2&quot;: 2.0992232566496623,</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>           },</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>           {</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>             &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>             &quot;speed_bound_m_s&quot;: 0.6629126073633883,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>             &quot;acceleration_bound_m_s2&quot;: 0.5248058141628907,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>             &quot;voxel_tests&quot;: 8</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>           },</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>           {</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>           },</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>           {</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>             &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>             &quot;voxel_tests&quot;: 8</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>           },</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>           {</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>             &quot;speed_bound_m_s&quot;: 2.0963137289081493,</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>             &quot;acceleration_bound_m_s2&quot;: 3.3191634041045694,</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>           },</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>           {</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>             &quot;reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>             &quot;speed_bound_m_s&quot;: 1.0481568644540746,</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>             &quot;acceleration_bound_m_s2&quot;: 0.8297908510263126,</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>             &quot;voxel_tests&quot;: 8</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>           }</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>         ]</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>       },</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>       {</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>         &quot;case&quot;: &quot;map_expires_before_stop&quot;,</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>         &quot;pieces&quot;: 0,</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         &quot;elapsed_s&quot;: 2.2307969629764557e-05,</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>         &quot;checks&quot;: [</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>           {</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>           },</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>           {</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>           },</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>           {</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>           },</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>           {</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>             &quot;offset_m&quot;: 1.0,</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>           },</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>           {</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>           },</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>           {</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>             &quot;offset_m&quot;: -1.0,</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>           },</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>           {</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>           },</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>           {</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>             &quot;offset_m&quot;: 2.0,</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>           },</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>           {</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>           },</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>           {</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>             &quot;offset_m&quot;: -2.0,</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>             &quot;segment_duration_s&quot;: 4.0,</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>             &quot;reason&quot;: &quot;MAP_STOP_HORIZON&quot;,</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>             &quot;speed_bound_m_s&quot;: 0.0,</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>             &quot;acceleration_bound_m_s2&quot;: 0.0,</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>           }</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>         ]</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>       },</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>       {</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>         &quot;case&quot;: &quot;stale_state&quot;,</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>         &quot;reason&quot;: &quot;STATE_UNAVAILABLE&quot;,</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a>         &quot;pieces&quot;: 0,</span>
+<span class="line" id="L431"><a class="ln" href="#L431">  431</a>         &quot;elapsed_s&quot;: 3.159046173095703e-06,</span>
+<span class="line" id="L432"><a class="ln" href="#L432">  432</a>         &quot;checks&quot;: []</span>
+<span class="line" id="L433"><a class="ln" href="#L433">  433</a>       },</span>
+<span class="line" id="L434"><a class="ln" href="#L434">  434</a>       {</span>
+<span class="line" id="L435"><a class="ln" href="#L435">  435</a>         &quot;case&quot;: &quot;attempt_budget&quot;,</span>
+<span class="line" id="L436"><a class="ln" href="#L436">  436</a>         &quot;reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L437"><a class="ln" href="#L437">  437</a>         &quot;pieces&quot;: 0,</span>
+<span class="line" id="L438"><a class="ln" href="#L438">  438</a>         &quot;elapsed_s&quot;: 0.0005882210098206997,</span>
+<span class="line" id="L439"><a class="ln" href="#L439">  439</a>         &quot;checks&quot;: [</span>
+<span class="line" id="L440"><a class="ln" href="#L440">  440</a>           {</span>
+<span class="line" id="L441"><a class="ln" href="#L441">  441</a>             &quot;offset_m&quot;: 0.0,</span>
+<span class="line" id="L442"><a class="ln" href="#L442">  442</a>             &quot;segment_duration_s&quot;: 2.0,</span>
+<span class="line" id="L443"><a class="ln" href="#L443">  443</a>             &quot;reason&quot;: &quot;KINEMATIC_LIMIT&quot;,</span>
+<span class="line" id="L444"><a class="ln" href="#L444">  444</a>             &quot;speed_bound_m_s&quot;: 1.875000000001875,</span>
+<span class="line" id="L445"><a class="ln" href="#L445">  445</a>             &quot;acceleration_bound_m_s2&quot;: 2.9687500000029687,</span>
+<span class="line" id="L446"><a class="ln" href="#L446">  446</a>             &quot;voxel_tests&quot;: 0</span>
+<span class="line" id="L447"><a class="ln" href="#L447">  447</a>           }</span>
+<span class="line" id="L448"><a class="ln" href="#L448">  448</a>         ]</span>
+<span class="line" id="L449"><a class="ln" href="#L449">  449</a>       }</span>
+<span class="line" id="L450"><a class="ln" href="#L450">  450</a>     ],</span>
+<span class="line" id="L451"><a class="ln" href="#L451">  451</a>     &quot;repeated_wall_case&quot;: {</span>
+<span class="line" id="L452"><a class="ln" href="#L452">  452</a>       &quot;count&quot;: 10,</span>
+<span class="line" id="L453"><a class="ln" href="#L453">  453</a>       &quot;median_s&quot;: 0.019280239939689636,</span>
+<span class="line" id="L454"><a class="ln" href="#L454">  454</a>       &quot;max_s&quot;: 0.02007079287432134</span>
+<span class="line" id="L455"><a class="ln" href="#L455">  455</a>     },</span>
+<span class="line" id="L456"><a class="ln" href="#L456">  456</a>     &quot;script_sha256&quot;: &quot;887d6a399e9f85c7d61b8960f32f41ec99405f97056876c8864a4ce110c61112&quot;,</span>
+<span class="line" id="L457"><a class="ln" href="#L457">  457</a>     &quot;control_published&quot;: false,</span>
+<span class="line" id="L458"><a class="ln" href="#L458">  458</a>     &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L459"><a class="ln" href="#L459">  459</a>     &quot;actual_vehicle_map_braking_or_control_validated&quot;: false,</span>
+<span class="line" id="L460"><a class="ln" href="#L460">  460</a>     &quot;dense_spotchecks_are_not_the_continuous_proof&quot;: true</span>
+<span class="line" id="L461"><a class="ln" href="#L461">  461</a>   },</span>
+<span class="line" id="L462"><a class="ln" href="#L462">  462</a>   &quot;selected_trajectories_sha256&quot;: &quot;6e82e044b69d5e18ea23bce322da0284ebb3f02ba3f18b7228f7e9d1f8dc2338&quot;,</span>
+<span class="line" id="L463"><a class="ln" href="#L463">  463</a>   &quot;replay_script_sha256&quot;: &quot;887d6a399e9f85c7d61b8960f32f41ec99405f97056876c8864a4ce110c61112&quot;,</span>
+<span class="line" id="L464"><a class="ln" href="#L464">  464</a>   &quot;tests&quot;: {</span>
+<span class="line" id="L465"><a class="ln" href="#L465">  465</a>     &quot;host_passed&quot;: 177,</span>
+<span class="line" id="L466"><a class="ln" href="#L466">  466</a>     &quot;noetic_passed&quot;: 174,</span>
+<span class="line" id="L467"><a class="ln" href="#L467">  467</a>     &quot;noetic_skipped&quot;: 3,</span>
+<span class="line" id="L468"><a class="ln" href="#L468">  468</a>     &quot;new_tests&quot;: 15,</span>
+<span class="line" id="L469"><a class="ln" href="#L469">  469</a>     &quot;logs&quot;: {</span>
+<span class="line" id="L470"><a class="ln" href="#L470">  470</a>       &quot;runs/ffs_runtime/iteration42_host_verified_tests.log&quot;: &quot;24894adcd3156586e79686b2a4539d1b177d7f2b45026364fb0e201b031bc59f&quot;,</span>
+<span class="line" id="L471"><a class="ln" href="#L471">  471</a>       &quot;runs/ffs_runtime/iteration42_noetic_verified_tests.log&quot;: &quot;9c9fad51837958686c4b8c02ebd6700610ade97ee44f141ec05cf29a4e834ebe&quot;</span>
+<span class="line" id="L472"><a class="ln" href="#L472">  472</a>     }</span>
+<span class="line" id="L473"><a class="ln" href="#L473">  473</a>   },</span>
+<span class="line" id="L474"><a class="ln" href="#L474">  474</a>   &quot;official_baseline_verification_reused_from_today&quot;: {</span>
+<span class="line" id="L475"><a class="ln" href="#L475">  475</a>     &quot;path&quot;: &quot;runs/ffs_runtime/iteration40_official_verification.json&quot;,</span>
+<span class="line" id="L476"><a class="ln" href="#L476">  476</a>     &quot;sha256&quot;: &quot;8ec267ab0020bb2b4932a467b76dc5c873ed95c11de1581270e1a1a5ddbfd474&quot;,</span>
+<span class="line" id="L477"><a class="ln" href="#L477">  477</a>     &quot;design_sections_re_read&quot;: [</span>
+<span class="line" id="L478"><a class="ln" href="#L478">  478</a>       &quot;11.1&quot;,</span>
+<span class="line" id="L479"><a class="ln" href="#L479">  479</a>       &quot;11.2&quot;,</span>
+<span class="line" id="L480"><a class="ln" href="#L480">  480</a>       &quot;11.3&quot;</span>
+<span class="line" id="L481"><a class="ln" href="#L481">  481</a>     ]</span>
+<span class="line" id="L482"><a class="ln" href="#L482">  482</a>   },</span>
+<span class="line" id="L483"><a class="ln" href="#L483">  483</a>   &quot;final_changes_since_replay&quot;: {</span>
+<span class="line" id="L484"><a class="ln" href="#L484">  484</a>     &quot;modified&quot;: [</span>
+<span class="line" id="L485"><a class="ln" href="#L485">  485</a>       &quot;README.md&quot;,</span>
+<span class="line" id="L486"><a class="ln" href="#L486">  486</a>       &quot;docs/implementation_status.md&quot;</span>
+<span class="line" id="L487"><a class="ln" href="#L487">  487</a>     ],</span>
+<span class="line" id="L488"><a class="ln" href="#L488">  488</a>     &quot;new&quot;: [</span>
+<span class="line" id="L489"><a class="ln" href="#L489">  489</a>       &quot;docs/static_local_planner.md&quot;,</span>
+<span class="line" id="L490"><a class="ln" href="#L490">  490</a>       &quot;docs/evidence/p3_static_local_planner.json&quot;</span>
+<span class="line" id="L491"><a class="ln" href="#L491">  491</a>     ],</span>
+<span class="line" id="L492"><a class="ln" href="#L492">  492</a>     &quot;executable_code_unchanged&quot;: true</span>
+<span class="line" id="L493"><a class="ln" href="#L493">  493</a>   },</span>
+<span class="line" id="L494"><a class="ln" href="#L494">  494</a>   &quot;limits&quot;: [</span>
+<span class="line" id="L495"><a class="ln" href="#L495">  495</a>     &quot;All FREE and vehicle dimensions in replay are synthetic; no real map or envelope validated.&quot;,</span>
+<span class="line" id="L496"><a class="ln" href="#L496">  496</a>     &quot;Reference endpoint stopping is kinematic, not evidence of actual braking or control authority.&quot;,</span>
+<span class="line" id="L497"><a class="ln" href="#L497">  497</a>     &quot;No dynamic obstacles, road/forcefield, runtime wall-clock freshness or independent actuator acceptance covered.&quot;,</span>
+<span class="line" id="L498"><a class="ln" href="#L498">  498</a>     &quot;Finite candidate family is not a complete global path search.&quot;,</span>
+<span class="line" id="L499"><a class="ln" href="#L499">  499</a>     &quot;Isolated small-map latency is not a system real-time guarantee.&quot;,</span>
+<span class="line" id="L500"><a class="ln" href="#L500">  500</a>     &quot;P1/P2 and actual online gate traversal remain unaccepted.&quot;</span>
+<span class="line" id="L501"><a class="ln" href="#L501">  501</a>   ]</span>
+<span class="line" id="L502"><a class="ln" href="#L502">  502</a> }</span></pre></body></html>

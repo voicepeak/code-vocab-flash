@@ -1,0 +1,59 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/visual_odometry/trajectory.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/visual_odometry/trajectory.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Accumulate contiguous relative VO into a local, non-control trajectory.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numpy as np</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> @dataclass(frozen=True)</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> class LocalVisualPose:</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     stamp: float</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     epoch: int</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     position_initial_body_m: tuple</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     rotation_initial_from_body: tuple</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     steps: int</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     covariance_calibrated: bool = field(default=False, init=False)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> class VisualTrajectory:</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     &quot;&quot;&quot;A missing relative step ends the chain; no implicit relocalization.&quot;&quot;&quot;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     def __init__(self, stamp, epoch, max_step_s=1.):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         if (not math.isfinite(stamp) or stamp &lt; 0 or isinstance(epoch, bool) or not isinstance(epoch, int)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                 or epoch &lt; 0 or not math.isfinite(max_step_s) or not 0 &lt; max_step_s &lt;= 2):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             raise ValueError(&#x27;invalid visual anchor&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.stamp, self.epoch, self.max_step_s = stamp, epoch, max_step_s</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.position = np.zeros(3); self.rotation = np.eye(3); self.steps = 0; self.broken = False</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     def invalidate(self):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.broken = True</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def append(self, motion):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         if self.broken:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             raise ValueError(&#x27;visual chain already broken&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         try:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             p = np.asarray(motion.translation_previous_body_m, dtype=float)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             r = np.asarray(motion.rotation_previous_from_current_body, dtype=float)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             valid = (motion.epoch == self.epoch and math.isfinite(motion.previous_stamp)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                      and math.isfinite(motion.current_stamp) and abs(motion.previous_stamp-self.stamp) &lt;= 1e-6</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                      and 0 &lt; motion.current_stamp - motion.previous_stamp &lt;= self.max_step_s</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                      and p.shape == (3,) and r.shape == (3,3)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                      and np.isfinite(p).all() and np.isfinite(r).all()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                      and np.allclose(r.T @ r, np.eye(3), rtol=0, atol=1e-5)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                      and abs(np.linalg.det(r)-1.) &lt;= 1e-5)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         except (TypeError, ValueError, AttributeError):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             valid = False</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         if not valid:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             self.broken = True</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             raise ValueError(&#x27;invalid or discontinuous relative motion&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         position = self.position + self.rotation @ p</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         orientation = self.rotation @ r</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         if not np.isfinite(position).all() or not np.isfinite(orientation).all():</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             self.broken = True</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             raise ValueError(&#x27;visual trajectory numerical range&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.position, self.rotation = position, orientation</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         self.stamp = motion.current_stamp; self.steps += 1</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         return self.snapshot()</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     def snapshot(self):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         return LocalVisualPose(self.stamp, self.epoch, tuple(self.position),</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                                tuple(tuple(float(v) for v in row) for row in self.rotation), self.steps)</span></pre></body></html>

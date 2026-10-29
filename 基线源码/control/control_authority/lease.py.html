@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/control_authority/lease.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/control_authority/lease.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Cooperative process lock; ROS graph checks still detect non-cooperating nodes.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import fcntl</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> class ControlLease:</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     def __init__(self, scene_id, mode, directory=Path(&#x27;/tmp/rmua_next_control&#x27;)):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>         if mode not in (&#x27;PWM&#x27;, &#x27;VEL&#x27;) or not scene_id:</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>             raise ValueError(&#x27;scene id and mode required&#x27;)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         self.directory = Path(directory)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         self.scene_id, self.mode = scene_id, mode</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         self.handle = None</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     def __enter__(self):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         self.directory.mkdir(parents=True, exist_ok=True)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         handle = (self.directory/&#x27;publisher.lock&#x27;).open(&#x27;a+&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         try:</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             path = self.directory/&#x27;mode.json&#x27;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>             if path.exists():</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                 previous = json.loads(path.read_text())</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                 if previous[&#x27;scene_id&#x27;] == self.scene_id and previous[&#x27;mode&#x27;] != self.mode:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                     raise RuntimeError(&#x27;control mode already locked for this ROS scene&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             temporary = self.directory/&#x27;mode.tmp&#x27;</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             temporary.write_text(json.dumps({&#x27;scene_id&#x27;: self.scene_id, &#x27;mode&#x27;: self.mode}))</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             temporary.replace(path)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         except BaseException:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             handle.close()</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             raise</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.handle = handle</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         return self</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     def __exit__(self, *_):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         self.handle.close()</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         self.handle = None</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> def check_graph(publishers, node_name, mode=&#x27;PWM&#x27;, require_self=True):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     topics = {&#x27;PWM&#x27;: &#x27;/airsim_node/drone_1/rotor_pwm_cmd&#x27;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>               &#x27;VEL&#x27;: &#x27;/airsim_node/drone_1/vel_body_cmd&#x27;}</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     for name, topic in topics.items():</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         nodes = set(publishers.get(topic, ()))</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         expected = {node_name} if name == mode and require_self else set()</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         if nodes != expected:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             raise RuntimeError(&#x27;control publisher conflict: &#x27;+topic+&#x27; &#x27;+str(sorted(nodes)))</span></pre></body></html>

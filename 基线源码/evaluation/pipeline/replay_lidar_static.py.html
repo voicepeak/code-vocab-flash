@@ -1,0 +1,66 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/replay_lidar_static.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/replay_lidar_static.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Replay recorded joint sensor capture through the read-only static probe.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from adapters.ros_noetic.capture_io import load_message</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from estimation.history import PoseHistory</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from evaluation.metrics.pose_history import state_from_json</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from evaluation.pipeline.lidar_static import LidarStaticProbe</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from interfaces.contracts import TrajectorySample</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from planning.spacetime_local.static_candidates import LocalPlannerLimits</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from planning.trajectory_validator.static_sweep import SweepBounds</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> def replay(source, settings):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     source = Path(source)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     rig = load_nominal_rig(settings)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     manifest = json.loads((source / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     if manifest[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;] != rig.settings_sha256:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         raise ValueError(&#x27;settings do not match recorded capture&#x27;)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     summary = json.loads((source / &#x27;joint_summary.json&#x27;).read_text())</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     states = [json.loads(line) for line in (source / &#x27;joint_states.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     history = PoseHistory()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     limits = LocalPlannerLimits(SweepBounds((.1, .1, .1), .02, 2.), 1.,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>                                 segment_durations_s=(.05,), lateral_offsets_m=())</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     probe = LidarStaticProbe(history, rig.lidar_pose, limits)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     index, rows = 0, []</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     for capture in summary[&#x27;captures&#x27;]:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         directory = source / capture[&#x27;directory&#x27;]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         packet = json.loads((directory / &#x27;packet.json&#x27;).read_text())</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         now, wall = packet[&#x27;query_now&#x27;], packet[&#x27;query_wall&#x27;]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         while index &lt; len(states) and states[index][&#x27;arrival_wall_monotonic&#x27;] &lt;= wall:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             record = states[index]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             state = state_from_json(record[&#x27;state&#x27;])</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             if state.metadata.stamp &gt; now:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 break</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             history.append(state, record[&#x27;arrival_wall_monotonic&#x27;])</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             index += 1</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         sources = history.snapshot_sources()</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         if not sources:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             rows.append({&#x27;capture&#x27;: capture[&#x27;directory&#x27;], &#x27;reason&#x27;: &#x27;NO_SOURCE_STATE&#x27;})</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             continue</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         state = sources[-1][0]</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         cloud = decode_xyz(load_message(directory / &#x27;lidar.json&#x27;), packet[&#x27;epoch&#x27;])</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         ref = TrajectorySample(now, state.position_ned, state.velocity_ned, (0., 0., 0.), 0.)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         goal = tuple(a + b for a, b in zip(state.position_ned, (.0001, 0., 0.)))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         result = probe.evaluate(cloud, state, ref, goal, now, wall, packet[&#x27;epoch&#x27;])</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         rows.append({&#x27;capture&#x27;: capture[&#x27;directory&#x27;], &#x27;scan_stamp&#x27;: cloud.metadata.stamp,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                      &#x27;query_now&#x27;: now, &#x27;result&#x27;: asdict(result)})</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     return {&#x27;source&#x27;: str(source), &#x27;role&#x27;: &#x27;read_only_diagnostic&#x27;, &#x27;control_published&#x27;: False,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             &#x27;current_control_eligible&#x27;: False, &#x27;captures&#x27;: rows}</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> def main():</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     parser = argparse.ArgumentParser()</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     parser.add_argument(&#x27;source&#x27;)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     parser.add_argument(&#x27;--settings&#x27;, default=&#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     args = parser.parse_args()</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     print(json.dumps(replay(args.source, args.settings), indent=2, allow_nan=False))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> </span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> </span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     main()</span></pre></body></html>

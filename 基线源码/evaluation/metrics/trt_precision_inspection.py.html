@@ -1,0 +1,29 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/trt_precision_inspection.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/trt_precision_inspection.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Audit visible grid formats without mistaking a final Half-to-Float cast for preservation.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> def inspect_geometry_precision(inspector, constraints):</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>     samplers = [row for row in constraints if row[&#x27;type&#x27;] == &#x27;LayerType.GRID_SAMPLE&#x27;]</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     if not samplers:</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>         raise ValueError(&#x27;sampler constraints required&#x27;)</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     shapes = {tuple(row[&#x27;coordinate_shape&#x27;]) for row in samplers}</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     expected = {row[&#x27;name&#x27;] for row in samplers}</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     matched = set()</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     coordinates = []</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     for layer in inspector[&#x27;Layers&#x27;]:</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         metadata = layer.get(&#x27;Metadata&#x27;, &#x27;&#x27;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         names = {name for name in expected if &#x27;[ONNX Layer: &#x27; + name + &#x27;]&#x27; in metadata}</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         if not names:</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>             continue</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         matched.update(names)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         for side in (&#x27;Inputs&#x27;, &#x27;Outputs&#x27;):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             for tensor in layer.get(side, []):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>                 if tuple(tensor.get(&#x27;Dimensions&#x27;, ())) in shapes:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>                     coordinates.append({&#x27;engine_layer&#x27;: layer[&#x27;Name&#x27;], &#x27;side&#x27;: side,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                         &#x27;tensor&#x27;: tensor[&#x27;Name&#x27;], &#x27;format&#x27;: tensor.get(&#x27;Format/Datatype&#x27;),</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                         &#x27;sampler_metadata&#x27;: sorted(names)})</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     rejected = [row for row in coordinates if row[&#x27;format&#x27;] != &#x27;Float&#x27;]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     return {&#x27;expected_samplers&#x27;: sorted(expected), &#x27;matched_samplers&#x27;: sorted(matched),</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         &#x27;visible_coordinates&#x27;: coordinates, &#x27;non_fp32_coordinates&#x27;: rejected,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         &#x27;visible_coordinate_formats_verified&#x27;: bool(coordinates) and not rejected and matched == expected,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         &#x27;per_operation_internal_precision_trace&#x27;: False,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &#x27;interpretation&#x27;: &#x27;Visible Float coordinates and metadata coverage are necessary evidence; fused internals are not an instruction trace.&#x27;}</span></pre></body></html>

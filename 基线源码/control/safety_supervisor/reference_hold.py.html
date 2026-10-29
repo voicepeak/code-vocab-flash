@@ -1,0 +1,44 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/safety_supervisor/reference_hold.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/safety_supervisor/reference_hold.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Fresh-state local hold when isolated reference production becomes unavailable.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numpy as np</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from estimation.geometry import rotation</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from interfaces.contracts import Health</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> @dataclass(frozen=True)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> class ReferenceDecision:</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     position: tuple</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     velocity: tuple</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     acceleration: tuple</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     yaw: float</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     yaw_rate: float</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     phase: str</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     allow_integral: bool</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> class ReferenceHold:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def __init__(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.position=None</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.yaw=0.</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.epoch=None</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.reason=None</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.transitions=[]</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     def select(self,state,packet,reason=None):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         if state.health!=Health.OK:raise RuntimeError(&#x27;REFERENCE_HOLD_LOCALIZATION&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if self.epoch is None:self.epoch=state.metadata.epoch</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         if state.metadata.epoch!=self.epoch:raise RuntimeError(&#x27;REFERENCE_HOLD_EPOCH&#x27;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if packet is None and self.position is None:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             self.position=state.position_ned</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             R=rotation(state.orientation_wxyz)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             self.yaw=math.atan2(R[1,0],R[0,0])</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             self.reason=reason or &#x27;REFERENCE_UNAVAILABLE&#x27;</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             self.transitions.append({&#x27;stamp&#x27;:state.metadata.stamp,&#x27;from&#x27;:&#x27;NORMAL&#x27;,&#x27;to&#x27;:&#x27;REFERENCE_HOLD&#x27;,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                                      &#x27;reason&#x27;:self.reason})</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         if self.position is not None:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             if np.linalg.norm(np.array(state.position_ned)-self.position)&gt;.8:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 raise RuntimeError(&#x27;REFERENCE_HOLD_POSITION_BOUND&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             return ReferenceDecision(self.position,(0.,0.,0.),(0.,0.,0.),self.yaw,0.,&#x27;REFERENCE_HOLD&#x27;,False)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         return ReferenceDecision(packet.position,packet.velocity,packet.acceleration,packet.yaw,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                                  packet.yaw_rate,&#x27;NORMAL&#x27;,True)</span></pre></body></html>

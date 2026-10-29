@@ -1,0 +1,454 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p1_scene_trace_diagnosis.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p1_scene_trace_diagnosis.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;stage_acceptance&quot;: false,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;cause_identified&quot;: false,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;cases&quot;: [</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     {</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>       &quot;name&quot;: &quot;seed2024_pwm&quot;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>       &quot;run_directory&quot;: &quot;runs/20261020T081649Z_ce7bae74b74c410b8c7afd6cb3d62780&quot;,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>       &quot;fault&quot;: &quot;ANGULAR_RATE_LIMIT&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>       &quot;scene_counts&quot;: {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         &quot;front_left&quot;: 7,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         &quot;lidar&quot;: 29,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         &quot;back_left&quot;: 7,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         &quot;back_right&quot;: 7,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &quot;front_right&quot;: 7</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>       },</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>       &quot;scene_fault&quot;: null,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>       &quot;metrics&quot;: {</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;matched_commands&quot;: 94,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;commands&quot;: 94,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         &quot;match_fraction&quot;: 1.0,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         &quot;settled_after_wall_s&quot;: 4.0,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         &quot;settled_samples&quot;: 0,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         &quot;command_timing_measurement&quot;: &quot;after_publish&quot;,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         &quot;truth_use&quot;: &quot;offline_evaluation_only&quot;,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         &quot;command_wall_interval_p50_p95_p99_s&quot;: [</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>           0.012565538054332137,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>           0.020514712017029525,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           0.02168419255875051</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         ],</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         &quot;minimum_command_wall_interval_s&quot;: 0.011090656975284219,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         &quot;evaluation_valid&quot;: false,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &quot;control_mode&quot;: &quot;PWM&quot;</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>       },</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>       &quot;physics_residual&quot;: {</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         &quot;matched_intervals&quot;: 94,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &quot;candidate_intervals&quot;: 94,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &quot;evaluation_only&quot;: true,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         &quot;cause_identified&quot;: false,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         &quot;motor_model_status&quot;: &quot;official_parameters_with_provisional_rps_units_supported_by_local_response&quot;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         &quot;actuation_latency_verified&quot;: false,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;angular_residual_p50_p95_p99_max_Nm&quot;: [</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>           0.002917721100798272,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>           0.0078056254700186465,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>           0.24224548194034556,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>           1.8488242744796797</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         ],</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &quot;largest_angular_discrepancies&quot;: [</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>           {</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             &quot;stamp&quot;: 1792484222.9457831,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             &quot;interval_s&quot;: 0.012000322341918945,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>               0.0006107450206650766,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>               1.8488233091008648,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>               -0.0017879097187222092</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             ],</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             &quot;angular_norm_Nm&quot;: 1.8488242744796797,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>               0.050453710835427046,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>               -0.0405015810392797,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>               -5.864744805151437</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             ],</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>               9.326808372568296,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>               0.0004900361847445245,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>               0.0011174194678530425,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>               -0.00057621852562139</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             ],</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>               0.23616941273212433,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>               3.670200824737549,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>               -0.010586108081042767</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             ]</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           },</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>           {</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             &quot;stamp&quot;: 1792484222.9337828,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             &quot;interval_s&quot;: 0.018000364303588867,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>               0.0014773756207306565,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>               0.12130284026029191,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>               0.0014242121001679592</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             ],</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             &quot;angular_norm_Nm&quot;: 0.12132019648040837,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>               -0.002348479349166155,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>               0.018769523594528437,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>               -3.712443493658517</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             ],</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>               9.326808372568296,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>               0.0004900361847445245,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>               0.0011174194678530425,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>               -0.00057621852562139</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             ],</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>               0.23319341242313385,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>               0.46732884645462036,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>               -0.006610229145735502</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             ]</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>           },</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>           {</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             &quot;stamp&quot;: 1792484222.6787775,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             &quot;interval_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>               -0.002620904038252378,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>               0.00795915526007131,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>               -0.00043085983704338536</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             ],</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             &quot;angular_norm_Nm&quot;: 0.008390645423972193,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>               -0.05344459693878889,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>               -0.04628635197877884,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>               0.13781496811539284</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             ],</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>               9.52905904884902,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>               -0.002170778498899739,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>               -0.001133636697957574,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>               -5.635467946978057e-05</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             ],</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>               0.22132135927677155,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>               0.048603542149066925,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>               0.014036192558705807</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             ]</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>           },</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>           {</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             &quot;stamp&quot;: 1792484222.0367637,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             &quot;interval_s&quot;: 0.021000385284423828,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>               0.008029972009161009,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>               -0.0022420248519537393,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>               0.00034097918517800047</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             ],</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>             &quot;angular_norm_Nm&quot;: 0.008344063321272924,</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>               0.019102595979347825,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>               -0.03395861806347966,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>               -0.13068392534344397</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>             ],</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>               9.00258176333348,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>               -0.0019308728764285688,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>               -0.0009316822474025876,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>               0.0008784450206095369</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>             ],</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>               -0.22706036269664764,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>               -0.089804507791996,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>               -0.005649788770824671</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>             ]</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           },</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           {</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             &quot;stamp&quot;: 1792484222.6607769,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>             &quot;interval_s&quot;: 0.021000385284423828,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>               -0.001447768375984254,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>               0.00742552574643824,</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>               -0.0023011357184279935</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>             ],</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>             &quot;angular_norm_Nm&quot;: 0.007907571781282948,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>               0.06923123449087143,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>               -0.07229990512132645,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>               0.11854788590103738</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>             ],</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>               9.52905904884902,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>               -0.0021707784988997396,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>               -0.001133636697957574,</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>               -5.6354679469780566e-05</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>             ],</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>               0.2390960156917572,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>               0.034312937408685684,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>               0.014541484415531158</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             ]</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>           }</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         ]</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>       }</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>     },</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>     {</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>       &quot;name&quot;: &quot;seed2024_vel&quot;,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>       &quot;run_directory&quot;: &quot;runs/20261020T081752Z_88e3759cc7da4c2ea5703b37af94e6ea&quot;,</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>       &quot;scene_counts&quot;: {</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>         &quot;front_left&quot;: 23,</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>         &quot;front_right&quot;: 23,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>         &quot;lidar&quot;: 103,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>         &quot;back_left&quot;: 23,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>         &quot;back_right&quot;: 23</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>       },</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>       &quot;scene_fault&quot;: null,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>       &quot;metrics&quot;: {</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         &quot;matched_commands&quot;: 500,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         &quot;commands&quot;: 500,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>         &quot;match_fraction&quot;: 1.0,</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>         &quot;settled_after_wall_s&quot;: 4.0,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>         &quot;settled_samples&quot;: 300,</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>         &quot;command_timing_measurement&quot;: &quot;after_publish&quot;,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>         &quot;truth_use&quot;: &quot;offline_evaluation_only&quot;,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>         &quot;command_wall_interval_p50_p95_p99_s&quot;: [</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>           0.020001213997602463,</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>           0.024487211031373586,</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>           0.025882533856201914</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>         ],</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         &quot;minimum_command_wall_interval_s&quot;: 0.01082192303147167,</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         &quot;state_position_rmse_m&quot;: [</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>           0.030821941697022445,</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>           0.028348974878476672,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>           0.02576845406509496</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         ],</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>         &quot;state_attitude_rmse_rad&quot;: 0.017875276834405648,</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>         &quot;truth_tracking_rmse_m&quot;: [</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>           0.014356911712726121,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>           0.013412560491622654,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>           0.013895113209504827</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>         ],</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>         &quot;truth_tracking_max_norm_m&quot;: 0.03693494732983269,</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>         &quot;truth_yaw_tracking_rmse_rad&quot;: 0.014063415371016769,</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>         &quot;truth_yaw_tracking_max_abs_rad&quot;: 0.02927506389761181,</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>         &quot;imu_orientation_unit_valid_fraction&quot;: 1.0,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>         &quot;imu_orientation_truth_rmse_rad&quot;: 1.4720255719909502e-07,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>         &quot;imu_orientation_fused_in_estimator&quot;: false,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>         &quot;evaluation_valid&quot;: true,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>         &quot;control_mode&quot;: &quot;VEL&quot;</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>       }</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>     },</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>     {</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>       &quot;name&quot;: &quot;seed1016_pwm&quot;,</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>       &quot;run_directory&quot;: &quot;runs/20261020T082058Z_e20f9b9fcb094e0bb6463b65555c7871&quot;,</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>       &quot;fault&quot;: null,</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>       &quot;scene_counts&quot;: {</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>         &quot;front_left&quot;: 31,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>         &quot;front_right&quot;: 31,</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>         &quot;back_left&quot;: 31,</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>         &quot;back_right&quot;: 31,</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         &quot;lidar&quot;: 141</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>       },</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>       &quot;scene_fault&quot;: null,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>       &quot;metrics&quot;: {</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         &quot;matched_commands&quot;: 986,</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;commands&quot;: 986,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>         &quot;match_fraction&quot;: 1.0,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>         &quot;settled_after_wall_s&quot;: 4.0,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>         &quot;settled_samples&quot;: 712,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>         &quot;command_timing_measurement&quot;: &quot;after_publish&quot;,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>         &quot;truth_use&quot;: &quot;offline_evaluation_only&quot;,</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         &quot;command_wall_interval_p50_p95_p99_s&quot;: [</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>           0.012571388040669262,</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>           0.020609962381422518,</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>           0.02319772105664014</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>         ],</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>         &quot;minimum_command_wall_interval_s&quot;: 0.010599714005365968,</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>         &quot;state_position_rmse_m&quot;: [</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>           0.022763002789627708,</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>           0.021032282741697956,</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>           0.024101414944966152</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>         ],</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>         &quot;state_attitude_rmse_rad&quot;: 0.034396752386895275,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>         &quot;truth_tracking_rmse_m&quot;: [</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>           0.11565558272346596,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>           0.05747219717862364,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>           0.03256389193978034</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>         ],</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;truth_tracking_max_norm_m&quot;: 0.34277869595742283,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &quot;truth_yaw_tracking_rmse_rad&quot;: 0.0371973658197578,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>         &quot;truth_yaw_tracking_max_abs_rad&quot;: 0.06854961480761235,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>         &quot;imu_orientation_unit_valid_fraction&quot;: 1.0,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>         &quot;imu_orientation_truth_rmse_rad&quot;: 7.682801813714225e-07,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>         &quot;imu_orientation_fused_in_estimator&quot;: false,</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>         &quot;evaluation_valid&quot;: true,</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>         &quot;control_mode&quot;: &quot;PWM&quot;,</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>         &quot;braking_response&quot;: {</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>           &quot;valid&quot;: true,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>           &quot;certified_deceleration_bound&quot;: false,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>           &quot;stop_speed_threshold_m_s&quot;: 0.08,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>           &quot;hold_seconds&quot;: 0.35,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>           &quot;reference_sensor_stamp&quot;: 1792484476.310444,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>           &quot;initial_speed_m_s&quot;: 0.5699541704812034,</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>           &quot;stop_time_s&quot;: 2.040043354034424,</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>           &quot;forward_excursion_m&quot;: 0.2505994386247554,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>           &quot;effective_average_deceleration_m_s2&quot;: 0.6358785321505678,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>           &quot;peak_speed_after_reference_m_s&quot;: 0.5699541704812034,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>           &quot;lateral_excursion_m&quot;: 0.20715691131377723,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>           &quot;note&quot;: &quot;Includes controller/sensing lag; effective average is not an instantaneous lower bound.&quot;</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>         }</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>       },</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>       &quot;physics_residual&quot;: {</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>         &quot;matched_intervals&quot;: 985,</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>         &quot;candidate_intervals&quot;: 985,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>         &quot;evaluation_only&quot;: true,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>         &quot;cause_identified&quot;: false,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>         &quot;motor_model_status&quot;: &quot;official_parameters_with_provisional_rps_units_supported_by_local_response&quot;,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>         &quot;actuation_latency_verified&quot;: false,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>         &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>         &quot;angular_residual_p50_p95_p99_max_Nm&quot;: [</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>           0.0024049647020623227,</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>           0.005975414142647272,</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>           0.008173830765075224,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>           0.013870169896007794</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>         ],</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>         &quot;largest_angular_discrepancies&quot;: [</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>           {</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>             &quot;stamp&quot;: 1792484472.4223611,</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>             &quot;interval_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>               -0.002802499860208812,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>               0.013177952412989805,</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>               -0.0032968435932914128</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>             ],</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>             &quot;angular_norm_Nm&quot;: 0.013870169896007794,</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>               -0.014820914715528488,</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>               -0.002569839358329773,</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>               0.133577701016506</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>             ],</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>               8.314593776968932,</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>               -0.0026254554150731413,</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>               0.0030303154733737903,</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>               0.0003564154062561803</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>             ],</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>               -0.014450440183281898,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>               -0.0032775241415947676,</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>               0.0177933182567358</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>             ]</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>           },</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>           {</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>             &quot;stamp&quot;: 1792484476.3494449,</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>             &quot;interval_s&quot;: 0.021000385284423828,</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>               0.0009158910180163658,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>               0.012350716894331001,</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>               0.00035392417229273084</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>             ],</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>             &quot;angular_norm_Nm&quot;: 0.012389686294677899,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>               -0.015874812379479408,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>               0.011556682409718633,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>               0.15635931699990735</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>             ],</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>               9.058146109070059,</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>               -0.0007250909055422361,</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>               0.0001123554431733953,</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>               -4.9775413453238826e-05</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>             ],</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>               0.0018599886680021882,</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>               0.08004635572433472,</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>               0.13003195822238922</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>             ]</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>           },</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>           {</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>             &quot;stamp&quot;: 1792484476.3584452,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>             &quot;interval_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>               0.0015904930204671357,</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>               0.0119520269739516,</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>               -6.518023805398502e-05</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>             ],</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>             &quot;angular_norm_Nm&quot;: 0.012057564650361783,</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>               0.00502422172576189,</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>               0.00964951072819531,</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>               0.12639391630410657</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>             ],</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>               9.058146109070059,</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>               -0.0007250909055422361,</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>               0.0001123554431733953,</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>               -4.9775413453238826e-05</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>             ],</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>               0.003444539848715067,</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>               0.0957147628068924,</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>               0.1299322247505188</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>             ]</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>           },</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>           {</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>             &quot;stamp&quot;: 1792484471.4233398,</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>             &quot;interval_s&quot;: 0.003000020980834961,</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>               -0.001528007823239746,</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>               -0.002065442312570948,</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>               -0.011344572308887434</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>             ],</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>             &quot;angular_norm_Nm&quot;: 0.011631860587456154,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>               -0.0405730064958334,</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>               -0.005856340518221259,</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>               0.20940263843399265</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>             ],</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>               9.471966288469988,</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>               -0.0011185370775523285,</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>               0.005742064624590092,</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>               0.000524406495281203</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>             ],</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>               -0.010960313491523266,</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>               -0.15605582296848297,</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>               0.010012177750468254</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>             ]</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>           },</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>           {</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>             &quot;stamp&quot;: 1792484472.3923604,</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>             &quot;interval_s&quot;: 0.009000301361083984,</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>             &quot;angular_residual_Nm&quot;: [</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>               -0.0006251432660945083,</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>               0.011348990688423473,</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>               -0.002323363790687511</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>             ],</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>             &quot;angular_norm_Nm&quot;: 0.011601224635914256,</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>             &quot;specific_force_residual_m_s2&quot;: [</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>               -0.04085056483745575,</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>               -0.0308877844363451,</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>               0.09331309454067593</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>             ],</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>             &quot;mean_feedback_wrench&quot;: [</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a>               8.314593776968932,</span>
+<span class="line" id="L431"><a class="ln" href="#L431">  431</a>               -0.0026254554150731413,</span>
+<span class="line" id="L432"><a class="ln" href="#L432">  432</a>               0.0030303154733737903,</span>
+<span class="line" id="L433"><a class="ln" href="#L433">  433</a>               0.0003564154062561803</span>
+<span class="line" id="L434"><a class="ln" href="#L434">  434</a>             ],</span>
+<span class="line" id="L435"><a class="ln" href="#L435">  435</a>             &quot;omega_body_rad_s&quot;: [</span>
+<span class="line" id="L436"><a class="ln" href="#L436">  436</a>               0.020395176485180855,</span>
+<span class="line" id="L437"><a class="ln" href="#L437">  437</a>               -0.049140870571136475,</span>
+<span class="line" id="L438"><a class="ln" href="#L438">  438</a>               0.018579980358481407</span>
+<span class="line" id="L439"><a class="ln" href="#L439">  439</a>             ]</span>
+<span class="line" id="L440"><a class="ln" href="#L440">  440</a>           }</span>
+<span class="line" id="L441"><a class="ln" href="#L441">  441</a>         ]</span>
+<span class="line" id="L442"><a class="ln" href="#L442">  442</a>       }</span>
+<span class="line" id="L443"><a class="ln" href="#L443">  443</a>     }</span>
+<span class="line" id="L444"><a class="ln" href="#L444">  444</a>   ],</span>
+<span class="line" id="L445"><a class="ln" href="#L445">  445</a>   &quot;conclusion&quot;: &quot;seed2024 reproduced an actual angular impulse in PWM takeoff; same-seed independent VEL completed; seed1016 combined repeat completed. No collision/event API exists among advertised topics. Retain ground/physics/actuation mismatch hypotheses without attributing a confirmed cause.&quot;,</span>
+<span class="line" id="L446"><a class="ln" href="#L446">  446</a>   &quot;upstream_physics_reference&quot;: &quot;https://github.com/microsoft/AirSim/blob/main/AirLib/include/physics/FastPhysicsEngine.hpp&quot;,</span>
+<span class="line" id="L447"><a class="ln" href="#L447">  447</a>   &quot;reference_limit&quot;: &quot;Upstream ground contact logic motivates inspection only; this is not evidence that the local official binary uses identical physics.&quot;,</span>
+<span class="line" id="L448"><a class="ln" href="#L448">  448</a>   &quot;actuation_interpretation_correction_2026_10_20&quot;: {</span>
+<span class="line" id="L449"><a class="ln" href="#L449">  449</a>     &quot;evidence&quot;: &quot;docs/evidence/p0_pwm_wire_observability.json&quot;,</span>
+<span class="line" id="L450"><a class="ln" href="#L450">  450</a>     &quot;debug_pwm_is_verified_applied_motor_input&quot;: false,</span>
+<span class="line" id="L451"><a class="ln" href="#L451">  451</a>     &quot;previous_actual_output_interpretation&quot;: &quot;withdrawn&quot;,</span>
+<span class="line" id="L452"><a class="ln" href="#L452">  452</a>     &quot;scope&quot;: &quot;Original raw observations retained. Debug-based torque residuals cannot establish steady actual motor input or exclude unobserved applied PWM changes.&quot;</span>
+<span class="line" id="L453"><a class="ln" href="#L453">  453</a>   }</span>
+<span class="line" id="L454"><a class="ln" href="#L454">  454</a> }</span></pre></body></html>

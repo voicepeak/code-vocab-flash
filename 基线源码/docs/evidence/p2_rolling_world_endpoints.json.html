@@ -1,0 +1,488 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_rolling_world_endpoints.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_rolling_world_endpoints.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 43,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-24&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P2_NOMINAL_WORLD_ENDPOINT_REPLAY&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>   &quot;control_published&quot;: false,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>   &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>   &quot;run&quot;: &quot;runs/20261024T085250Z_65d950798d964beaa81898a6992a2913&quot;,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>   &quot;run_state&quot;: &quot;COMPUTED&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>   &quot;source_archive&quot;: {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     &quot;sha256&quot;: &quot;bf3058c17d89d9ef60187b23c21449aa9f2f26fa9d4532e8a4466b35789bc7d2&quot;,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;files&quot;: 326,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     &quot;uncompressed_bytes&quot;: 1993866,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   },</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>   &quot;archive_files_independently_verified&quot;: 326,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>   &quot;source_unchanged_during_replay&quot;: true,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>   &quot;input_unchanged&quot;: true,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>   &quot;input_files_independently_verified&quot;: 42,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>   &quot;input_sha256&quot;: {</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/manifest.json&quot;: &quot;728321144c011235ac1aaa66de85516d4e88d56049e32687960ebed6286debd8&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint_summary.json&quot;: &quot;892653f94ddf1fd2fe1579e12ac84da18be271ba3a954d1fee356cc2a36174fb&quot;,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint_states.jsonl&quot;: &quot;38b8054af2d4e9098e538620f74bb6a9e699ad047387325c1a992e3fc16931ed&quot;,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0000/lidar.bin.gz&quot;: &quot;ea321ff57fa6a914b3d0ed38c5b4ccd6141a2ded6a9dcfc3c9fa9bedad9675c3&quot;,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0000/lidar.json&quot;: &quot;ef2be5c36492b31964ce88dd3db5244dbf8a924f9e8aa5acb682fc3ef0922141&quot;,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0000/packet.json&quot;: &quot;9a51da958f71ac6a544a527a0dfc63ee110c97b4973ea440611d01df6a698922&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0001/lidar.bin.gz&quot;: &quot;4164c26baffb981ddbb9f091aa8b99a871e545aa9a50cdaaa0b958b4ac9c65e5&quot;,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0001/lidar.json&quot;: &quot;2e9dbac7cea8cb32025e478651e1c3b5ef1f624cdf435988d5c2e573070ef49c&quot;,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0001/packet.json&quot;: &quot;614132d1d2168695dd43bd6fb69496130c3e119663c842a8e61eb9e7f0d4143a&quot;,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0002/lidar.bin.gz&quot;: &quot;57fd26b6e5fb7e4773bac98cc450c4880c7e9c434fef23d17e8addfada2f9941&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0002/lidar.json&quot;: &quot;49ad95f4a78b7ac7ae704d46c15add46fa235a0d5c71e40a1b937a38c6f49065&quot;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0002/packet.json&quot;: &quot;6dde3a7ed8eefcbbdc5045fe841bbff3a2ed535ed549fd4785d6e5afdedb16cf&quot;,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0003/lidar.bin.gz&quot;: &quot;55bcb685ff17dae62f2c6380771d5d9bfd83462984d66f3081c42dc2f4b51ff9&quot;,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0003/lidar.json&quot;: &quot;e260db50408e70d1be7c0b500a1a5f7784efa7e2988f6156285fc5d8b90d7dd5&quot;,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0003/packet.json&quot;: &quot;76b791ac7c93d30e96672f5471db7efa29992d95e008cfd2bb80141dae6cab53&quot;,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0004/lidar.bin.gz&quot;: &quot;753c00f19feff613a2e519a75ae7e825527f001dfd2d8b1e683e789fd2cc6ffd&quot;,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0004/lidar.json&quot;: &quot;f84b56bca2265a024c5a5dbc67bb1c172e1fa08bd17713e92df19dfeed62f54f&quot;,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0004/packet.json&quot;: &quot;6bb719b40f863ab6a1e26b1e9192881d11dd50234f8a5712ec94779dc47c9a19&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0005/lidar.bin.gz&quot;: &quot;3d4533e654300a9c6d33a46ab7fd7fe1e30c6837da0587a12e37730d03c7655a&quot;,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0005/lidar.json&quot;: &quot;47845bc1b56f62d421097a42e1d6a56bec02a715a13b80c9b36aba9cde979bd5&quot;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe/joint/0005/packet.json&quot;: &quot;c8f5f8895fa329f320e20f8b7253a7e8fc8b4eb4e3cf895ae9b26b412463c9f5&quot;,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/manifest.json&quot;: &quot;7e90b0275c6e971929fed067d8900617d14e2409aa8ac0eefb452cf011ce4bb6&quot;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint_summary.json&quot;: &quot;6e3733db4a18d08283ccf471b5b5fc482d1571650dd402457c98fcb4c9eaf61b&quot;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint_states.jsonl&quot;: &quot;783da01daaf247a0d9050fe158c7f3f6e353515914a74f69fbf4b1697f644d46&quot;,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0000/lidar.bin.gz&quot;: &quot;5cd869e01f281da90684dfec63fda39419e6cbc2327bef5a36c4a5cfaefc0f80&quot;,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0000/lidar.json&quot;: &quot;f079a7e52ec48ba26126b80b4ce4d46c4d178ea989670f76bf061c13b013cebd&quot;,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0000/packet.json&quot;: &quot;ec61eb298ae9720bbf541b7a7e52153ea994ec967ed77f490640db06a6b10164&quot;,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0001/lidar.bin.gz&quot;: &quot;748ddb888aa3344dc1539521b21230eb8eded13c1a9db36ece03d9451cc10326&quot;,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0001/lidar.json&quot;: &quot;bbe1123db66ac3cfb1181c396ef2f9b59ade7434297ef9a669b60f0a26e1a7cd&quot;,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0001/packet.json&quot;: &quot;89ddf2e4b95de5fa302f52eaa7b08a9f4553418174e3fc3e69e8a97c46c9d8fa&quot;,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0002/lidar.bin.gz&quot;: &quot;570122cd7a71dce16dfec3db7348574a2ccd34856982b5b9c5e0ec5fef56a9e4&quot;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0002/lidar.json&quot;: &quot;a7a56140b7c544fb093942ffc4572b36de6159e8e6d72dce91bf6c17d7da0847&quot;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0002/packet.json&quot;: &quot;4fdbcac942158a1b7f2a6ba16457bd67a8b68cfbc8ddc2f88a8bbe88ba21fc86&quot;,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0003/lidar.bin.gz&quot;: &quot;a23e89f4c3ab15b7a3e75c7063ed1c4b11a0acfb3cc40cd853b09001a87589b9&quot;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0003/lidar.json&quot;: &quot;e929ca9b7a15f45d53bfc2d4425847bbc06117fa7fbf621b686d4b43ef1562dc&quot;,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0003/packet.json&quot;: &quot;8109462834c0c5046f5ac62869fb3fad1e2ce1bf0808543596edc2db055327f3&quot;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0004/lidar.bin.gz&quot;: &quot;49a8f058438ef6bed988fc4bb593f96bd5ef969587d232a3fc8b394a0db5dfd4&quot;,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0004/lidar.json&quot;: &quot;fed70c21fca968037fa13846a9d485cc83d9cdae2cc424341a8544cfc5dd796b&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0004/packet.json&quot;: &quot;daa56e3397ccf941611f839bd0723ba0622319226b0d2be3184e90740f7fd399&quot;,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0005/lidar.bin.gz&quot;: &quot;27ec260b2e798d88b48fbe68feb2c24a4e9f32bd3f2142ba84b989d4db5daaf9&quot;,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0005/lidar.json&quot;: &quot;4faebad81d75eb305a2d57a832df1cf09d1dda01e2492e3ff69b4f8c800f9459&quot;,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8/joint/0005/packet.json&quot;: &quot;689292de99c5c8e676b1e396fe40fed1730a43f2fac52c618ffbd6901d17c65d&quot;</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>   },</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>   &quot;replay&quot;: {</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     &quot;role&quot;: &quot;retained_formal_lidar_and_estimated_header_pose_replay&quot;,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     &quot;python&quot;: &quot;3.8.10&quot;,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     &quot;numpy&quot;: &quot;1.17.4&quot;,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     &quot;packets&quot;: [</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>       {</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         &quot;key&quot;: &quot;0000&quot;,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;capture&quot;: &quot;joint/0000&quot;,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &quot;stamp&quot;: 1792738505.861849,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         &quot;query_now&quot;: 1792738506.0328526,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         &quot;input_points&quot;: 16326,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;world_hit_points&quot;: 16326,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &quot;occupied_voxels&quot;: 4668,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &quot;processing_s&quot;: 0.02541873208247125,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         &quot;remaining_source_lease_s&quot;: 0.02899646759033203,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         },</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>       },</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>       {</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &quot;key&quot;: &quot;0001&quot;,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         &quot;capture&quot;: &quot;joint/0001&quot;,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         &quot;stamp&quot;: 1792738507.4608831,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         &quot;query_now&quot;: 1792738507.631887,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         &quot;input_points&quot;: 16490,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         &quot;world_hit_points&quot;: 16490,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         &quot;occupied_voxels&quot;: 4650,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;processing_s&quot;: 0.016626673052087426,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &quot;remaining_source_lease_s&quot;: 0.02899622917175293,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         },</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>       },</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>       {</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;key&quot;: &quot;0002&quot;,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         &quot;capture&quot;: &quot;joint/0002&quot;,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         &quot;stamp&quot;: 1792738509.0719175,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         &quot;query_now&quot;: 1792738509.2219207,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         &quot;input_points&quot;: 15746,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         &quot;world_hit_points&quot;: 15746,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         &quot;occupied_voxels&quot;: 4611,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &quot;processing_s&quot;: 0.015861060936003923,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;remaining_source_lease_s&quot;: 0.04999685287475586,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         },</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>       },</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>       {</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;key&quot;: &quot;0003&quot;,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &quot;capture&quot;: &quot;joint/0003&quot;,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         &quot;stamp&quot;: 1792738510.8599558,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         &quot;query_now&quot;: 1792738511.006959,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         &quot;input_points&quot;: 15665,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         &quot;world_hit_points&quot;: 15665,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         &quot;occupied_voxels&quot;: 4617,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>         &quot;processing_s&quot;: 0.01578627689741552,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>         &quot;remaining_source_lease_s&quot;: 0.05299687385559082,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>         &quot;independent_homogeneous_max_m&quot;: 5.329070518200751e-15,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>         },</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>       },</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>       {</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         &quot;key&quot;: &quot;0004&quot;,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         &quot;capture&quot;: &quot;joint/0004&quot;,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         &quot;stamp&quot;: 1792738512.7649963,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>         &quot;query_now&quot;: 1792738512.8999991,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         &quot;input_points&quot;: 16857,</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;world_hit_points&quot;: 16857,</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         &quot;occupied_voxels&quot;: 4852,</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         &quot;processing_s&quot;: 0.025514503940939903,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         &quot;remaining_source_lease_s&quot;: 0.06499719619750977,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>         },</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>       },</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>       {</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>         &quot;key&quot;: &quot;0005&quot;,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>         &quot;source_run&quot;: &quot;runs/20261023T065455Z_abd6fdcb40e8464ab03367bc3e81d3fe&quot;,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>         &quot;capture&quot;: &quot;joint/0005&quot;,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>         &quot;stamp&quot;: 1792738514.3730307,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>         &quot;query_now&quot;: 1792738514.5170338,</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>         &quot;input_points&quot;: 17537,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>         &quot;world_hit_points&quot;: 17537,</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         &quot;occupied_voxels&quot;: 4768,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>         &quot;processing_s&quot;: 0.017188088037073612,</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>         &quot;remaining_source_lease_s&quot;: 0.05599689483642578,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>         },</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>       },</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>       {</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>         &quot;key&quot;: &quot;0006&quot;,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>         &quot;capture&quot;: &quot;joint/0000&quot;,</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>         &quot;stamp&quot;: 1792738723.2652512,</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>         &quot;query_now&quot;: 1792738723.406254,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>         &quot;input_points&quot;: 16338,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>         &quot;world_hit_points&quot;: 16338,</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>         &quot;occupied_voxels&quot;: 4688,</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>         &quot;processing_s&quot;: 0.01692472188733518,</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>         &quot;remaining_source_lease_s&quot;: 0.058997154235839844,</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>         },</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>       },</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>       {</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>         &quot;key&quot;: &quot;0007&quot;,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>         &quot;capture&quot;: &quot;joint/0001&quot;,</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>         &quot;stamp&quot;: 1792738724.855285,</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         &quot;query_now&quot;: 1792738725.0112884,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>         &quot;input_points&quot;: 15863,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>         &quot;world_hit_points&quot;: 15863,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>         &quot;occupied_voxels&quot;: 4675,</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;processing_s&quot;: 0.015939048025757074,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>         &quot;remaining_source_lease_s&quot;: 0.043996572494506836,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>         },</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>       },</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>       {</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>         &quot;key&quot;: &quot;0008&quot;,</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>         &quot;capture&quot;: &quot;joint/0002&quot;,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>         &quot;stamp&quot;: 1792738726.448319,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>         &quot;query_now&quot;: 1792738726.6223228,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>         &quot;input_points&quot;: 15753,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>         &quot;world_hit_points&quot;: 15753,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>         &quot;occupied_voxels&quot;: 4528,</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;processing_s&quot;: 0.024506020126864314,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &quot;remaining_source_lease_s&quot;: 0.02599620819091797,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>         },</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>       },</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>       {</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>         &quot;key&quot;: &quot;0009&quot;,</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>         &quot;capture&quot;: &quot;joint/0003&quot;,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>         &quot;stamp&quot;: 1792738728.035353,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>         &quot;query_now&quot;: 1792738728.1823559,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>         &quot;input_points&quot;: 15744,</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>         &quot;world_hit_points&quot;: 15744,</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>         &quot;occupied_voxels&quot;: 4672,</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>         &quot;processing_s&quot;: 0.01573520479723811,</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>         &quot;remaining_source_lease_s&quot;: 0.05299711227416992,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>         },</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>       },</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>       {</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>         &quot;key&quot;: &quot;0010&quot;,</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>         &quot;capture&quot;: &quot;joint/0004&quot;,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>         &quot;stamp&quot;: 1792738729.6283867,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>         &quot;query_now&quot;: 1792738729.7663898,</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>         &quot;input_points&quot;: 15755,</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>         &quot;world_hit_points&quot;: 15755,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>         &quot;occupied_voxels&quot;: 4673,</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>         &quot;processing_s&quot;: 0.01601384300738573,</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>         &quot;remaining_source_lease_s&quot;: 0.0619969367980957,</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>         &quot;geometry_only_probe_reason&quot;: &quot;OCCUPIED_SPACE&quot;,</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>           &quot;KINEMATIC_LIMIT&quot;: 1</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>         },</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>       },</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>       {</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>         &quot;key&quot;: &quot;0011&quot;,</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>         &quot;source_run&quot;: &quot;runs/20261023T065832Z_cee28fe232c844808f28c88ba0ba63a8&quot;,</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>         &quot;capture&quot;: &quot;joint/0005&quot;,</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         &quot;stamp&quot;: 1792738731.2184207,</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>         &quot;query_now&quot;: 1792738731.3894243,</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         &quot;input_points&quot;: 15840,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>         &quot;world_hit_points&quot;: 15840,</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         &quot;occupied_voxels&quot;: 4677,</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>         &quot;free_voxels&quot;: 0,</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>         &quot;processing_s&quot;: 0.01591540384106338,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>         &quot;remaining_source_lease_s&quot;: 0.02899646759033203,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>         &quot;independent_homogeneous_max_m&quot;: 3.552713678800501e-15,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>         &quot;voxel_keys_match_python_floor&quot;: true,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>         &quot;source_validity_preserved&quot;: true,</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>         &quot;geometry_only_probe_reason&quot;: &quot;UNKNOWN_SPACE&quot;,</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>         &quot;planner_reason&quot;: &quot;NO_STATIC_CANDIDATE&quot;,</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>         &quot;candidate_reasons&quot;: {</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>           &quot;MAP_STOP_HORIZON&quot;: 1</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>         },</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>         &quot;per_point_deskew_applied&quot;: false,</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>       }</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>     ],</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>     &quot;free_space_created&quot;: false,</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>     &quot;simulator_started&quot;: false,</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>     &quot;control_published&quot;: false,</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>     &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>     &quot;actual_online_latency_verified&quot;: false,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>     &quot;multi_frame_overlap_live_validated&quot;: false,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>     &quot;source_frames_are_spaced_about_1_5_seconds&quot;: true,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>     &quot;script_sha256&quot;: &quot;56c3690ef2e9ede0de82fc0957ce1f37b2a18dee30594b94460fe1775dfb5b16&quot;</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>   },</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>   &quot;state_selection_audit&quot;: [</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>     {</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>       &quot;key&quot;: &quot;0000&quot;,</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>     },</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>     {</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>       &quot;key&quot;: &quot;0001&quot;,</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>     },</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>     {</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>       &quot;key&quot;: &quot;0002&quot;,</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>     },</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>     {</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>       &quot;key&quot;: &quot;0003&quot;,</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>     },</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>     {</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>       &quot;key&quot;: &quot;0004&quot;,</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>     },</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>     {</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>       &quot;key&quot;: &quot;0005&quot;,</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>     },</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>     {</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>       &quot;key&quot;: &quot;0006&quot;,</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>     },</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>     {</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>       &quot;key&quot;: &quot;0007&quot;,</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>     },</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>     {</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>       &quot;key&quot;: &quot;0008&quot;,</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>     },</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>     {</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>       &quot;key&quot;: &quot;0009&quot;,</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>     },</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>     {</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>       &quot;key&quot;: &quot;0010&quot;,</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>     },</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>     {</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>       &quot;key&quot;: &quot;0011&quot;,</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>       &quot;state_age_s&quot;: 0.0,</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>       &quot;current_healthy_state_verified&quot;: true</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>     }</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a>   ],</span>
+<span class="line" id="L431"><a class="ln" href="#L431">  431</a>   &quot;previous_replay&quot;: {</span>
+<span class="line" id="L432"><a class="ln" href="#L432">  432</a>     &quot;run&quot;: &quot;runs/20261024T072937Z_104bc25e6c3b4fc99bda246f74223438&quot;,</span>
+<span class="line" id="L433"><a class="ln" href="#L433">  433</a>     &quot;archive_files_verified&quot;: 326,</span>
+<span class="line" id="L434"><a class="ln" href="#L434">  434</a>     &quot;source_archive&quot;: {</span>
+<span class="line" id="L435"><a class="ln" href="#L435">  435</a>       &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L436"><a class="ln" href="#L436">  436</a>       &quot;sha256&quot;: &quot;bf050ef496187705b2f77c70ef604014b3a230379383639c4f353539565a64ea&quot;,</span>
+<span class="line" id="L437"><a class="ln" href="#L437">  437</a>       &quot;files&quot;: 326,</span>
+<span class="line" id="L438"><a class="ln" href="#L438">  438</a>       &quot;uncompressed_bytes&quot;: 1993043,</span>
+<span class="line" id="L439"><a class="ln" href="#L439">  439</a>       &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L440"><a class="ln" href="#L440">  440</a>     }</span>
+<span class="line" id="L441"><a class="ln" href="#L441">  441</a>   },</span>
+<span class="line" id="L442"><a class="ln" href="#L442">  442</a>   &quot;tests&quot;: {</span>
+<span class="line" id="L443"><a class="ln" href="#L443">  443</a>     &quot;host_passed&quot;: 189,</span>
+<span class="line" id="L444"><a class="ln" href="#L444">  444</a>     &quot;noetic_passed&quot;: 186,</span>
+<span class="line" id="L445"><a class="ln" href="#L445">  445</a>     &quot;noetic_skipped&quot;: 3,</span>
+<span class="line" id="L446"><a class="ln" href="#L446">  446</a>     &quot;new_tests&quot;: 12,</span>
+<span class="line" id="L447"><a class="ln" href="#L447">  447</a>     &quot;logs&quot;: {</span>
+<span class="line" id="L448"><a class="ln" href="#L448">  448</a>       &quot;runs/ffs_runtime/iteration43_host_tests.log&quot;: &quot;b3abd847f195a80be2c07f8cc65175e0fd2cc00e35ac94146155f83925b7f01f&quot;,</span>
+<span class="line" id="L449"><a class="ln" href="#L449">  449</a>       &quot;runs/ffs_runtime/iteration43_noetic_tests.log&quot;: &quot;a41d19b0dddafdd4ea40c63c0a16ed0e502626f2fa588e0d119144fbba606d8c&quot;</span>
+<span class="line" id="L450"><a class="ln" href="#L450">  450</a>     }</span>
+<span class="line" id="L451"><a class="ln" href="#L451">  451</a>   },</span>
+<span class="line" id="L452"><a class="ln" href="#L452">  452</a>   &quot;payload_sha256&quot;: {</span>
+<span class="line" id="L453"><a class="ln" href="#L453">  453</a>     &quot;0007_world.npz&quot;: &quot;50660938cfe3fcdae89c23f755e58782efaa4da5fce04e4e7a54c9103947b030&quot;,</span>
+<span class="line" id="L454"><a class="ln" href="#L454">  454</a>     &quot;0010_world.npz&quot;: &quot;d2c83e79699797f2194876204da83b29a2d63239dcca3273e384dcab23d047a8&quot;,</span>
+<span class="line" id="L455"><a class="ln" href="#L455">  455</a>     &quot;0003_world.npz&quot;: &quot;a67129238c8109afc31d0045fc1f3d096523127b701517e28d10262d6e553aeb&quot;,</span>
+<span class="line" id="L456"><a class="ln" href="#L456">  456</a>     &quot;0005_world.npz&quot;: &quot;6cc8f5eb6516f4f7f519e99a7322b86a4d8f28f6871f05410548b0c966cc03bb&quot;,</span>
+<span class="line" id="L457"><a class="ln" href="#L457">  457</a>     &quot;0001_world.npz&quot;: &quot;5c6f7f31e3b38a65a1ca15f7afa4d4b6309be05a532a77ab1eca99a707d458c9&quot;,</span>
+<span class="line" id="L458"><a class="ln" href="#L458">  458</a>     &quot;0009_world.npz&quot;: &quot;92b2a27b2c2e8f627a0c785e69f60b2de0e0b2cd5e9da3a8c09948109000185d&quot;,</span>
+<span class="line" id="L459"><a class="ln" href="#L459">  459</a>     &quot;0011_world.npz&quot;: &quot;7944151940898c4ff3289da880ef7b7b2afd2c17c77645025f02064e7bfc65ae&quot;,</span>
+<span class="line" id="L460"><a class="ln" href="#L460">  460</a>     &quot;0006_world.npz&quot;: &quot;35c90b09c939474d11adee272823501eccc7779c6aed225cee83d6a00eab7c86&quot;,</span>
+<span class="line" id="L461"><a class="ln" href="#L461">  461</a>     &quot;0004_world.npz&quot;: &quot;f7b06b60ec906f835bc2a4977eeaeeff087eacdc81f14197ca3ebba7c852837e&quot;,</span>
+<span class="line" id="L462"><a class="ln" href="#L462">  462</a>     &quot;0000_world.npz&quot;: &quot;94ace8103f134feadecb39aac1c37976cd7fa0ebdef90ce18395b718aed0a917&quot;,</span>
+<span class="line" id="L463"><a class="ln" href="#L463">  463</a>     &quot;0008_world.npz&quot;: &quot;5bcfee14a5cbe3a9e323642f91b313eb5b88561a566fe69c02072e59fd829c1b&quot;,</span>
+<span class="line" id="L464"><a class="ln" href="#L464">  464</a>     &quot;0002_world.npz&quot;: &quot;6298e243900c24088913e2fa7a338657cb7ae5913f426a5592edd889346b2d87&quot;</span>
+<span class="line" id="L465"><a class="ln" href="#L465">  465</a>   },</span>
+<span class="line" id="L466"><a class="ln" href="#L466">  466</a>   &quot;script_sha256&quot;: &quot;56c3690ef2e9ede0de82fc0957ce1f37b2a18dee30594b94460fe1775dfb5b16&quot;,</span>
+<span class="line" id="L467"><a class="ln" href="#L467">  467</a>   &quot;source_changes_after_replay&quot;: {</span>
+<span class="line" id="L468"><a class="ln" href="#L468">  468</a>     &quot;modified&quot;: [</span>
+<span class="line" id="L469"><a class="ln" href="#L469">  469</a>       &quot;README.md&quot;,</span>
+<span class="line" id="L470"><a class="ln" href="#L470">  470</a>       &quot;docs/implementation_status.md&quot;</span>
+<span class="line" id="L471"><a class="ln" href="#L471">  471</a>     ],</span>
+<span class="line" id="L472"><a class="ln" href="#L472">  472</a>     &quot;added&quot;: [</span>
+<span class="line" id="L473"><a class="ln" href="#L473">  473</a>       &quot;docs/rolling_world_endpoints.md&quot;,</span>
+<span class="line" id="L474"><a class="ln" href="#L474">  474</a>       &quot;docs/evidence/p2_rolling_world_endpoints.json&quot;</span>
+<span class="line" id="L475"><a class="ln" href="#L475">  475</a>     ],</span>
+<span class="line" id="L476"><a class="ln" href="#L476">  476</a>     &quot;executable_code_unchanged&quot;: true</span>
+<span class="line" id="L477"><a class="ln" href="#L477">  477</a>   },</span>
+<span class="line" id="L478"><a class="ln" href="#L478">  478</a>   &quot;official_rules_baseline_re_read&quot;: true,</span>
+<span class="line" id="L479"><a class="ln" href="#L479">  479</a>   &quot;official_pdf_verification_reused_from_today_sha256&quot;: &quot;8ec267ab0020bb2b4932a467b76dc5c873ed95c11de1581270e1a1a5ddbfd474&quot;,</span>
+<span class="line" id="L480"><a class="ln" href="#L480">  480</a>   &quot;limits&quot;: [</span>
+<span class="line" id="L481"><a class="ln" href="#L481">  481</a>     &quot;Nominal mount and estimated scan-header pose only; no metric calibration or per-point deskew.&quot;,</span>
+<span class="line" id="L482"><a class="ln" href="#L482">  482</a>     &quot;No FREE produced; no actual flight clearance admitted.&quot;,</span>
+<span class="line" id="L483"><a class="ln" href="#L483">  483</a>     &quot;Real captures are spaced ~1.5s; overlapping scan fusion only covered by synthetic tests.&quot;,</span>
+<span class="line" id="L484"><a class="ln" href="#L484">  484</a>     &quot;Processing timing excludes ROS decoding/contention and does not prove a live output remains current.&quot;,</span>
+<span class="line" id="L485"><a class="ln" href="#L485">  485</a>     &quot;Planner refusals occur before geometric checks; separate probes check actual map geometry.&quot;,</span>
+<span class="line" id="L486"><a class="ln" href="#L486">  486</a>     &quot;P1/P2 and online gate traversal unaccepted.&quot;</span>
+<span class="line" id="L487"><a class="ln" href="#L487">  487</a>   ]</span>
+<span class="line" id="L488"><a class="ln" href="#L488">  488</a> }</span></pre></body></html>

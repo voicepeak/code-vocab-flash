@@ -1,0 +1,430 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p0_bridge_lifetime.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p0_bridge_lifetime.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;protocol&quot;: &quot;configs/bridge_lifetime_comparison_v1.json&quot;,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;batch_directory&quot;: &quot;runs/batches/20261020T132046Z_f81b19cc30a84798a81809358e4ef2ab&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;batch_report_sha256&quot;: &quot;a5ff676cb06e8c72e1b2c170b12312b4805885244c9a90e50f6030d74e6f0d24&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;source_archive&quot;: {</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     &quot;sha256&quot;: &quot;7340d735e09f37f9953421373d875ee1b3d8e68542ea40aaa1e976802557535a&quot;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     &quot;files&quot;: 211,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     &quot;uncompressed_bytes&quot;: 657279,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>   },</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>   &quot;source_files&quot;: 211,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>   &quot;all_nine_archives_rehashed&quot;: true,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>   &quot;source_unchanged_during_batch&quot;: true,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>   &quot;all_case_provenance_verified&quot;: true,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>   &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>   &quot;simulator&quot;: {</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     &quot;strict_rules_verified&quot;: true,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     &quot;game_config&quot;: {</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>       &quot;IgnoreAllHitCollision&quot;: false,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>       &quot;IgnoreOverTime&quot;: false</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     },</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;game_config_sha256&quot;: &quot;4173ab7ae90fa031fb32a9e77d2810376c6f325b8274f4f8fd07be3c9adb6d39&quot;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     &quot;binary_sha256&quot;: &quot;5231addfa25ddaa9e4473ea9ac40c9c0bc685174e69cd14bb49159f443b97800&quot;,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     &quot;ros_plugin_sha256&quot;: &quot;69d5ea3302bdd5f20b842ec3d3e84bafcb50ef3649ada42c4d346c9bcd389885&quot;,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &quot;settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>   },</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>   &quot;probe_binary_sha256&quot;: &quot;4b640e4997bd930ec22df55174d092dbb065d007f79da1ce39f0fa3f0d088b5a&quot;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>   &quot;probe_build_variant&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>   &quot;analysis_code_sha256&quot;: &quot;d61e9f2777c9f470d163e11802730e44b81da57f39da3b2aba22ff6ed887a31a&quot;,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>   &quot;stage_acceptance&quot;: false,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>   &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>   &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>   &quot;official_result&quot;: &quot;UNKNOWN&quot;,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>   &quot;cases&quot;: [</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     {</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>       &quot;index&quot;: 0,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>       &quot;seed&quot;: 2024,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>       &quot;repeat&quot;: 0,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>       &quot;mode&quot;: &quot;none&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>       &quot;run_directory&quot;: &quot;runs/20261020T132046Z_5fe613ecebf041b2abaa06b62db30559&quot;,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>       &quot;lifetime_audit&quot;: null</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     },</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     {</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>       &quot;index&quot;: 1,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>       &quot;seed&quot;: 2024,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>       &quot;repeat&quot;: 0,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>       &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>       &quot;run_directory&quot;: &quot;runs/20261020T132115Z_8c51d51940bb4cfbaff3b06900e405bb&quot;,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>       &quot;run_state&quot;: &quot;FAILED&quot;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>       &quot;wire_trace_valid&quot;: false,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>       &quot;missing_sequences&quot;: [</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         479</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>       ],</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>       &quot;lifetime_audit&quot;: {</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         &quot;event_counts&quot;: {</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>           &quot;bridge_begin&quot;: 3811,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>           &quot;bridge_end&quot;: 3811,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>           &quot;parameter_borrow&quot;: 3811,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>           &quot;command_constructed&quot;: 3126,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>           &quot;command_handoff&quot;: 3126,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>           &quot;parameter_free_begin&quot;: 967,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>           &quot;parameter_free_end&quot;: 967</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         },</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;complete_bridge_spans&quot;: 3811,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &quot;incomplete_bridge_spans&quot;: 0,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         &quot;linked_parameter_handoffs&quot;: 3126,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         &quot;freed_parameter_handoffs&quot;: 1,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;violations&quot;: [</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>           {</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             &quot;bridge_span&quot;: 1513,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             &quot;parameter_address&quot;: &quot;0x71588ca2aa90&quot;,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             &quot;command_address&quot;: &quot;0x715a9097ba90&quot;,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             &quot;borrow&quot;: {</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>               &quot;event&quot;: &quot;parameter_borrow&quot;,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>               &quot;start_monotonic_ns&quot;: 872971438276380,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>               &quot;end_monotonic_ns&quot;: 872971438277266,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>               &quot;thread_id&quot;: 69940,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>               &quot;pwm_calls&quot;: 291,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>               &quot;bridge_calls&quot;: 1513,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>               &quot;overlap_entries&quot;: 20,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>               &quot;parameter_address&quot;: &quot;0x71588ca2aa90&quot;,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>               &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>               &quot;bridge_span&quot;: 1513</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             },</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             &quot;free&quot;: {</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>               &quot;event&quot;: &quot;parameter_free_end&quot;,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>               &quot;start_monotonic_ns&quot;: 872971438328548,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>               &quot;end_monotonic_ns&quot;: 872971438389318,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>               &quot;thread_id&quot;: 69930,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>               &quot;pwm_calls&quot;: 291,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>               &quot;bridge_calls&quot;: 1513,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>               &quot;overlap_entries&quot;: 20,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>               &quot;parameter_address&quot;: &quot;0x71588ca2aa90&quot;,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>               &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>               &quot;bridge_span&quot;: 0</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             },</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             &quot;command_handoff&quot;: {</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>               &quot;event&quot;: &quot;command_handoff&quot;,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>               &quot;start_monotonic_ns&quot;: 872971438397168,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>               &quot;end_monotonic_ns&quot;: 872971438397773,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>               &quot;thread_id&quot;: 69940,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>               &quot;pwm_calls&quot;: 291,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>               &quot;bridge_calls&quot;: 1513,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>               &quot;overlap_entries&quot;: 20,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>               &quot;parameter_address&quot;: &quot;0x71588ca2aa90&quot;,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>               &quot;command_address&quot;: &quot;0x715a9097ba90&quot;,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>               &quot;bridge_span&quot;: 1513</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>             },</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             &quot;free_to_handoff_ns&quot;: 7850</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>           }</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         ],</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         &quot;hook_coverage_valid&quot;: true,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         &quot;record_write_errors&quot;: 0,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;interpretation&quot;: &quot;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&quot;</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>       }</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     },</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     {</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>       &quot;index&quot;: 2,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>       &quot;repeat&quot;: 0,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>       &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>       &quot;run_directory&quot;: &quot;runs/20261020T132144Z_9d8f5d722a804bcb99974181688dd06b&quot;,</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>       &quot;lifetime_audit&quot;: {</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>         &quot;event_counts&quot;: {</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           &quot;bridge_begin&quot;: 3835,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>           &quot;bridge_end&quot;: 3835,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>           &quot;parameter_borrow&quot;: 3835,</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>           &quot;command_constructed&quot;: 3131,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>           &quot;command_handoff&quot;: 3131,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>           &quot;parameter_free_begin&quot;: 939,</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           &quot;parameter_free_end&quot;: 939</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>         },</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         &quot;complete_bridge_spans&quot;: 3835,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;incomplete_bridge_spans&quot;: 0,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         &quot;linked_parameter_handoffs&quot;: 3131,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>         &quot;freed_parameter_handoffs&quot;: 0,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         &quot;violations&quot;: [],</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         &quot;hook_coverage_valid&quot;: true,</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         &quot;record_write_errors&quot;: 0,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>         &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>         &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;interpretation&quot;: &quot;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&quot;</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>       }</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>     },</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>     {</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>       &quot;index&quot;: 3,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>       &quot;repeat&quot;: 0,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>       &quot;mode&quot;: &quot;none&quot;,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>       &quot;run_directory&quot;: &quot;runs/20261020T132212Z_26366cdb80a843528c51cd010861f50b&quot;,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>       &quot;lifetime_audit&quot;: null</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>     },</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>     {</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>       &quot;index&quot;: 4,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>       &quot;seed&quot;: 2024,</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>       &quot;repeat&quot;: 1,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>       &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>       &quot;run_directory&quot;: &quot;runs/20261020T132240Z_44676a829ee343c39d501556e6ff0025&quot;,</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>       &quot;lifetime_audit&quot;: {</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>         &quot;event_counts&quot;: {</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>           &quot;bridge_begin&quot;: 3764,</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>           &quot;bridge_end&quot;: 3764,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>           &quot;parameter_borrow&quot;: 3764,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>           &quot;command_constructed&quot;: 3084,</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>           &quot;command_handoff&quot;: 3084,</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>           &quot;parameter_free_begin&quot;: 939,</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>           &quot;parameter_free_end&quot;: 939</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         },</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         &quot;complete_bridge_spans&quot;: 3764,</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>         &quot;incomplete_bridge_spans&quot;: 0,</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>         &quot;linked_parameter_handoffs&quot;: 3084,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>         &quot;freed_parameter_handoffs&quot;: 1,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         &quot;violations&quot;: [</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>           {</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>             &quot;bridge_span&quot;: 1574,</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>             &quot;parameter_address&quot;: &quot;0x79590bdd6d50&quot;,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>             &quot;command_address&quot;: &quot;0x7956f221ddf0&quot;,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>             &quot;borrow&quot;: {</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>               &quot;event&quot;: &quot;parameter_borrow&quot;,</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>               &quot;start_monotonic_ns&quot;: 873056907897021,</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>               &quot;end_monotonic_ns&quot;: 873056907897078,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>               &quot;thread_id&quot;: 72200,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>               &quot;pwm_calls&quot;: 310,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>               &quot;bridge_calls&quot;: 1574,</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>               &quot;overlap_entries&quot;: 14,</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>               &quot;parameter_address&quot;: &quot;0x79590bdd6d50&quot;,</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>               &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>               &quot;bridge_span&quot;: 1574</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>             },</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>             &quot;free&quot;: {</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>               &quot;event&quot;: &quot;parameter_free_end&quot;,</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>               &quot;start_monotonic_ns&quot;: 873056907899037,</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>               &quot;end_monotonic_ns&quot;: 873056907906790,</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>               &quot;thread_id&quot;: 72190,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>               &quot;pwm_calls&quot;: 310,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>               &quot;bridge_calls&quot;: 1574,</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>               &quot;overlap_entries&quot;: 14,</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>               &quot;parameter_address&quot;: &quot;0x79590bdd6d50&quot;,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>               &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>               &quot;bridge_span&quot;: 0</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>             },</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>             &quot;command_handoff&quot;: {</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>               &quot;event&quot;: &quot;command_handoff&quot;,</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>               &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>               &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>               &quot;start_monotonic_ns&quot;: 873056907916421,</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>               &quot;end_monotonic_ns&quot;: 873056907916505,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>               &quot;thread_id&quot;: 72200,</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>               &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>               &quot;pwm_calls&quot;: 310,</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>               &quot;bridge_calls&quot;: 1574,</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>               &quot;overlap_entries&quot;: 14,</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>               &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>               &quot;parameter_address&quot;: &quot;0x79590bdd6d50&quot;,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>               &quot;command_address&quot;: &quot;0x7956f221ddf0&quot;,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>               &quot;bridge_span&quot;: 1574</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>             },</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>             &quot;free_to_handoff_ns&quot;: 9631</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>           }</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>         ],</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;hook_coverage_valid&quot;: true,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>         &quot;record_write_errors&quot;: 0,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>         &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>         &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>         &quot;interpretation&quot;: &quot;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&quot;</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>       }</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>     },</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>     {</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>       &quot;index&quot;: 5,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>       &quot;seed&quot;: 2024,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>       &quot;repeat&quot;: 1,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>       &quot;mode&quot;: &quot;none&quot;,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>       &quot;run_directory&quot;: &quot;runs/20261020T132308Z_b07048714a8d46bca02fa55187029464&quot;,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>       &quot;lifetime_audit&quot;: null</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>     },</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>     {</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>       &quot;index&quot;: 6,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>       &quot;repeat&quot;: 1,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>       &quot;mode&quot;: &quot;none&quot;,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>       &quot;run_directory&quot;: &quot;runs/20261020T132336Z_6e4c3e66550c4942b0cab00fe804fc33&quot;,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>       &quot;lifetime_audit&quot;: null</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>     },</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>     {</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>       &quot;index&quot;: 7,</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>       &quot;seed&quot;: 2041,</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>       &quot;repeat&quot;: 1,</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>       &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>       &quot;run_directory&quot;: &quot;runs/20261020T132404Z_8180266dc9a249ffb88525f9c366e22b&quot;,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>       &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>       &quot;controller_completed&quot;: true,</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>       &quot;controller_fault&quot;: null,</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>       &quot;wire_trace_valid&quot;: true,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>       &quot;missing_sequences&quot;: [],</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>       &quot;provenance_verified&quot;: true,</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>       &quot;lifetime_audit&quot;: {</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>         &quot;event_counts&quot;: {</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>           &quot;bridge_begin&quot;: 3789,</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>           &quot;bridge_end&quot;: 3789,</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>           &quot;parameter_borrow&quot;: 3789,</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>           &quot;command_constructed&quot;: 3106,</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>           &quot;command_handoff&quot;: 3106,</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>           &quot;parameter_free_begin&quot;: 967,</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>           &quot;parameter_free_end&quot;: 967</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>         },</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>         &quot;complete_bridge_spans&quot;: 3789,</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>         &quot;incomplete_bridge_spans&quot;: 0,</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>         &quot;linked_parameter_handoffs&quot;: 3106,</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>         &quot;freed_parameter_handoffs&quot;: 0,</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>         &quot;violations&quot;: [],</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>         &quot;hook_coverage_valid&quot;: true,</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>         &quot;record_write_errors&quot;: 0,</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>         &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         &quot;interpretation&quot;: &quot;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&quot;</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>       }</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>     }</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>   ],</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>   &quot;initial_exploratory_run&quot;: {</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>     &quot;run_directory&quot;: &quot;runs/20261020T131843Z_3f4934d97fe6424aa25a06b8204697cd&quot;,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>     &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>     &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>     &quot;run_state&quot;: &quot;EVALUATED&quot;,</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>     &quot;lifetime_audit&quot;: {</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>       &quot;event_counts&quot;: {</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>         &quot;bridge_begin&quot;: 3792,</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>         &quot;bridge_end&quot;: 3792,</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>         &quot;parameter_borrow&quot;: 3792,</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         &quot;command_constructed&quot;: 3124,</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>         &quot;command_handoff&quot;: 3124,</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>         &quot;parameter_free_begin&quot;: 952,</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>         &quot;parameter_free_end&quot;: 952</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>       },</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>       &quot;complete_bridge_spans&quot;: 3792,</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>       &quot;incomplete_bridge_spans&quot;: 0,</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>       &quot;linked_parameter_handoffs&quot;: 3124,</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>       &quot;freed_parameter_handoffs&quot;: 1,</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>       &quot;violations&quot;: [</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>         {</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>           &quot;bridge_span&quot;: 3422,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>           &quot;parameter_address&quot;: &quot;0x7ba8a99a79d0&quot;,</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>           &quot;command_address&quot;: &quot;0x7ba8aac8d3f0&quot;,</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>           &quot;borrow&quot;: {</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>             &quot;event&quot;: &quot;parameter_borrow&quot;,</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>             &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>             &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>             &quot;start_monotonic_ns&quot;: 872829847257909,</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>             &quot;end_monotonic_ns&quot;: 872829847257958,</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>             &quot;thread_id&quot;: 67950,</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>             &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>             &quot;pwm_calls&quot;: 940,</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>             &quot;bridge_calls&quot;: 3422,</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>             &quot;overlap_entries&quot;: 39,</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>             &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>             &quot;parameter_address&quot;: &quot;0x7ba8a99a79d0&quot;,</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>             &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>             &quot;bridge_span&quot;: 3422</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>           },</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>           &quot;free&quot;: {</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>             &quot;event&quot;: &quot;parameter_free_end&quot;,</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>             &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>             &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>             &quot;start_monotonic_ns&quot;: 872829847260968,</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>             &quot;end_monotonic_ns&quot;: 872829847268607,</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>             &quot;thread_id&quot;: 67940,</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>             &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>             &quot;pwm_calls&quot;: 940,</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>             &quot;bridge_calls&quot;: 3422,</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>             &quot;overlap_entries&quot;: 39,</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>             &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>             &quot;parameter_address&quot;: &quot;0x7ba8a99a79d0&quot;,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>             &quot;command_address&quot;: &quot;0x0&quot;,</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>             &quot;bridge_span&quot;: 0</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>           },</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>           &quot;command_handoff&quot;: {</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>             &quot;event&quot;: &quot;command_handoff&quot;,</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>             &quot;mode&quot;: &quot;lifetime&quot;,</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>             &quot;function&quot;: &quot;bridge&quot;,</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>             &quot;start_monotonic_ns&quot;: 872829847281630,</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>             &quot;end_monotonic_ns&quot;: 872829847281719,</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>             &quot;thread_id&quot;: 67950,</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>             &quot;other_thread_id&quot;: 0,</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>             &quot;pwm_calls&quot;: 940,</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>             &quot;bridge_calls&quot;: 3422,</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>             &quot;overlap_entries&quot;: 39,</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>             &quot;write_errors&quot;: 0,</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>             &quot;parameter_address&quot;: &quot;0x7ba8a99a79d0&quot;,</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>             &quot;command_address&quot;: &quot;0x7ba8aac8d3f0&quot;,</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>             &quot;bridge_span&quot;: 3422</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>           },</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>           &quot;free_to_handoff_ns&quot;: 13023</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>         }</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>       ],</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>       &quot;hook_coverage_valid&quot;: true,</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>       &quot;record_write_errors&quot;: 0,</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>       &quot;actual_native_consumer_read_observed&quot;: false,</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>       &quot;physical_impulse_cause_identified&quot;: false,</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>       &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>       &quot;interpretation&quot;: &quot;A violation means a parameter address was freed after get() returned and before its Command shared_ptr get() returned to the original native-call sequence. The probe does not observe the downstream payload read, allocator reuse, or applied actuator input. Instrumentation changes timing.&quot;</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>     },</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>     &quot;not_paired_with_frozen_batch&quot;: true</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>   },</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>   &quot;conclusion&quot;: &quot;In the frozen batch, two of four lifetime-instrumented runs passed a parameter address to the native-call sequence after its storage had been freed on another thread. All eight controls completed without angular guards; one instrumented run failed the separate wire audit. One prior exploratory run also captured a freed handoff. The original Command constructor only stores raw pointers. This demonstrates unsafe lifetime ordering in this instrumented bridge, but does not observe a downstream freed-memory read or identify the cause of historical physical impulses.&quot;</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a> }</span></pre></body></html>

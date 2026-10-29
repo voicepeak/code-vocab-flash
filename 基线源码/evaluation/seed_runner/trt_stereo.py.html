@@ -1,0 +1,115 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/trt_stereo.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/trt_stereo.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Archive, export, build and independently compare the optional TensorRT candidate.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import os</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import shutil</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import subprocess</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from evaluation.seed_runner.manifest import file_hash,prepare_run,source_hashes</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from evaluation.metrics.trt_precision_policy import POLICIES</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> def main():</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--source-run&#x27;,type=Path,required=True)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     parser.add_argument(&#x27;--precision&#x27;,choices=(&#x27;fp16&#x27;,&#x27;fp32&#x27;),default=&#x27;fp16&#x27;)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     parser.add_argument(&#x27;--precision-policy&#x27;,choices=POLICIES,default=&#x27;default&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     parser.add_argument(&#x27;--reuse-onnx-run&#x27;,type=Path)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     parser.add_argument(&#x27;--disable-tf32-globally&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     parser.add_argument(&#x27;--freeze-fourier-inputs&#x27;,action=&#x27;store_true&#x27;);parser.add_argument(&#x27;--fp32-reference-run&#x27;,type=Path)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     args=parser.parse_args()</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     if args.precision_policy!=&#x27;default&#x27; and args.precision!=&#x27;fp16&#x27;:parser.error(&#x27;mixed precision policy requires fp16&#x27;)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     root=Path(__file__).resolve().parents[2];source=args.source_run.resolve()</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     if root/&#x27;runs&#x27; not in source.parents:parser.error(&#x27;owned retained input run required&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     rt=&#x27;/workspace/main/runs/ffs_runtime&#x27;;runtime=root/&#x27;runs/ffs_runtime&#x27;;vendor=runtime/&#x27;Fast-FoundationStereo&#x27;</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     checkpoint=runtime/&#x27;model/model_best_bp2_serialize.pth&#x27;;profile_path=root/&#x27;configs/fast_foundation_stereo.json&#x27;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     profile=json.loads(profile_path.read_text());commit=subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     if (commit!=profile[&#x27;vendor&#x27;][&#x27;commit&#x27;] or subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             or file_hash(checkpoint)!=profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]):raise ValueError(&#x27;pinned model or vendor differs&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     names=[&#x27;inputs/index.json&#x27;,&#x27;manifest.json&#x27;,&#x27;learned_stereo_report.json&#x27;]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     names += [str(p.relative_to(source)) for folder in (&#x27;inputs&#x27;,&#x27;predictions&#x27;,&#x27;references&#x27;) for p in sorted((source/folder).glob(&#x27;*.npz&#x27;))]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     hashes={name:file_hash(source/name) for name in names};container=os.environ.get(&#x27;RMUA_CONTAINER&#x27;,&#x27;rmua_noetic&#x27;)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     reference=args.fp32_reference_run.resolve() if args.fp32_reference_run else None</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     reference_hashes={}</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     if args.freeze_fourier_inputs and not args.reuse_onnx_run:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         if reference is None or root/&#x27;runs&#x27; not in reference.parents:parser.error(&#x27;owned FP32 reference required for Fourier parity&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         original=json.loads((reference/&#x27;manifest.json&#x27;).read_text())[&#x27;config&#x27;][&#x27;precision_reference&#x27;]</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         if original[&#x27;source_run&#x27;]!=str(source.relative_to(root)):raise ValueError(&#x27;FP32 reference uses different stereo inputs&#x27;)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         reference_hashes={str(p.relative_to(reference)):file_hash(p) for p in reference.rglob(&#x27;*&#x27;) if p.is_file() and p.suffix==&#x27;.npz&#x27;}</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     image=subprocess.check_output([&#x27;docker&#x27;,&#x27;inspect&#x27;,container,&#x27;--format&#x27;,&#x27;{{.Image}}&#x27;],text=True).strip()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     config={&#x27;trt_experiment&#x27;:{&#x27;source_run&#x27;:str(source.relative_to(root)),&#x27;input_sha256&#x27;:hashes,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         &#x27;precision&#x27;:args.precision,&#x27;precision_policy&#x27;:args.precision_policy,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         &#x27;global_tf32_override&#x27;:&#x27;0&#x27; if args.disable_tf32_globally else None,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &#x27;fourier_inputs_frozen&#x27;:args.freeze_fourier_inputs,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &#x27;fp32_reference&#x27;:{&#x27;run&#x27;:str(reference.relative_to(root)),&#x27;input_sha256&#x27;:reference_hashes,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &#x27;manifest_sha256&#x27;:file_hash(reference/&#x27;manifest.json&#x27;)} if reference else None,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &#x27;profile_sha256&#x27;:file_hash(profile_path),&#x27;historical_only&#x27;:True}}</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     run,manifest=prepare_run(root,root/&#x27;runs&#x27;,None,image,config);inside=&#x27;/workspace/main/&#x27;+str(run.relative_to(root))</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     shutil.copyfile(profile_path,run/&#x27;profile.json&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     subprocess.run([&#x27;git&#x27;,&#x27;archive&#x27;,&#x27;--format=tar.gz&#x27;,&#x27;--output=&#x27;+str(run/&#x27;vendor_source.tar.gz&#x27;),commit],cwd=vendor,check=True)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     manifest.update(stage=&#x27;P2_OFFLINE_TENSORRT_COMPARISON&#x27;,run_state=&#x27;PREPARED&#x27;,acceptance_eligible=False,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         control_published=False,vendor={&#x27;commit&#x27;:commit,&#x27;source_archive_sha256&#x27;:file_hash(run/&#x27;vendor_source.tar.gz&#x27;),</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             &#x27;license_sha256&#x27;:file_hash(vendor/&#x27;LICENSE.txt&#x27;)},model_hashes={checkpoint.name:file_hash(checkpoint)})</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     driver=os.environ.get(&#x27;RMUA_TRITON_LIBCUDA_PATH&#x27;,&#x27;/opt/rmua-driver/usr/lib/x86_64-linux-gnu&#x27;)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     docker=[&#x27;docker&#x27;,&#x27;exec&#x27;,&#x27;-u&#x27;,&#x27;1000:1000&#x27;,&#x27;-w&#x27;,&#x27;/workspace/main&#x27;,&#x27;-e&#x27;,&#x27;PYTHONNOUSERSITE=1&#x27;,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         &#x27;-e&#x27;,&#x27;PYTHONPATH=/workspace/main:&#x27;+rt+&#x27;/Fast-FoundationStereo&#x27;,&#x27;-e&#x27;,&#x27;OMP_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         &#x27;-e&#x27;,&#x27;UV_CACHE_DIR=&#x27;+rt+&#x27;/uv_cache&#x27;,&#x27;-e&#x27;,&#x27;TRITON_LIBCUDA_PATH=&#x27;+driver,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         &#x27;-e&#x27;,&#x27;TRITON_CACHE_DIR=&#x27;+rt+&#x27;/cache/triton_driver_bound&#x27;,&#x27;-e&#x27;,&#x27;TORCH_HOME=&#x27;+rt+&#x27;/cache/torch&#x27;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &#x27;-e&#x27;,&#x27;TORCHINDUCTOR_CACHE_DIR=&#x27;+rt+&#x27;/cache/inductor&#x27;,container]</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     python=rt+&#x27;/venv_trt/bin/python&#x27;;module=&#x27;evaluation.metrics.trt_stereo_build&#x27;</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     if args.disable_tf32_globally:docker[-1:-1]=[&#x27;-e&#x27;,&#x27;NVIDIA_TF32_OVERRIDE=0&#x27;]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     modules=(module,&#x27;evaluation.metrics.trt_stereo_candidate&#x27;,&#x27;evaluation.metrics.trt_stereo_evaluate&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     def save():(run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     save();print(run,flush=True);code=1</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     try:</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         manifest[&#x27;runtime_provenance&#x27;]={&#x27;packages&#x27;:subprocess.check_output(docker+[rt+&#x27;/uv&#x27;,&#x27;pip&#x27;,&#x27;freeze&#x27;,&#x27;--python&#x27;,python],text=True),</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             &#x27;package_sources&#x27;:json.loads((runtime/&#x27;trt_package_sources.json&#x27;).read_text()),</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             &#x27;nvidia_smi&#x27;:subprocess.check_output(docker+[&#x27;nvidia-smi&#x27;],text=True),</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             &#x27;runtime_lock_sha256&#x27;:file_hash(root/&#x27;configs/fast_foundation_stereo_trt_runtime.lock.txt&#x27;)}</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         save();commands=[]</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         if args.reuse_onnx_run:</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             reuse=args.reuse_onnx_run.resolve()</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             if root/&#x27;runs&#x27; not in reuse.parents:raise ValueError(&#x27;ONNX source must be an owned historical run&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             exported=json.loads((reuse/&#x27;export.json&#x27;).read_text());parity=json.loads((reuse/&#x27;export_parity.json&#x27;).read_text())</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             if not parity[&#x27;passed&#x27;] or exported[&#x27;source_weights_sha256&#x27;]!=profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;] or exported[&#x27;onnx_sha256&#x27;]!=file_hash(reuse/&#x27;stereo.onnx&#x27;):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                 raise ValueError(&#x27;reused ONNX provenance differs&#x27;)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             if exported.get(&#x27;fourier_inputs_frozen&#x27;,False)!=args.freeze_fourier_inputs:raise ValueError(&#x27;reused graph has a different Fourier policy&#x27;)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             for name in (&#x27;stereo.onnx&#x27;,&#x27;export.json&#x27;,&#x27;export_parity.json&#x27;):shutil.copyfile(reuse/name,run/name)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             if args.freeze_fourier_inputs:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 frozen_parity=json.loads((reuse/&#x27;fourier_parity.json&#x27;).read_text())</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                 if not frozen_parity[&#x27;passed&#x27;]:raise ValueError(&#x27;reused Fourier input freezing did not preserve FP32 reference&#x27;)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                 shutil.copyfile(reuse/&#x27;fourier_parity.json&#x27;,run/&#x27;fourier_parity.json&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             manifest[&#x27;onnx_reused_from&#x27;]=str(reuse.relative_to(root));save()</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         else:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             commands.append((&#x27;export&#x27;,docker+[&#x27;env&#x27;,&#x27;TORCH_COMPILE_DISABLE=1&#x27;,&#x27;TORCHDYNAMO_DISABLE=1&#x27;,python,&#x27;-m&#x27;,module,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 &#x27;--run-dir&#x27;,inside,&#x27;--stage&#x27;,&#x27;export&#x27;,&#x27;--vendor&#x27;,rt+&#x27;/Fast-FoundationStereo&#x27;,</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 &#x27;--checkpoint&#x27;,rt+&#x27;/model/&#x27;+checkpoint.name,&#x27;--sample&#x27;,&#x27;/workspace/main/&#x27;+str(source.relative_to(root))+&#x27;/inputs/0000.npz&#x27;],300))</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             if args.freeze_fourier_inputs:</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 commands[-1][1].extend([&#x27;--freeze-fourier-inputs&#x27;,&#x27;--fp32-reference-run&#x27;,&#x27;/workspace/main/&#x27;+str(reference.relative_to(root))])</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         commands += [(&#x27;build&#x27;,docker+[python,&#x27;-m&#x27;,module,&#x27;--run-dir&#x27;,inside,&#x27;--stage&#x27;,&#x27;build&#x27;,&#x27;--precision&#x27;,args.precision,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                 &#x27;--precision-policy&#x27;,args.precision_policy],1800),</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             (&#x27;candidate&#x27;,docker+[python,&#x27;-m&#x27;,modules[1],&#x27;--run-dir&#x27;,inside],300),</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             (&#x27;evaluate&#x27;,docker+[python,&#x27;-m&#x27;,modules[2],&#x27;--run-dir&#x27;,inside],120)]</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         for stage,command,timeout in commands:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             with (run/(stage+&#x27;.log&#x27;)).open(&#x27;x&#x27;) as log:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                 completed=subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,timeout=timeout)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             if completed.returncode:</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                 manifest[&#x27;failed_stage&#x27;]=stage;code=completed.returncode</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                 raise RuntimeError(stage+&#x27; returned &#x27;+str(code))</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         code=0;manifest[&#x27;run_state&#x27;]=&#x27;COMPUTED&#x27;</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     except Exception as error:manifest.update(run_state=&#x27;FAILED&#x27;,error=str(error))</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     finally:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         manifest[&#x27;terminated_owned_workers&#x27;]={name:stop_bound_controller(container,name,inside) for name in modules}</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         manifest[&#x27;source_sha256_after&#x27;]=source_hashes(root);manifest[&#x27;source_unchanged&#x27;]=manifest[&#x27;source_sha256_before&#x27;]==manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         manifest[&#x27;input_unchanged&#x27;]=hashes=={name:file_hash(source/name) for name in hashes}</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         manifest[&#x27;fp32_reference_unchanged&#x27;]=(reference_hashes=={name:file_hash(reference/name) for name in reference_hashes}</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             and (reference is None or file_hash(reference/&#x27;manifest.json&#x27;)==config[&#x27;trt_experiment&#x27;][&#x27;fp32_reference&#x27;][&#x27;manifest_sha256&#x27;]))</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         manifest[&#x27;vendor_unchanged&#x27;]=(not subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             and subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()==commit)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         manifest[&#x27;checkpoint_unchanged&#x27;]=file_hash(checkpoint)==profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         manifest[&#x27;result_exit_code&#x27;]=code;save()</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     return code if all(manifest[name] for name in (&#x27;source_unchanged&#x27;,&#x27;input_unchanged&#x27;,&#x27;vendor_unchanged&#x27;,&#x27;checkpoint_unchanged&#x27;,&#x27;fp32_reference_unchanged&#x27;)) else 2</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a> </span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a> </span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

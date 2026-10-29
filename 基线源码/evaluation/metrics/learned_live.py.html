@@ -1,0 +1,118 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/learned_live.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/learned_live.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Independently audit live diagnostic source leases, payloads and pipeline timing.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import numpy as np</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> def rows(path):return [json.loads(line) for line in path.read_text().splitlines()]</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def describe(values):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     return {&#x27;samples&#x27;:len(values),&#x27;min&#x27;:float(min(values)),&#x27;p50&#x27;:float(np.median(values)),</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         &#x27;sample_p95&#x27;:float(np.percentile(values,95)),&#x27;sample_p99&#x27;:float(np.percentile(values,99)),</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &#x27;max&#x27;:float(max(values))} if values else {&#x27;samples&#x27;:0}</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def audit(run):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     from cv_bridge import CvBridge</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     from adapters.ros_noetic.capture_io import load_message</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     summary=json.loads((run/&#x27;online_summary.json&#x27;).read_text())</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     results=rows(run/&#x27;online_results.jsonl&#x27;);jobs=rows(run/&#x27;gpu_jobs.jsonl&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     clocks=rows(run/&#x27;online_imu_clock.jsonl&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     clock_set={(r[&#x27;stamp&#x27;],r[&#x27;arrival_wall&#x27;],r[&#x27;epoch&#x27;]) for r in clocks}</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     valid=not summary[&#x27;faults&#x27;] and len(results)==summary[&#x27;results&#x27;]==len(jobs)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     ids=[r[&#x27;request_id&#x27;] for r in results]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     valid &amp;= ids==sorted(set(ids)) and ids==[j[&#x27;request_id&#x27;] for j in jobs]</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     slot=summary[&#x27;slot&#x27;]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     valid &amp;= (slot[&#x27;capacity&#x27;]==1 and slot[&#x27;pending&#x27;]==0 and slot[&#x27;submitted&#x27;]==summary[&#x27;pairs&#x27;]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         and slot[&#x27;submitted&#x27;]==slot[&#x27;taken&#x27;]+slot[&#x27;superseded&#x27;]+slot[&#x27;discarded_on_close&#x27;]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         and slot[&#x27;taken&#x27;]==len(results)+sum(summary[&#x27;admission_rejections&#x27;].values()))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     per_result=[]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     for row,job in zip(results,jobs):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         meta=row[&#x27;source_metadata&#x27;];a,b,p=meta[&#x27;left&#x27;],meta[&#x27;right&#x27;],meta[&#x27;pair&#x27;]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         same_job=all(row[key]==value for key,value in job.items())</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         source_valid=(p[&#x27;stamp&#x27;]==max(a[&#x27;stamp&#x27;],b[&#x27;stamp&#x27;]) and p[&#x27;valid_until&#x27;]==min(a[&#x27;valid_until&#x27;],b[&#x27;valid_until&#x27;])</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             and a[&#x27;epoch&#x27;]==b[&#x27;epoch&#x27;]==p[&#x27;epoch&#x27;] and abs(a[&#x27;stamp&#x27;]-b[&#x27;stamp&#x27;])&lt;=.005</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             and all(abs(x[&#x27;valid_until&#x27;]-x[&#x27;stamp&#x27;]-summary[&#x27;image_age_budget_s&#x27;])&lt;1e-6 for x in (a,b)))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         clock_valid=(row[&#x27;imu_clock_at_result&#x27;],row[&#x27;imu_arrival_at_result&#x27;],row[&#x27;epoch_at_result&#x27;]) in clock_set</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         checked=row[&#x27;result_checked_wall&#x27;];now=row[&#x27;imu_clock_at_result&#x27;]</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         fresh=(0&lt;=checked-row[&#x27;imu_arrival_at_result&#x27;]&lt;=.1)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         source_arrival=min(row[&#x27;left_arrival_wall&#x27;],row[&#x27;right_arrival_wall&#x27;])</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         if not row[&#x27;clock_fresh_at_result&#x27;]:reason=&#x27;STALE_IMU_CLOCK&#x27;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         elif row[&#x27;epoch_at_result&#x27;]!=p[&#x27;epoch&#x27;]:reason=&#x27;OTHER_EPOCH&#x27;</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         elif not p[&#x27;stamp&#x27;]&lt;=now&lt;p[&#x27;valid_until&#x27;]:reason=&#x27;SOURCE_LEASE_NOT_CURRENT&#x27;</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         elif not 0&lt;=checked-source_arrival&lt;.2:reason=&#x27;WALL_EXPIRED&#x27;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         else:reason=None</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         timing_valid=(source_arrival&lt;=row[&#x27;send_begin_wall&#x27;]&lt;=row[&#x27;received_wall&#x27;]&lt;=row[&#x27;processing_end_wall&#x27;]</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             &lt;=row[&#x27;result_received_wall&#x27;]&lt;=checked and reason==row[&#x27;timing_rejection&#x27;]</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             and (reason is None)==row[&#x27;timing_current&#x27;] and row[&#x27;clock_fresh_at_result&#x27;]==fresh</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             and abs(row[&#x27;sensor_age_at_result_s&#x27;]-(now-min(a[&#x27;stamp&#x27;],b[&#x27;stamp&#x27;])))&lt;1e-9</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             and abs(row[&#x27;wall_age_at_result_s&#x27;]-(checked-source_arrival))&lt;1e-9</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             and p[&#x27;stamp&#x27;]&lt;=row[&#x27;imu_clock_at_dispatch&#x27;]&lt;p[&#x27;valid_until&#x27;])</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         row_valid=bool(same_job and source_valid and clock_valid and timing_valid</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             and not row[&#x27;current_control_eligible&#x27;] and not row[&#x27;control_published&#x27;] and not row[&#x27;acceptance_eligible&#x27;])</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         valid &amp;= row_valid;per_result.append({&#x27;request_id&#x27;:row[&#x27;request_id&#x27;],&#x27;audit_valid&#x27;:row_valid})</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     first_payload_valid=None</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     if results:</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         directory=run/&#x27;first_online&#x27;;request=json.loads((directory/&#x27;request.json&#x27;).read_text())</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         first_payload_valid=True</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         with np.load(directory/&#x27;rgb_inputs.npz&#x27;,allow_pickle=False) as images:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             payload=images[&#x27;left&#x27;].tobytes()+images[&#x27;right&#x27;].tobytes()</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             first_payload_valid &amp;= hashlib.sha256(payload).hexdigest()==request[&#x27;input_sha256&#x27;]==results[0][&#x27;input_sha256&#x27;]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             for side in (&#x27;left&#x27;,&#x27;right&#x27;):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 message=load_message(directory/(side+&#x27;.json&#x27;))</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 first_payload_valid &amp;= np.array_equal(CvBridge().imgmsg_to_cv2(message,desired_encoding=&#x27;rgb8&#x27;),images[side])</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 first_payload_valid &amp;= message.header.stamp.to_sec()==request[&#x27;source_metadata&#x27;][side][&#x27;stamp&#x27;]</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         with np.load(directory/&#x27;prediction.npz&#x27;,allow_pickle=False) as saved:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             disp,mask=saved[&#x27;disparity&#x27;],saved[&#x27;valid&#x27;]</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             first_payload_valid &amp;= bool(np.isnan(disp[~mask]).all() and np.isfinite(disp[mask]).all() and (disp[mask]&gt;0).all())</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             payload=disp.astype(&#x27;&lt;f4&#x27;).tobytes()+mask.astype(np.uint8).tobytes()</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             first_payload_valid &amp;= hashlib.sha256(payload).hexdigest()==results[0][&#x27;output_sha256&#x27;]</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         valid &amp;= first_payload_valid</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     graph=summary[&#x27;node_graph&#x27;] or {}</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     expected=sorted((&#x27;/airsim_node/drone_1/front_left/Scene&#x27;,&#x27;/airsim_node/drone_1/front_right/Scene&#x27;,&#x27;/airsim_node/drone_1/imu/imu&#x27;))</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     valid &amp;= graph.get(&#x27;subscriptions&#x27;)==expected and not set(graph.get(&#x27;publishers&#x27;,[]))-{&#x27;/rosout&#x27;}</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     valid &amp;= not summary[&#x27;control_published&#x27;] and len(clocks)==summary[&#x27;clock_records&#x27;]</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     gpu=rows(run/&#x27;gpu_system_usage.jsonl&#x27;)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     utilization=[];memory=[];cpu=[]</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     for sample in gpu:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         if sample[&#x27;gpu_exit_code&#x27;]==0:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             fields=[part.strip() for part in sample[&#x27;gpu_csv&#x27;].split(&#x27;,&#x27;)]</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             if len(fields)==4:</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 try:utilization.append(float(fields[1]));memory.append(float(fields[2]))</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 except ValueError:pass</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     for a,b in zip(gpu,gpu[1:]):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         delta=np.array(b[&#x27;system_cpu_ticks&#x27;])-a[&#x27;system_cpu_ticks&#x27;];total=delta.sum()</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         if total&gt;0 and (delta&gt;=0).all():cpu.append(float(100*(total-delta[3]-delta[4])/total))</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     intervals=np.diff([r[&#x27;arrival_wall&#x27;] for r in clocks])</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     result={&#x27;audit_valid&#x27;:bool(valid),&#x27;result_count&#x27;:len(results),&#x27;per_result&#x27;:per_result,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &#x27;first_payload_matches_independent_ros_decoder_and_output_digest&#x27;:None if first_payload_valid is None else bool(first_payload_valid),</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &#x27;timing_current_results&#x27;:sum(r[&#x27;timing_current&#x27;] for r in results),</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         &#x27;result_timing_rejections&#x27;:{reason:sum(r[&#x27;timing_rejection&#x27;]==reason for r in results) for reason in sorted({r[&#x27;timing_rejection&#x27;] for r in results if r[&#x27;timing_rejection&#x27;]})},</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         &#x27;sensor_header_age_at_result_s&#x27;:describe([r[&#x27;sensor_age_at_result_s&#x27;] for r in results]),</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         &#x27;callback_to_checked_result_s&#x27;:describe([r[&#x27;wall_age_at_result_s&#x27;] for r in results]),</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         &#x27;rpc_round_trip_s&#x27;:describe([r[&#x27;result_received_wall&#x27;]-r[&#x27;send_begin_wall&#x27;] for r in results]),</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         &#x27;gpu_receive_to_encoded_result_s&#x27;:describe([r[&#x27;processing_end_wall&#x27;]-r[&#x27;received_wall&#x27;] for r in results]),</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         &#x27;bidirectional_model_s&#x27;:describe([r[&#x27;bidirectional_resize_transfer_s&#x27;] for r in results]),</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         &#x27;imu_callback_interval_s&#x27;:describe(intervals.tolist()),</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         &#x27;gpu_utilization_percent&#x27;:describe(utilization),&#x27;gpu_memory_used_mib&#x27;:describe(memory),</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         &#x27;system_cpu_busy_percent_all_cores&#x27;:describe(cpu),&#x27;usage_sampling_period_s&#x27;:.5,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &#x27;graph&#x27;:graph,&#x27;slot&#x27;:slot,&#x27;image_age_budget_s&#x27;:summary[&#x27;image_age_budget_s&#x27;],</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &#x27;all_outputs_diagnostic_only&#x27;:True,&#x27;true_exposure_latency_measured&#x27;:False,</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         &#x27;actuation_latency_measured&#x27;:False,&#x27;cold_start_departure_verified&#x27;:False,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         &#x27;geometry_accuracy_verified&#x27;:False,&#x27;current_control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         &#x27;interpretation&#x27;:&#x27;Image-header/IMU and callback/monotonic ages measure this diagnostic pipeline, not exposure-to-actuation. No source lease is refreshed. Late results remain rejected; timely ones are still uncalibrated. Samples are development observations and not statistical real-time guarantees.&#x27;}</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     (run/&#x27;online_audit.json&#x27;).write_text(json.dumps(result,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     return result</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a> </span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a> </span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a> def main():</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     args=parser.parse_args();return 0 if audit(args.run_dir)[&#x27;audit_valid&#x27;] else 2</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a> </span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a> </span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

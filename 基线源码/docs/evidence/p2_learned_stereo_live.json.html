@@ -1,0 +1,709 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_learned_stereo_live.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_learned_stereo_live.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 35,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-23&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P2_READ_ONLY_LEARNED_STEREO_LATENCY&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     {</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>       &quot;run&quot;: &quot;runs/20261023T100146Z_6e9ed7546ea545b7971641b90a71a9c5&quot;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>       &quot;seed&quot;: 2114,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         &quot;sha256&quot;: &quot;0fef22811cbcf234fba28e2829d8ac722288af7932874517acf6fee641e7d76a&quot;,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         &quot;files&quot;: 282,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         &quot;uncompressed_bytes&quot;: 1187970,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>       },</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>       &quot;source_archive_independently_verified&quot;: true,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>       &quot;vendor&quot;: {</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;commit&quot;: &quot;476f4249561f7c79ca707326954f9255643412a6&quot;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &quot;source_archive_sha256&quot;: &quot;5fab9ab4c76611e7cf894ab8cf0a98687471133b5251d2bd1de48697c7c6012a&quot;,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;license_sha256&quot;: &quot;045b564ebafefaa863beec07c5acdcfa8d99cefbbd060c22865bc4613318ddd6&quot;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>       },</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>       &quot;vendor_files_independently_verified&quot;: 57,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       &quot;checkpoint_unchanged&quot;: true,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>       &quot;vendor_unchanged&quot;: true,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>       &quot;runtime_matches_lock&quot;: true,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>       &quot;runtime_provenance&quot;: {</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &quot;packages&quot;: &quot;antlr4-python3-runtime==4.9.3\nanyio==4.15.1\nclick==8.5.0\neinops==0.8.1\nfilelock==3.32.3\nfsspec==2026.7.0\nh11==0.16.0\nhf-xet==1.7.0\nhttpcore2==2.16.0\nhttpx2==2.16.0\nhuggingface-hub==2.2.0\nidna==3.20\nimageio==2.37.0\njinja2==3.1.6\nmarkupsafe==3.0.3\nmpmath==1.3.0\nnetworkx==3.6.1\nnumpy==1.26.4\nnvidia-cublas-cu12==12.4.5.8\nnvidia-cuda-cupti-cu12==12.4.127\nnvidia-cuda-nvrtc-cu12==12.4.127\nnvidia-cuda-runtime-cu12==12.4.127\nnvidia-cudnn-cu12==9.1.0.70\nnvidia-cufft-cu12==11.2.1.3\nnvidia-curand-cu12==10.3.5.147\nnvidia-cusolver-cu12==11.6.1.9\nnvidia-cusparse-cu12==12.3.1.170\nnvidia-cusparselt-cu12==0.6.2\nnvidia-nccl-cu12==2.21.5\nnvidia-nvjitlink-cu12==12.4.127\nnvidia-nvtx-cu12==12.4.127\nomegaconf==2.3.0\nopencv-python-headless==4.10.0.84\npackaging==26.3\npillow==12.3.0\npyyaml==6.0.2\nsafetensors==0.8.0\nsetuptools==78.1.0\nsympy==1.13.1\ntimm==1.0.20\ntorch==2.6.0+cu124\ntorchvision==0.21.0+cu124\ntqdm==4.70.1\ntriton==3.2.0\ntruststore==0.10.5\ntyping-extensions==4.16.0\n&quot;,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         &quot;driver&quot;: {</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;python&quot;: &quot;3.12.11 (main, Sep 18 2025, 19:47:19) [Clang 20.1.4 ]&quot;,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;libcuda_path&quot;: &quot;/opt/rmua-driver/usr/lib/x86_64-linux-gnu/libcuda.so.595.91.07&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>           &quot;libcuda_sha256&quot;: &quot;4839b5da17cd8f58a8e9c57e97c9b61f3c41be7934479f48afc983416b2492c3&quot;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         },</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &quot;portable_python_sha256&quot;: &quot;ded1e061bd924b3ef162a3201b2a3c94ec62b5fa924eec0f5d9d8a9e77181ac5&quot;,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         &quot;runtime_lock_sha256&quot;: &quot;417d0aecb9883ea69dc60e134633a14f69a74bad6b616047add5944382d265ce&quot;</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>       },</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>       &quot;simulator_preflight&quot;: {</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &quot;strict_rules_verified&quot;: true,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         &quot;game_config&quot;: {</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>           &quot;IgnoreAllHitCollision&quot;: false,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           &quot;IgnoreOverTime&quot;: false</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         },</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &quot;game_config_sha256&quot;: &quot;4173ab7ae90fa031fb32a9e77d2810376c6f325b8274f4f8fd07be3c9adb6d39&quot;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &quot;binary_sha256&quot;: &quot;5231addfa25ddaa9e4473ea9ac40c9c0bc685174e69cd14bb49159f443b97800&quot;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &quot;ros_plugin_sha256&quot;: &quot;69d5ea3302bdd5f20b842ec3d3e84bafcb50ef3649ada42c4d346c9bcd389885&quot;,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &quot;settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>       },</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>       &quot;gpu_processes_during_scene&quot;: &quot;Fri Oct 23 10:02:01 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 595.91.07              Driver Version: 595.91.07      CUDA Version: 13.2     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 3060 ...    Off |   00000000:01:00.0 Off |                  N/A |\n| N/A   48C    P0             43W /   80W |    1789MiB /   6144MiB |     35%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A           95004      C   ...s/ffs_runtime/venv/bin/python        704MiB |\n|    0   N/A  N/A           95208    C+G   ...ies/Linux/RMUA-Linux-Shipping        988MiB |\n+-----------------------------------------------------------------------------------------+\n&quot;,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &quot;audit.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         &quot;first_online/left.bin.gz&quot;: &quot;4b97de7683c249b4ac99cfaa5f40eb7af00669dfd2daa092ee0429975aea9937&quot;,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;first_online/left.json&quot;: &quot;0b225f57ed2442788d084538ad1687d013fefb7a6f6b05609186d1d20a502052&quot;,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         &quot;first_online/prediction.npz&quot;: &quot;fccd9d86294cef3e398ad893ec996828c5ba7e7393bc15e7646d4cd5bfb3d70c&quot;,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         &quot;first_online/request.json&quot;: &quot;6d9ae32d6387b8f5268c1a3209f8e7b50e3192ba20e88c87f46d5f15f23216c4&quot;,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         &quot;first_online/rgb_inputs.npz&quot;: &quot;34839f6f8930d2bf534ee129e59c0c0f523a338c7000c8380b07bd238f3d2ed0&quot;,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         &quot;first_online/right.bin.gz&quot;: &quot;4c61f450f3b20c7502456a971397cac76759470ee8c4120bce65d92b6cb241f7&quot;,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         &quot;first_online/right.json&quot;: &quot;af1cea6f49ad1aa08026012abe99cb4211399dfd9a48e3abc4a364e1ca0c6974&quot;,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &quot;gpu_jobs.jsonl&quot;: &quot;12087fd6f09c38488e15b5e51157902ee21cba8e48c4075fc711da16aec32652&quot;,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         &quot;gpu_ready.json&quot;: &quot;87329d6ea297490c7d09ee0d8c177b8928e6fdffcbadd314b83a4808b81a7504&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         &quot;gpu_summary.json&quot;: &quot;2c4dda563dd8fc74b54836b83e44c8ddaaf97ebf21ccb4e2b155244f19ef3cdf&quot;,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         &quot;gpu_system_usage.jsonl&quot;: &quot;fe9efb6a016bce9f816559ad03d4ade9f1e98f0ee42a344a0494323d32b20b12&quot;,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         &quot;gpu_worker.log&quot;: &quot;a62e39798d1cce2c10ba031ad5aaf4acbd3205230fb9ab32f5a305aa7e36c06e&quot;,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         &quot;manifest.json&quot;: &quot;bad0a4a05513d806977dc28214597960b80a0f744111c96a3d0d99a025aee91c&quot;,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         &quot;observer.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         &quot;online_audit.json&quot;: &quot;746613bb9000390db67f95787b508e0acfbb2251205aa91974600c765e5e8367&quot;,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         &quot;online_imu_clock.jsonl&quot;: &quot;1aed5af363d5a170226d30a2310b1602358abbde0f3e6c330d4a5b4a3e606bad&quot;,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         &quot;online_results.jsonl&quot;: &quot;ad06048a3698ffff3aade6612b27a26f8eed27f2c6fc21cd89af1c556b0528e2&quot;,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         &quot;online_summary.json&quot;: &quot;9bd78c3405c02b0848688c75bb2dd672ecd9bcacb98394e5fbc7a894898b49f7&quot;,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         &quot;profile.json&quot;: &quot;d730f8a3ae540c0eaf23e5c5d87526ed8bb7d987ff38f655c3f26808c2a9f90c&quot;,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         &quot;simulator.log&quot;: &quot;1f81927d561b34a245135ae99594dbe3f1fdedc4a047cd0de7825d67832027c4&quot;,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         &quot;usage_monitor.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>       },</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         &quot;pairs&quot;: 56,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         &quot;results&quot;: 28,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &quot;received&quot;: {</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>           &quot;left&quot;: 111,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>           &quot;imu&quot;: 1000,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;right&quot;: 111</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         },</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &quot;selection_started_wall&quot;: 1120202.123344965,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;selection_ended_wall&quot;: 1120212.123421322,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &quot;result_drain_ended_wall&quot;: 1120212.132460335,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &quot;raw_pending_overwritten&quot;: {},</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         &quot;pairing_events&quot;: {</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           &quot;SUPERSEDED_right&quot;: 0,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           &quot;SENSOR_EXPIRED_left&quot;: 55,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>           &quot;SENSOR_EXPIRED_right&quot;: 55</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         },</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>           &quot;submitted&quot;: 56,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           &quot;taken&quot;: 56,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         },</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         &quot;admission_rejections&quot;: {</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           &quot;SOURCE_LEASE_NOT_CURRENT&quot;: 28</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         },</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>           ],</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>           ]</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         },</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         &quot;clock_records&quot;: 1000,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         &quot;max_rss_kib&quot;: 138068,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         &quot;raw_recording_is_lossy&quot;: true,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         &quot;processing_queue_capacity&quot;: 1,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         &quot;in_flight_limit&quot;: 1</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       },</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &quot;result_count&quot;: 28,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &quot;per_result&quot;: [</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>           {</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             &quot;request_id&quot;: 0,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>           },</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>           {</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             &quot;request_id&quot;: 2,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>           },</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>           {</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>             &quot;request_id&quot;: 4,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>           },</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>           {</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>             &quot;request_id&quot;: 6,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>           },</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>           {</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>             &quot;request_id&quot;: 8,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>           },</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>           {</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>             &quot;request_id&quot;: 10,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           },</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           {</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>             &quot;request_id&quot;: 12,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>           },</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>           {</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>             &quot;request_id&quot;: 14,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           },</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           {</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>             &quot;request_id&quot;: 16,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>           },</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>           {</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>             &quot;request_id&quot;: 18,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>           },</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>           {</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>             &quot;request_id&quot;: 20,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>           },</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>           {</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>             &quot;request_id&quot;: 22,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>           },</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>           {</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             &quot;request_id&quot;: 24,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>           },</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>           {</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>             &quot;request_id&quot;: 26,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>           },</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>           {</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>             &quot;request_id&quot;: 28,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>           },</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>           {</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>             &quot;request_id&quot;: 30,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>           },</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>           {</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>             &quot;request_id&quot;: 32,</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>           },</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>           {</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>             &quot;request_id&quot;: 34,</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>           },</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>           {</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>             &quot;request_id&quot;: 36,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>           },</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>           {</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>             &quot;request_id&quot;: 38,</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>           },</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>           {</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>             &quot;request_id&quot;: 40,</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>           },</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>           {</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>             &quot;request_id&quot;: 42,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>           },</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>           {</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>             &quot;request_id&quot;: 44,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>           },</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>           {</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>             &quot;request_id&quot;: 46,</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>           },</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>           {</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>             &quot;request_id&quot;: 48,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>           },</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>           {</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>             &quot;request_id&quot;: 50,</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>           },</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>           {</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>             &quot;request_id&quot;: 52,</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>           },</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>           {</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>             &quot;request_id&quot;: 54,</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>           }</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>         ],</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>         &quot;first_payload_matches_independent_ros_decoder_and_output_digest&quot;: true,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>         &quot;result_timing_rejections&quot;: {</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>           &quot;SOURCE_LEASE_NOT_CURRENT&quot;: 28</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         },</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;sensor_header_age_at_result_s&quot;: {</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>           &quot;samples&quot;: 28,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>           &quot;min&quot;: 0.3540074825286865,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>           &quot;p50&quot;: 0.37500786781311035,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>           &quot;sample_p95&quot;: 0.3870083451271057,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>           &quot;sample_p99&quot;: 0.39576848983764645,</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>           &quot;max&quot;: 0.39900851249694824</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         },</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>         &quot;callback_to_checked_result_s&quot;: {</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>           &quot;samples&quot;: 28,</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>           &quot;min&quot;: 0.20716405613347888,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>           &quot;p50&quot;: 0.23019649484194815,</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>           &quot;sample_p95&quot;: 0.24796578817768022,</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>           &quot;sample_p99&quot;: 0.2604154492774978,</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>           &quot;max&quot;: 0.26450574304908514</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>         },</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>         &quot;rpc_round_trip_s&quot;: {</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>           &quot;samples&quot;: 28,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>           &quot;min&quot;: 0.18263164814561605,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>           &quot;p50&quot;: 0.2020569215528667,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>           &quot;sample_p95&quot;: 0.21005340033443645,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>           &quot;sample_p99&quot;: 0.21717651921324432,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>           &quot;max&quot;: 0.21948092710226774</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>         },</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>         &quot;gpu_receive_to_encoded_result_s&quot;: {</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>           &quot;samples&quot;: 28,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>           &quot;min&quot;: 0.18028064910322428,</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>           &quot;p50&quot;: 0.1996020635124296,</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>           &quot;sample_p95&quot;: 0.20533218613127246,</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>           &quot;sample_p99&quot;: 0.20766404046677053,</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>           &quot;max&quot;: 0.2085236171260476</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>         },</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>         &quot;bidirectional_model_s&quot;: {</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>           &quot;samples&quot;: 28,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>           &quot;min&quot;: 0.1487570849712938,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>           &quot;p50&quot;: 0.16108466405421495,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>           &quot;sample_p95&quot;: 0.16632217697333546,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>           &quot;sample_p99&quot;: 0.16738593129906804,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>           &quot;max&quot;: 0.16764957387931645</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>         },</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>         &quot;imu_callback_interval_s&quot;: {</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>           &quot;samples&quot;: 999,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>           &quot;min&quot;: 0.006212424021214247,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>           &quot;p50&quot;: 0.009997354820370674,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>           &quot;sample_p95&quot;: 0.010249557602219283,</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>           &quot;sample_p99&quot;: 0.011181856119073925,</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>           &quot;max&quot;: 0.01409212895669043</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>         },</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>         &quot;gpu_utilization_percent&quot;: {</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>           &quot;samples&quot;: 23,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>           &quot;min&quot;: 35.0,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>           &quot;p50&quot;: 66.0,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>           &quot;sample_p95&quot;: 100.0,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>           &quot;sample_p99&quot;: 100.0,</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>           &quot;max&quot;: 100.0</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>         },</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>         &quot;gpu_memory_used_mib&quot;: {</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>           &quot;samples&quot;: 23,</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>           &quot;min&quot;: 1438.0,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>           &quot;p50&quot;: 2163.0,</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>           &quot;sample_p95&quot;: 2180.0,</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a>           &quot;sample_p99&quot;: 2247.08,</span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>           &quot;max&quot;: 2266.0</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>         },</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>         &quot;system_cpu_busy_percent_all_cores&quot;: {</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>           &quot;samples&quot;: 22,</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>           &quot;min&quot;: 15.332690453230473,</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>           &quot;p50&quot;: 16.435741926765175,</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>           &quot;sample_p95&quot;: 24.755849663644337,</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>           &quot;sample_p99&quot;: 27.337965434466025,</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>           &quot;max&quot;: 27.9847182425979</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>         },</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>         &quot;usage_sampling_period_s&quot;: 0.5,</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>         &quot;graph&quot;: {</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>           ],</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>           ]</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>         },</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>           &quot;submitted&quot;: 56,</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>           &quot;taken&quot;: 56,</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         },</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         &quot;all_outputs_diagnostic_only&quot;: true,</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>         &quot;true_exposure_latency_measured&quot;: false,</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         &quot;actuation_latency_measured&quot;: false,</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>         &quot;cold_start_departure_verified&quot;: false,</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>         &quot;geometry_accuracy_verified&quot;: false,</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>         &quot;interpretation&quot;: &quot;Image-header/IMU and callback/monotonic ages measure this diagnostic pipeline, not exposure-to-actuation. No source lease is refreshed. Late results remain rejected; timely ones are still uncalibrated. Samples are development observations and not statistical real-time guarantees.&quot;</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>       },</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>       &quot;gpu_summary&quot;: {</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>         &quot;started_wall&quot;: 1120189.043694621,</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>         &quot;loaded_wall&quot;: 1120192.024892832,</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>         &quot;ready_wall&quot;: 1120193.076057697,</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>         &quot;synthetic_zero_image_warmup&quot;: true,</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         &quot;compilation_cache_may_be_warm&quot;: true,</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>         &quot;gpu&quot;: &quot;NVIDIA GeForce RTX 3060 Laptop GPU&quot;,</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>         &quot;torch&quot;: &quot;2.6.0+cu124&quot;,</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>         &quot;cuda_runtime&quot;: &quot;12.4&quot;,</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>         &quot;numpy&quot;: &quot;1.26.4&quot;,</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>         &quot;opencv&quot;: &quot;4.10.0&quot;,</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>         &quot;normalization_compatibility_default_applied&quot;: true,</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>         &quot;volume_normalize&quot;: true,</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>         &quot;profile&quot;: {</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>           &quot;scale&quot;: 0.5,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>           &quot;iterations&quot;: 4,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>           &quot;max_disparity_model_pixels&quot;: 192,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>           &quot;input_order&quot;: &quot;RGB&quot;,</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a>           &quot;input_range&quot;: [</span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a>             0,</span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a>             255</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>           ],</span>
+<span class="line" id="L372"><a class="ln" href="#L372">  372</a>           &quot;normalization&quot;: &quot;inside_upstream_pytorch_model&quot;,</span>
+<span class="line" id="L373"><a class="ln" href="#L373">  373</a>           &quot;missing_volume_normalize_checkpoint_arg_default&quot;: true,</span>
+<span class="line" id="L374"><a class="ln" href="#L374">  374</a>           &quot;padding_multiple&quot;: 32,</span>
+<span class="line" id="L375"><a class="ln" href="#L375">  375</a>           &quot;amp_dtype&quot;: &quot;float16&quot;,</span>
+<span class="line" id="L376"><a class="ln" href="#L376">  376</a>           &quot;reverse_method&quot;: &quot;swap_images_and_flip_both_horizontally_then_unflip_output&quot;,</span>
+<span class="line" id="L377"><a class="ln" href="#L377">  377</a>           &quot;upsample_method&quot;: &quot;nearest_then_divide_disparity_by_scale&quot;,</span>
+<span class="line" id="L378"><a class="ln" href="#L378">  378</a>           &quot;consistency_full_resolution_px&quot;: 1.0,</span>
+<span class="line" id="L379"><a class="ln" href="#L379">  379</a>           &quot;common_texture_std&quot;: 2.0</span>
+<span class="line" id="L380"><a class="ln" href="#L380">  380</a>         },</span>
+<span class="line" id="L381"><a class="ln" href="#L381">  381</a>         &quot;jobs&quot;: 28,</span>
+<span class="line" id="L382"><a class="ln" href="#L382">  382</a>         &quot;peak_cuda_allocated_bytes&quot;: 469507584,</span>
+<span class="line" id="L383"><a class="ln" href="#L383">  383</a>         &quot;peak_cuda_reserved_bytes&quot;: 580911104,</span>
+<span class="line" id="L384"><a class="ln" href="#L384">  384</a>         &quot;max_rss_kib&quot;: 1857720,</span>
+<span class="line" id="L385"><a class="ln" href="#L385">  385</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L386"><a class="ln" href="#L386">  386</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L387"><a class="ln" href="#L387">  387</a>       },</span>
+<span class="line" id="L388"><a class="ln" href="#L388">  388</a>       &quot;budget_passed&quot;: false,</span>
+<span class="line" id="L389"><a class="ln" href="#L389">  389</a>       &quot;timing_contract_audit_passed&quot;: true,</span>
+<span class="line" id="L390"><a class="ln" href="#L390">  390</a>       &quot;control_published&quot;: false,</span>
+<span class="line" id="L391"><a class="ln" href="#L391">  391</a>       &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L392"><a class="ln" href="#L392">  392</a>     },</span>
+<span class="line" id="L393"><a class="ln" href="#L393">  393</a>     {</span>
+<span class="line" id="L394"><a class="ln" href="#L394">  394</a>       &quot;run&quot;: &quot;runs/20261023T100300Z_89a78599ce6144b18a71a5473afbb796&quot;,</span>
+<span class="line" id="L395"><a class="ln" href="#L395">  395</a>       &quot;seed&quot;: 2115,</span>
+<span class="line" id="L396"><a class="ln" href="#L396">  396</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L397"><a class="ln" href="#L397">  397</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L398"><a class="ln" href="#L398">  398</a>         &quot;sha256&quot;: &quot;0fef22811cbcf234fba28e2829d8ac722288af7932874517acf6fee641e7d76a&quot;,</span>
+<span class="line" id="L399"><a class="ln" href="#L399">  399</a>         &quot;files&quot;: 282,</span>
+<span class="line" id="L400"><a class="ln" href="#L400">  400</a>         &quot;uncompressed_bytes&quot;: 1187970,</span>
+<span class="line" id="L401"><a class="ln" href="#L401">  401</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L402"><a class="ln" href="#L402">  402</a>       },</span>
+<span class="line" id="L403"><a class="ln" href="#L403">  403</a>       &quot;source_archive_independently_verified&quot;: true,</span>
+<span class="line" id="L404"><a class="ln" href="#L404">  404</a>       &quot;vendor&quot;: {</span>
+<span class="line" id="L405"><a class="ln" href="#L405">  405</a>         &quot;commit&quot;: &quot;476f4249561f7c79ca707326954f9255643412a6&quot;,</span>
+<span class="line" id="L406"><a class="ln" href="#L406">  406</a>         &quot;source_archive_sha256&quot;: &quot;5fab9ab4c76611e7cf894ab8cf0a98687471133b5251d2bd1de48697c7c6012a&quot;,</span>
+<span class="line" id="L407"><a class="ln" href="#L407">  407</a>         &quot;license_sha256&quot;: &quot;045b564ebafefaa863beec07c5acdcfa8d99cefbbd060c22865bc4613318ddd6&quot;</span>
+<span class="line" id="L408"><a class="ln" href="#L408">  408</a>       },</span>
+<span class="line" id="L409"><a class="ln" href="#L409">  409</a>       &quot;vendor_files_independently_verified&quot;: 57,</span>
+<span class="line" id="L410"><a class="ln" href="#L410">  410</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L411"><a class="ln" href="#L411">  411</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L412"><a class="ln" href="#L412">  412</a>       &quot;checkpoint_unchanged&quot;: true,</span>
+<span class="line" id="L413"><a class="ln" href="#L413">  413</a>       &quot;vendor_unchanged&quot;: true,</span>
+<span class="line" id="L414"><a class="ln" href="#L414">  414</a>       &quot;runtime_matches_lock&quot;: true,</span>
+<span class="line" id="L415"><a class="ln" href="#L415">  415</a>       &quot;runtime_provenance&quot;: {</span>
+<span class="line" id="L416"><a class="ln" href="#L416">  416</a>         &quot;packages&quot;: &quot;antlr4-python3-runtime==4.9.3\nanyio==4.15.1\nclick==8.5.0\neinops==0.8.1\nfilelock==3.32.3\nfsspec==2026.7.0\nh11==0.16.0\nhf-xet==1.7.0\nhttpcore2==2.16.0\nhttpx2==2.16.0\nhuggingface-hub==2.2.0\nidna==3.20\nimageio==2.37.0\njinja2==3.1.6\nmarkupsafe==3.0.3\nmpmath==1.3.0\nnetworkx==3.6.1\nnumpy==1.26.4\nnvidia-cublas-cu12==12.4.5.8\nnvidia-cuda-cupti-cu12==12.4.127\nnvidia-cuda-nvrtc-cu12==12.4.127\nnvidia-cuda-runtime-cu12==12.4.127\nnvidia-cudnn-cu12==9.1.0.70\nnvidia-cufft-cu12==11.2.1.3\nnvidia-curand-cu12==10.3.5.147\nnvidia-cusolver-cu12==11.6.1.9\nnvidia-cusparse-cu12==12.3.1.170\nnvidia-cusparselt-cu12==0.6.2\nnvidia-nccl-cu12==2.21.5\nnvidia-nvjitlink-cu12==12.4.127\nnvidia-nvtx-cu12==12.4.127\nomegaconf==2.3.0\nopencv-python-headless==4.10.0.84\npackaging==26.3\npillow==12.3.0\npyyaml==6.0.2\nsafetensors==0.8.0\nsetuptools==78.1.0\nsympy==1.13.1\ntimm==1.0.20\ntorch==2.6.0+cu124\ntorchvision==0.21.0+cu124\ntqdm==4.70.1\ntriton==3.2.0\ntruststore==0.10.5\ntyping-extensions==4.16.0\n&quot;,</span>
+<span class="line" id="L417"><a class="ln" href="#L417">  417</a>         &quot;driver&quot;: {</span>
+<span class="line" id="L418"><a class="ln" href="#L418">  418</a>           &quot;python&quot;: &quot;3.12.11 (main, Sep 18 2025, 19:47:19) [Clang 20.1.4 ]&quot;,</span>
+<span class="line" id="L419"><a class="ln" href="#L419">  419</a>           &quot;libcuda_path&quot;: &quot;/opt/rmua-driver/usr/lib/x86_64-linux-gnu/libcuda.so.595.91.07&quot;,</span>
+<span class="line" id="L420"><a class="ln" href="#L420">  420</a>           &quot;libcuda_sha256&quot;: &quot;4839b5da17cd8f58a8e9c57e97c9b61f3c41be7934479f48afc983416b2492c3&quot;</span>
+<span class="line" id="L421"><a class="ln" href="#L421">  421</a>         },</span>
+<span class="line" id="L422"><a class="ln" href="#L422">  422</a>         &quot;portable_python_sha256&quot;: &quot;ded1e061bd924b3ef162a3201b2a3c94ec62b5fa924eec0f5d9d8a9e77181ac5&quot;,</span>
+<span class="line" id="L423"><a class="ln" href="#L423">  423</a>         &quot;runtime_lock_sha256&quot;: &quot;417d0aecb9883ea69dc60e134633a14f69a74bad6b616047add5944382d265ce&quot;</span>
+<span class="line" id="L424"><a class="ln" href="#L424">  424</a>       },</span>
+<span class="line" id="L425"><a class="ln" href="#L425">  425</a>       &quot;simulator_preflight&quot;: {</span>
+<span class="line" id="L426"><a class="ln" href="#L426">  426</a>         &quot;strict_rules_verified&quot;: true,</span>
+<span class="line" id="L427"><a class="ln" href="#L427">  427</a>         &quot;game_config&quot;: {</span>
+<span class="line" id="L428"><a class="ln" href="#L428">  428</a>           &quot;IgnoreAllHitCollision&quot;: false,</span>
+<span class="line" id="L429"><a class="ln" href="#L429">  429</a>           &quot;IgnoreOverTime&quot;: false</span>
+<span class="line" id="L430"><a class="ln" href="#L430">  430</a>         },</span>
+<span class="line" id="L431"><a class="ln" href="#L431">  431</a>         &quot;game_config_sha256&quot;: &quot;4173ab7ae90fa031fb32a9e77d2810376c6f325b8274f4f8fd07be3c9adb6d39&quot;,</span>
+<span class="line" id="L432"><a class="ln" href="#L432">  432</a>         &quot;binary_sha256&quot;: &quot;5231addfa25ddaa9e4473ea9ac40c9c0bc685174e69cd14bb49159f443b97800&quot;,</span>
+<span class="line" id="L433"><a class="ln" href="#L433">  433</a>         &quot;ros_plugin_sha256&quot;: &quot;69d5ea3302bdd5f20b842ec3d3e84bafcb50ef3649ada42c4d346c9bcd389885&quot;,</span>
+<span class="line" id="L434"><a class="ln" href="#L434">  434</a>         &quot;settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;</span>
+<span class="line" id="L435"><a class="ln" href="#L435">  435</a>       },</span>
+<span class="line" id="L436"><a class="ln" href="#L436">  436</a>       &quot;gpu_processes_during_scene&quot;: &quot;Fri Oct 23 10:03:14 2026       \n+-----------------------------------------------------------------------------------------+\n| NVIDIA-SMI 595.91.07              Driver Version: 595.91.07      CUDA Version: 13.2     |\n+-----------------------------------------+------------------------+----------------------+\n| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |\n|                                         |                        |               MIG M. |\n|=========================================+========================+======================|\n|   0  NVIDIA GeForce RTX 3060 ...    Off |   00000000:01:00.0 Off |                  N/A |\n| N/A   48C    P0             42W /   80W |    1789MiB /   6144MiB |     61%      Default |\n|                                         |                        |                  N/A |\n+-----------------------------------------+------------------------+----------------------+\n\n+-----------------------------------------------------------------------------------------+\n| Processes:                                                                              |\n|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |\n|        ID   ID                                                               Usage      |\n|=========================================================================================|\n|    0   N/A  N/A           95793      C   ...s/ffs_runtime/venv/bin/python        704MiB |\n|    0   N/A  N/A           95997    C+G   ...ies/Linux/RMUA-Linux-Shipping        988MiB |\n+-----------------------------------------------------------------------------------------+\n&quot;,</span>
+<span class="line" id="L437"><a class="ln" href="#L437">  437</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L438"><a class="ln" href="#L438">  438</a>         &quot;audit.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;,</span>
+<span class="line" id="L439"><a class="ln" href="#L439">  439</a>         &quot;first_online/left.bin.gz&quot;: &quot;97cc63083cf3efc04b4836a7f1bdddf9f8a215bae606749b781a1f3de653ca4a&quot;,</span>
+<span class="line" id="L440"><a class="ln" href="#L440">  440</a>         &quot;first_online/left.json&quot;: &quot;e3d2c8d92a2161f314eb801639f372651ff994ca6262c613f7a978fa5e1975fc&quot;,</span>
+<span class="line" id="L441"><a class="ln" href="#L441">  441</a>         &quot;first_online/prediction.npz&quot;: &quot;368f7e90efc73761208a6560fa37932a13c35661129d2fb610d0c63d83505759&quot;,</span>
+<span class="line" id="L442"><a class="ln" href="#L442">  442</a>         &quot;first_online/request.json&quot;: &quot;b8b52a7f434575043a5a7bef0318cc0923f1c75666ace9b91df4d9e5c30e1a29&quot;,</span>
+<span class="line" id="L443"><a class="ln" href="#L443">  443</a>         &quot;first_online/rgb_inputs.npz&quot;: &quot;29f6bf041e25e45fdd93e62fdac065c292ed9a8ed2fb7ea3f4ed1f7c4a7cd41d&quot;,</span>
+<span class="line" id="L444"><a class="ln" href="#L444">  444</a>         &quot;first_online/right.bin.gz&quot;: &quot;c9e881fa9f2d7a55785e1e1209abda44d84370b6d43f5b64284e5b9ebe634225&quot;,</span>
+<span class="line" id="L445"><a class="ln" href="#L445">  445</a>         &quot;first_online/right.json&quot;: &quot;3c8c952173f3980c1d701534a3a93f8caf732fc7d6e56aabac29e7b68b3e9e63&quot;,</span>
+<span class="line" id="L446"><a class="ln" href="#L446">  446</a>         &quot;gpu_jobs.jsonl&quot;: &quot;7b9de21d5e0e765d351b33b7b2b432ebbedd12c1ee1ee23edc3b7583b8b5b8cc&quot;,</span>
+<span class="line" id="L447"><a class="ln" href="#L447">  447</a>         &quot;gpu_ready.json&quot;: &quot;24c6b8550cfe5cd27eaf9ca080af8c9245d9cf2b43fcba944636dcc0cb597b01&quot;,</span>
+<span class="line" id="L448"><a class="ln" href="#L448">  448</a>         &quot;gpu_summary.json&quot;: &quot;bfc4643b40d4c928d4228b077534e02ff9526f55a279cdd2f707d9f623a28bb5&quot;,</span>
+<span class="line" id="L449"><a class="ln" href="#L449">  449</a>         &quot;gpu_system_usage.jsonl&quot;: &quot;a40abd2d952c0910d851c34e7ee81530978acb50a191eb6b92b7fd8c0ffd0c2b&quot;,</span>
+<span class="line" id="L450"><a class="ln" href="#L450">  450</a>         &quot;gpu_worker.log&quot;: &quot;a62e39798d1cce2c10ba031ad5aaf4acbd3205230fb9ab32f5a305aa7e36c06e&quot;,</span>
+<span class="line" id="L451"><a class="ln" href="#L451">  451</a>         &quot;manifest.json&quot;: &quot;ed0e57301052cce1f97a471f2f9eaae8d4ccc9bed5049d85642d5ee07009a07f&quot;,</span>
+<span class="line" id="L452"><a class="ln" href="#L452">  452</a>         &quot;observer.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;,</span>
+<span class="line" id="L453"><a class="ln" href="#L453">  453</a>         &quot;online_audit.json&quot;: &quot;142765da4a117c77940e3f6d196197683369c412903bff84eedaab011f50d4d6&quot;,</span>
+<span class="line" id="L454"><a class="ln" href="#L454">  454</a>         &quot;online_imu_clock.jsonl&quot;: &quot;3c46d76b5044ef3abf97fe7f99c75dc9c11cbbb7201a3749999c45f6954c9b13&quot;,</span>
+<span class="line" id="L455"><a class="ln" href="#L455">  455</a>         &quot;online_results.jsonl&quot;: &quot;e335e35dea620acbf32d8c121e8854ad5f1d918faaab635986368cbf420aea08&quot;,</span>
+<span class="line" id="L456"><a class="ln" href="#L456">  456</a>         &quot;online_summary.json&quot;: &quot;2e7eb45207e37eea2f1eaf05cf2c0ce93979799f0cf7ddd7b494f6dded66800a&quot;,</span>
+<span class="line" id="L457"><a class="ln" href="#L457">  457</a>         &quot;profile.json&quot;: &quot;d730f8a3ae540c0eaf23e5c5d87526ed8bb7d987ff38f655c3f26808c2a9f90c&quot;,</span>
+<span class="line" id="L458"><a class="ln" href="#L458">  458</a>         &quot;simulator.log&quot;: &quot;d98f699924e653781a3c5374f39f9d33349240dadebdc2c0f7bc88ab5cbe187f&quot;,</span>
+<span class="line" id="L459"><a class="ln" href="#L459">  459</a>         &quot;usage_monitor.log&quot;: &quot;e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855&quot;</span>
+<span class="line" id="L460"><a class="ln" href="#L460">  460</a>       },</span>
+<span class="line" id="L461"><a class="ln" href="#L461">  461</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L462"><a class="ln" href="#L462">  462</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L463"><a class="ln" href="#L463">  463</a>         &quot;pairs&quot;: 20,</span>
+<span class="line" id="L464"><a class="ln" href="#L464">  464</a>         &quot;results&quot;: 1,</span>
+<span class="line" id="L465"><a class="ln" href="#L465">  465</a>         &quot;received&quot;: {</span>
+<span class="line" id="L466"><a class="ln" href="#L466">  466</a>           &quot;imu&quot;: 999,</span>
+<span class="line" id="L467"><a class="ln" href="#L467">  467</a>           &quot;right&quot;: 181,</span>
+<span class="line" id="L468"><a class="ln" href="#L468">  468</a>           &quot;left&quot;: 180</span>
+<span class="line" id="L469"><a class="ln" href="#L469">  469</a>         },</span>
+<span class="line" id="L470"><a class="ln" href="#L470">  470</a>         &quot;selection_started_wall&quot;: 1120275.69763097,</span>
+<span class="line" id="L471"><a class="ln" href="#L471">  471</a>         &quot;selection_ended_wall&quot;: 1120285.699332517,</span>
+<span class="line" id="L472"><a class="ln" href="#L472">  472</a>         &quot;result_drain_ended_wall&quot;: 1120285.720480543,</span>
+<span class="line" id="L473"><a class="ln" href="#L473">  473</a>         &quot;raw_pending_overwritten&quot;: {},</span>
+<span class="line" id="L474"><a class="ln" href="#L474">  474</a>         &quot;pairing_events&quot;: {</span>
+<span class="line" id="L475"><a class="ln" href="#L475">  475</a>           &quot;SENSOR_EXPIRED_right&quot;: 161,</span>
+<span class="line" id="L476"><a class="ln" href="#L476">  476</a>           &quot;SENSOR_EXPIRED_left&quot;: 160,</span>
+<span class="line" id="L477"><a class="ln" href="#L477">  477</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L478"><a class="ln" href="#L478">  478</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L479"><a class="ln" href="#L479">  479</a>         },</span>
+<span class="line" id="L480"><a class="ln" href="#L480">  480</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L481"><a class="ln" href="#L481">  481</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L482"><a class="ln" href="#L482">  482</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L483"><a class="ln" href="#L483">  483</a>           &quot;submitted&quot;: 20,</span>
+<span class="line" id="L484"><a class="ln" href="#L484">  484</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L485"><a class="ln" href="#L485">  485</a>           &quot;taken&quot;: 20,</span>
+<span class="line" id="L486"><a class="ln" href="#L486">  486</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L487"><a class="ln" href="#L487">  487</a>         },</span>
+<span class="line" id="L488"><a class="ln" href="#L488">  488</a>         &quot;admission_rejections&quot;: {</span>
+<span class="line" id="L489"><a class="ln" href="#L489">  489</a>           &quot;SOURCE_LEASE_NOT_CURRENT&quot;: 7,</span>
+<span class="line" id="L490"><a class="ln" href="#L490">  490</a>           &quot;AFTER_BUILD_SOURCE_LEASE_NOT_CURRENT&quot;: 12</span>
+<span class="line" id="L491"><a class="ln" href="#L491">  491</a>         },</span>
+<span class="line" id="L492"><a class="ln" href="#L492">  492</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L493"><a class="ln" href="#L493">  493</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L494"><a class="ln" href="#L494">  494</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L495"><a class="ln" href="#L495">  495</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L496"><a class="ln" href="#L496">  496</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L497"><a class="ln" href="#L497">  497</a>           ],</span>
+<span class="line" id="L498"><a class="ln" href="#L498">  498</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L499"><a class="ln" href="#L499">  499</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L500"><a class="ln" href="#L500">  500</a>           ]</span>
+<span class="line" id="L501"><a class="ln" href="#L501">  501</a>         },</span>
+<span class="line" id="L502"><a class="ln" href="#L502">  502</a>         &quot;image_age_budget_s&quot;: 0.15,</span>
+<span class="line" id="L503"><a class="ln" href="#L503">  503</a>         &quot;clock_records&quot;: 999,</span>
+<span class="line" id="L504"><a class="ln" href="#L504">  504</a>         &quot;max_rss_kib&quot;: 135776,</span>
+<span class="line" id="L505"><a class="ln" href="#L505">  505</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L506"><a class="ln" href="#L506">  506</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L507"><a class="ln" href="#L507">  507</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L508"><a class="ln" href="#L508">  508</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L509"><a class="ln" href="#L509">  509</a>         &quot;exposure_sync_verified&quot;: false,</span>
+<span class="line" id="L510"><a class="ln" href="#L510">  510</a>         &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L511"><a class="ln" href="#L511">  511</a>         &quot;raw_recording_is_lossy&quot;: true,</span>
+<span class="line" id="L512"><a class="ln" href="#L512">  512</a>         &quot;processing_queue_capacity&quot;: 1,</span>
+<span class="line" id="L513"><a class="ln" href="#L513">  513</a>         &quot;in_flight_limit&quot;: 1</span>
+<span class="line" id="L514"><a class="ln" href="#L514">  514</a>       },</span>
+<span class="line" id="L515"><a class="ln" href="#L515">  515</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L516"><a class="ln" href="#L516">  516</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L517"><a class="ln" href="#L517">  517</a>         &quot;result_count&quot;: 1,</span>
+<span class="line" id="L518"><a class="ln" href="#L518">  518</a>         &quot;per_result&quot;: [</span>
+<span class="line" id="L519"><a class="ln" href="#L519">  519</a>           {</span>
+<span class="line" id="L520"><a class="ln" href="#L520">  520</a>             &quot;request_id&quot;: 7,</span>
+<span class="line" id="L521"><a class="ln" href="#L521">  521</a>             &quot;audit_valid&quot;: true</span>
+<span class="line" id="L522"><a class="ln" href="#L522">  522</a>           }</span>
+<span class="line" id="L523"><a class="ln" href="#L523">  523</a>         ],</span>
+<span class="line" id="L524"><a class="ln" href="#L524">  524</a>         &quot;first_payload_matches_independent_ros_decoder_and_output_digest&quot;: true,</span>
+<span class="line" id="L525"><a class="ln" href="#L525">  525</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L526"><a class="ln" href="#L526">  526</a>         &quot;result_timing_rejections&quot;: {</span>
+<span class="line" id="L527"><a class="ln" href="#L527">  527</a>           &quot;SOURCE_LEASE_NOT_CURRENT&quot;: 1</span>
+<span class="line" id="L528"><a class="ln" href="#L528">  528</a>         },</span>
+<span class="line" id="L529"><a class="ln" href="#L529">  529</a>         &quot;sensor_header_age_at_result_s&quot;: {</span>
+<span class="line" id="L530"><a class="ln" href="#L530">  530</a>           &quot;samples&quot;: 1,</span>
+<span class="line" id="L531"><a class="ln" href="#L531">  531</a>           &quot;min&quot;: 0.30600643157958984,</span>
+<span class="line" id="L532"><a class="ln" href="#L532">  532</a>           &quot;p50&quot;: 0.30600643157958984,</span>
+<span class="line" id="L533"><a class="ln" href="#L533">  533</a>           &quot;sample_p95&quot;: 0.30600643157958984,</span>
+<span class="line" id="L534"><a class="ln" href="#L534">  534</a>           &quot;sample_p99&quot;: 0.30600643157958984,</span>
+<span class="line" id="L535"><a class="ln" href="#L535">  535</a>           &quot;max&quot;: 0.30600643157958984</span>
+<span class="line" id="L536"><a class="ln" href="#L536">  536</a>         },</span>
+<span class="line" id="L537"><a class="ln" href="#L537">  537</a>         &quot;callback_to_checked_result_s&quot;: {</span>
+<span class="line" id="L538"><a class="ln" href="#L538">  538</a>           &quot;samples&quot;: 1,</span>
+<span class="line" id="L539"><a class="ln" href="#L539">  539</a>           &quot;min&quot;: 0.22657439205795527,</span>
+<span class="line" id="L540"><a class="ln" href="#L540">  540</a>           &quot;p50&quot;: 0.22657439205795527,</span>
+<span class="line" id="L541"><a class="ln" href="#L541">  541</a>           &quot;sample_p95&quot;: 0.22657439205795527,</span>
+<span class="line" id="L542"><a class="ln" href="#L542">  542</a>           &quot;sample_p99&quot;: 0.22657439205795527,</span>
+<span class="line" id="L543"><a class="ln" href="#L543">  543</a>           &quot;max&quot;: 0.22657439205795527</span>
+<span class="line" id="L544"><a class="ln" href="#L544">  544</a>         },</span>
+<span class="line" id="L545"><a class="ln" href="#L545">  545</a>         &quot;rpc_round_trip_s&quot;: {</span>
+<span class="line" id="L546"><a class="ln" href="#L546">  546</a>           &quot;samples&quot;: 1,</span>
+<span class="line" id="L547"><a class="ln" href="#L547">  547</a>           &quot;min&quot;: 0.19607678218744695,</span>
+<span class="line" id="L548"><a class="ln" href="#L548">  548</a>           &quot;p50&quot;: 0.19607678218744695,</span>
+<span class="line" id="L549"><a class="ln" href="#L549">  549</a>           &quot;sample_p95&quot;: 0.19607678218744695,</span>
+<span class="line" id="L550"><a class="ln" href="#L550">  550</a>           &quot;sample_p99&quot;: 0.19607678218744695,</span>
+<span class="line" id="L551"><a class="ln" href="#L551">  551</a>           &quot;max&quot;: 0.19607678218744695</span>
+<span class="line" id="L552"><a class="ln" href="#L552">  552</a>         },</span>
+<span class="line" id="L553"><a class="ln" href="#L553">  553</a>         &quot;gpu_receive_to_encoded_result_s&quot;: {</span>
+<span class="line" id="L554"><a class="ln" href="#L554">  554</a>           &quot;samples&quot;: 1,</span>
+<span class="line" id="L555"><a class="ln" href="#L555">  555</a>           &quot;min&quot;: 0.19161625881679356,</span>
+<span class="line" id="L556"><a class="ln" href="#L556">  556</a>           &quot;p50&quot;: 0.19161625881679356,</span>
+<span class="line" id="L557"><a class="ln" href="#L557">  557</a>           &quot;sample_p95&quot;: 0.19161625881679356,</span>
+<span class="line" id="L558"><a class="ln" href="#L558">  558</a>           &quot;sample_p99&quot;: 0.19161625881679356,</span>
+<span class="line" id="L559"><a class="ln" href="#L559">  559</a>           &quot;max&quot;: 0.19161625881679356</span>
+<span class="line" id="L560"><a class="ln" href="#L560">  560</a>         },</span>
+<span class="line" id="L561"><a class="ln" href="#L561">  561</a>         &quot;bidirectional_model_s&quot;: {</span>
+<span class="line" id="L562"><a class="ln" href="#L562">  562</a>           &quot;samples&quot;: 1,</span>
+<span class="line" id="L563"><a class="ln" href="#L563">  563</a>           &quot;min&quot;: 0.14953444991260767,</span>
+<span class="line" id="L564"><a class="ln" href="#L564">  564</a>           &quot;p50&quot;: 0.14953444991260767,</span>
+<span class="line" id="L565"><a class="ln" href="#L565">  565</a>           &quot;sample_p95&quot;: 0.14953444991260767,</span>
+<span class="line" id="L566"><a class="ln" href="#L566">  566</a>           &quot;sample_p99&quot;: 0.14953444991260767,</span>
+<span class="line" id="L567"><a class="ln" href="#L567">  567</a>           &quot;max&quot;: 0.14953444991260767</span>
+<span class="line" id="L568"><a class="ln" href="#L568">  568</a>         },</span>
+<span class="line" id="L569"><a class="ln" href="#L569">  569</a>         &quot;imu_callback_interval_s&quot;: {</span>
+<span class="line" id="L570"><a class="ln" href="#L570">  570</a>           &quot;samples&quot;: 998,</span>
+<span class="line" id="L571"><a class="ln" href="#L571">  571</a>           &quot;min&quot;: 0.004980657948181033,</span>
+<span class="line" id="L572"><a class="ln" href="#L572">  572</a>           &quot;p50&quot;: 0.009999506059102714,</span>
+<span class="line" id="L573"><a class="ln" href="#L573">  573</a>           &quot;sample_p95&quot;: 0.010412896727211773,</span>
+<span class="line" id="L574"><a class="ln" href="#L574">  574</a>           &quot;sample_p99&quot;: 0.011308079077862203,</span>
+<span class="line" id="L575"><a class="ln" href="#L575">  575</a>           &quot;max&quot;: 0.014970676973462105</span>
+<span class="line" id="L576"><a class="ln" href="#L576">  576</a>         },</span>
+<span class="line" id="L577"><a class="ln" href="#L577">  577</a>         &quot;gpu_utilization_percent&quot;: {</span>
+<span class="line" id="L578"><a class="ln" href="#L578">  578</a>           &quot;samples&quot;: 23,</span>
+<span class="line" id="L579"><a class="ln" href="#L579">  579</a>           &quot;min&quot;: 47.0,</span>
+<span class="line" id="L580"><a class="ln" href="#L580">  580</a>           &quot;p50&quot;: 62.0,</span>
+<span class="line" id="L581"><a class="ln" href="#L581">  581</a>           &quot;sample_p95&quot;: 66.0,</span>
+<span class="line" id="L582"><a class="ln" href="#L582">  582</a>           &quot;sample_p99&quot;: 68.34,</span>
+<span class="line" id="L583"><a class="ln" href="#L583">  583</a>           &quot;max&quot;: 69.0</span>
+<span class="line" id="L584"><a class="ln" href="#L584">  584</a>         },</span>
+<span class="line" id="L585"><a class="ln" href="#L585">  585</a>         &quot;gpu_memory_used_mib&quot;: {</span>
+<span class="line" id="L586"><a class="ln" href="#L586">  586</a>           &quot;samples&quot;: 23,</span>
+<span class="line" id="L587"><a class="ln" href="#L587">  587</a>           &quot;min&quot;: 1430.0,</span>
+<span class="line" id="L588"><a class="ln" href="#L588">  588</a>           &quot;p50&quot;: 2139.0,</span>
+<span class="line" id="L589"><a class="ln" href="#L589">  589</a>           &quot;sample_p95&quot;: 2180.0,</span>
+<span class="line" id="L590"><a class="ln" href="#L590">  590</a>           &quot;sample_p99&quot;: 2247.08,</span>
+<span class="line" id="L591"><a class="ln" href="#L591">  591</a>           &quot;max&quot;: 2266.0</span>
+<span class="line" id="L592"><a class="ln" href="#L592">  592</a>         },</span>
+<span class="line" id="L593"><a class="ln" href="#L593">  593</a>         &quot;system_cpu_busy_percent_all_cores&quot;: {</span>
+<span class="line" id="L594"><a class="ln" href="#L594">  594</a>           &quot;samples&quot;: 22,</span>
+<span class="line" id="L595"><a class="ln" href="#L595">  595</a>           &quot;min&quot;: 16.923076923076923,</span>
+<span class="line" id="L596"><a class="ln" href="#L596">  596</a>           &quot;p50&quot;: 17.797843335477744,</span>
+<span class="line" id="L597"><a class="ln" href="#L597">  597</a>           &quot;sample_p95&quot;: 26.493893470752937,</span>
+<span class="line" id="L598"><a class="ln" href="#L598">  598</a>           &quot;sample_p99&quot;: 26.785708164850174,</span>
+<span class="line" id="L599"><a class="ln" href="#L599">  599</a>           &quot;max&quot;: 26.822429906542055</span>
+<span class="line" id="L600"><a class="ln" href="#L600">  600</a>         },</span>
+<span class="line" id="L601"><a class="ln" href="#L601">  601</a>         &quot;usage_sampling_period_s&quot;: 0.5,</span>
+<span class="line" id="L602"><a class="ln" href="#L602">  602</a>         &quot;graph&quot;: {</span>
+<span class="line" id="L603"><a class="ln" href="#L603">  603</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L604"><a class="ln" href="#L604">  604</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L605"><a class="ln" href="#L605">  605</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L606"><a class="ln" href="#L606">  606</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L607"><a class="ln" href="#L607">  607</a>           ],</span>
+<span class="line" id="L608"><a class="ln" href="#L608">  608</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L609"><a class="ln" href="#L609">  609</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L610"><a class="ln" href="#L610">  610</a>           ]</span>
+<span class="line" id="L611"><a class="ln" href="#L611">  611</a>         },</span>
+<span class="line" id="L612"><a class="ln" href="#L612">  612</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L613"><a class="ln" href="#L613">  613</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L614"><a class="ln" href="#L614">  614</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L615"><a class="ln" href="#L615">  615</a>           &quot;submitted&quot;: 20,</span>
+<span class="line" id="L616"><a class="ln" href="#L616">  616</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L617"><a class="ln" href="#L617">  617</a>           &quot;taken&quot;: 20,</span>
+<span class="line" id="L618"><a class="ln" href="#L618">  618</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L619"><a class="ln" href="#L619">  619</a>         },</span>
+<span class="line" id="L620"><a class="ln" href="#L620">  620</a>         &quot;image_age_budget_s&quot;: 0.15,</span>
+<span class="line" id="L621"><a class="ln" href="#L621">  621</a>         &quot;all_outputs_diagnostic_only&quot;: true,</span>
+<span class="line" id="L622"><a class="ln" href="#L622">  622</a>         &quot;true_exposure_latency_measured&quot;: false,</span>
+<span class="line" id="L623"><a class="ln" href="#L623">  623</a>         &quot;actuation_latency_measured&quot;: false,</span>
+<span class="line" id="L624"><a class="ln" href="#L624">  624</a>         &quot;cold_start_departure_verified&quot;: false,</span>
+<span class="line" id="L625"><a class="ln" href="#L625">  625</a>         &quot;geometry_accuracy_verified&quot;: false,</span>
+<span class="line" id="L626"><a class="ln" href="#L626">  626</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L627"><a class="ln" href="#L627">  627</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L628"><a class="ln" href="#L628">  628</a>         &quot;interpretation&quot;: &quot;Image-header/IMU and callback/monotonic ages measure this diagnostic pipeline, not exposure-to-actuation. No source lease is refreshed. Late results remain rejected; timely ones are still uncalibrated. Samples are development observations and not statistical real-time guarantees.&quot;</span>
+<span class="line" id="L629"><a class="ln" href="#L629">  629</a>       },</span>
+<span class="line" id="L630"><a class="ln" href="#L630">  630</a>       &quot;gpu_summary&quot;: {</span>
+<span class="line" id="L631"><a class="ln" href="#L631">  631</a>         &quot;started_wall&quot;: 1120262.649653298,</span>
+<span class="line" id="L632"><a class="ln" href="#L632">  632</a>         &quot;loaded_wall&quot;: 1120265.631653618,</span>
+<span class="line" id="L633"><a class="ln" href="#L633">  633</a>         &quot;ready_wall&quot;: 1120266.693319307,</span>
+<span class="line" id="L634"><a class="ln" href="#L634">  634</a>         &quot;synthetic_zero_image_warmup&quot;: true,</span>
+<span class="line" id="L635"><a class="ln" href="#L635">  635</a>         &quot;compilation_cache_may_be_warm&quot;: true,</span>
+<span class="line" id="L636"><a class="ln" href="#L636">  636</a>         &quot;gpu&quot;: &quot;NVIDIA GeForce RTX 3060 Laptop GPU&quot;,</span>
+<span class="line" id="L637"><a class="ln" href="#L637">  637</a>         &quot;torch&quot;: &quot;2.6.0+cu124&quot;,</span>
+<span class="line" id="L638"><a class="ln" href="#L638">  638</a>         &quot;cuda_runtime&quot;: &quot;12.4&quot;,</span>
+<span class="line" id="L639"><a class="ln" href="#L639">  639</a>         &quot;numpy&quot;: &quot;1.26.4&quot;,</span>
+<span class="line" id="L640"><a class="ln" href="#L640">  640</a>         &quot;opencv&quot;: &quot;4.10.0&quot;,</span>
+<span class="line" id="L641"><a class="ln" href="#L641">  641</a>         &quot;normalization_compatibility_default_applied&quot;: true,</span>
+<span class="line" id="L642"><a class="ln" href="#L642">  642</a>         &quot;volume_normalize&quot;: true,</span>
+<span class="line" id="L643"><a class="ln" href="#L643">  643</a>         &quot;profile&quot;: {</span>
+<span class="line" id="L644"><a class="ln" href="#L644">  644</a>           &quot;scale&quot;: 0.5,</span>
+<span class="line" id="L645"><a class="ln" href="#L645">  645</a>           &quot;iterations&quot;: 4,</span>
+<span class="line" id="L646"><a class="ln" href="#L646">  646</a>           &quot;max_disparity_model_pixels&quot;: 192,</span>
+<span class="line" id="L647"><a class="ln" href="#L647">  647</a>           &quot;input_order&quot;: &quot;RGB&quot;,</span>
+<span class="line" id="L648"><a class="ln" href="#L648">  648</a>           &quot;input_range&quot;: [</span>
+<span class="line" id="L649"><a class="ln" href="#L649">  649</a>             0,</span>
+<span class="line" id="L650"><a class="ln" href="#L650">  650</a>             255</span>
+<span class="line" id="L651"><a class="ln" href="#L651">  651</a>           ],</span>
+<span class="line" id="L652"><a class="ln" href="#L652">  652</a>           &quot;normalization&quot;: &quot;inside_upstream_pytorch_model&quot;,</span>
+<span class="line" id="L653"><a class="ln" href="#L653">  653</a>           &quot;missing_volume_normalize_checkpoint_arg_default&quot;: true,</span>
+<span class="line" id="L654"><a class="ln" href="#L654">  654</a>           &quot;padding_multiple&quot;: 32,</span>
+<span class="line" id="L655"><a class="ln" href="#L655">  655</a>           &quot;amp_dtype&quot;: &quot;float16&quot;,</span>
+<span class="line" id="L656"><a class="ln" href="#L656">  656</a>           &quot;reverse_method&quot;: &quot;swap_images_and_flip_both_horizontally_then_unflip_output&quot;,</span>
+<span class="line" id="L657"><a class="ln" href="#L657">  657</a>           &quot;upsample_method&quot;: &quot;nearest_then_divide_disparity_by_scale&quot;,</span>
+<span class="line" id="L658"><a class="ln" href="#L658">  658</a>           &quot;consistency_full_resolution_px&quot;: 1.0,</span>
+<span class="line" id="L659"><a class="ln" href="#L659">  659</a>           &quot;common_texture_std&quot;: 2.0</span>
+<span class="line" id="L660"><a class="ln" href="#L660">  660</a>         },</span>
+<span class="line" id="L661"><a class="ln" href="#L661">  661</a>         &quot;jobs&quot;: 1,</span>
+<span class="line" id="L662"><a class="ln" href="#L662">  662</a>         &quot;peak_cuda_allocated_bytes&quot;: 469507584,</span>
+<span class="line" id="L663"><a class="ln" href="#L663">  663</a>         &quot;peak_cuda_reserved_bytes&quot;: 580911104,</span>
+<span class="line" id="L664"><a class="ln" href="#L664">  664</a>         &quot;max_rss_kib&quot;: 1843440,</span>
+<span class="line" id="L665"><a class="ln" href="#L665">  665</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L666"><a class="ln" href="#L666">  666</a>         &quot;current_control_eligible&quot;: false</span>
+<span class="line" id="L667"><a class="ln" href="#L667">  667</a>       },</span>
+<span class="line" id="L668"><a class="ln" href="#L668">  668</a>       &quot;budget_passed&quot;: false,</span>
+<span class="line" id="L669"><a class="ln" href="#L669">  669</a>       &quot;timing_contract_audit_passed&quot;: true,</span>
+<span class="line" id="L670"><a class="ln" href="#L670">  670</a>       &quot;control_published&quot;: false,</span>
+<span class="line" id="L671"><a class="ln" href="#L671">  671</a>       &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L672"><a class="ln" href="#L672">  672</a>     }</span>
+<span class="line" id="L673"><a class="ln" href="#L673">  673</a>   ],</span>
+<span class="line" id="L674"><a class="ln" href="#L674">  674</a>   &quot;tests&quot;: {</span>
+<span class="line" id="L675"><a class="ln" href="#L675">  675</a>     &quot;host&quot;: {</span>
+<span class="line" id="L676"><a class="ln" href="#L676">  676</a>       &quot;passed&quot;: 139,</span>
+<span class="line" id="L677"><a class="ln" href="#L677">  677</a>       &quot;log_sha256&quot;: &quot;e5cf8204561b5710244d39f0ba884b87b9296acbc98ac687ff54003409241599&quot;</span>
+<span class="line" id="L678"><a class="ln" href="#L678">  678</a>     },</span>
+<span class="line" id="L679"><a class="ln" href="#L679">  679</a>     &quot;noetic&quot;: {</span>
+<span class="line" id="L680"><a class="ln" href="#L680">  680</a>       &quot;passed&quot;: 136,</span>
+<span class="line" id="L681"><a class="ln" href="#L681">  681</a>       &quot;skipped&quot;: 3,</span>
+<span class="line" id="L682"><a class="ln" href="#L682">  682</a>       &quot;log_sha256&quot;: &quot;3145a7229df0b3aa0229e1791ab6239d2980e9052fa57195101e812cd945f91c&quot;</span>
+<span class="line" id="L683"><a class="ln" href="#L683">  683</a>     }</span>
+<span class="line" id="L684"><a class="ln" href="#L684">  684</a>   },</span>
+<span class="line" id="L685"><a class="ln" href="#L685">  685</a>   &quot;failed_pilot_retained&quot;: {</span>
+<span class="line" id="L686"><a class="ln" href="#L686">  686</a>     &quot;run&quot;: &quot;runs/20261023T080947Z_f72715db2574438e8cff8c44d01e04fd&quot;,</span>
+<span class="line" id="L687"><a class="ln" href="#L687">  687</a>     &quot;reason&quot;: &quot;Sampling completed; first offline auditor had a syntax error. Corrected and new frozen scenes rerun.&quot;,</span>
+<span class="line" id="L688"><a class="ln" href="#L688">  688</a>     &quot;original_manifest_sha256&quot;: &quot;008c16f449b00073bf0c451b5b555009d9541eb0e16f8b75da18778f62f9828c&quot;,</span>
+<span class="line" id="L689"><a class="ln" href="#L689">  689</a>     &quot;original_audit_log_sha256&quot;: &quot;0f1fdd7869b6392d8bb3f49a44d90c5d7aadb297cc449fc207a3dfa963615fc6&quot;,</span>
+<span class="line" id="L690"><a class="ln" href="#L690">  690</a>     &quot;reanalysis_audit_sha256&quot;: &quot;4046758556fc8f30a6183f50d30376edd797c7f7e931b5b0215fb3e57ed05ed6&quot;,</span>
+<span class="line" id="L691"><a class="ln" href="#L691">  691</a>     &quot;reanalysis_source_sha256&quot;: &quot;45af520ed9b8ee17b006bf3457f0de75b6bcf97038bb8042b20f9fe99c0fc6aa&quot;,</span>
+<span class="line" id="L692"><a class="ln" href="#L692">  692</a>     &quot;original_failure_manifest_preserved&quot;: true</span>
+<span class="line" id="L693"><a class="ln" href="#L693">  693</a>   },</span>
+<span class="line" id="L694"><a class="ln" href="#L694">  694</a>   &quot;other_pilot_retained&quot;: &quot;runs/20261023T100009Z_a5c19a38b2e24eb2b02f9e162efbc83d&quot;,</span>
+<span class="line" id="L695"><a class="ln" href="#L695">  695</a>   &quot;pipeline_timing_contract_verified_on_development_runs&quot;: true,</span>
+<span class="line" id="L696"><a class="ln" href="#L696">  696</a>   &quot;default_150ms_or_experimental_200ms_latency_passed&quot;: false,</span>
+<span class="line" id="L697"><a class="ln" href="#L697">  697</a>   &quot;source_lease_refreshed&quot;: false,</span>
+<span class="line" id="L698"><a class="ln" href="#L698">  698</a>   &quot;control_published&quot;: false,</span>
+<span class="line" id="L699"><a class="ln" href="#L699">  699</a>   &quot;true_exposure_latency_measured&quot;: false,</span>
+<span class="line" id="L700"><a class="ln" href="#L700">  700</a>   &quot;actuation_latency_measured&quot;: false,</span>
+<span class="line" id="L701"><a class="ln" href="#L701">  701</a>   &quot;competition_control_scheduling_verified&quot;: false,</span>
+<span class="line" id="L702"><a class="ln" href="#L702">  702</a>   &quot;cold_start_departure_verified&quot;: false,</span>
+<span class="line" id="L703"><a class="ln" href="#L703">  703</a>   &quot;metric_calibration_verified&quot;: false,</span>
+<span class="line" id="L704"><a class="ln" href="#L704">  704</a>   &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L705"><a class="ln" href="#L705">  705</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L706"><a class="ln" href="#L706">  706</a>   &quot;p1_accepted&quot;: false,</span>
+<span class="line" id="L707"><a class="ln" href="#L707">  707</a>   &quot;p2_accepted&quot;: false,</span>
+<span class="line" id="L708"><a class="ln" href="#L708">  708</a>   &quot;scope_note&quot;: &quot;Only README, implementation status and new explanation/evidence were added after the two authoritative runs; executed code and runtime lock retain their archived bytes.&quot;</span>
+<span class="line" id="L709"><a class="ln" href="#L709">  709</a> }</span></pre></body></html>

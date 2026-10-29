@@ -1,0 +1,192 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p2_pose_history.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p2_pose_history.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 31,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;recorded_on&quot;: &quot;2026-10-23&quot;,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;stage&quot;: &quot;P2_READ_ONLY_POSE_HISTORY&quot;,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>   &quot;verification&quot;: {</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     &quot;host_unit_tests_passed&quot;: 103,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     &quot;noetic_unit_tests_passed&quot;: 100,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     &quot;noetic_host_git_tests_skipped&quot;: 3,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     &quot;post_contract_change_targeted_tests_passed_each_environment&quot;: 10</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>   },</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>   &quot;runs&quot;: [</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     {</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>       &quot;run&quot;: &quot;runs/20261023T060213Z_974147f3cc1d4a87a81d2b7b7ebef581&quot;,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>       &quot;seed&quot;: 2108,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &quot;sha256&quot;: &quot;944c85fdf8cd93e712b8c89db7963373cca0bd135a37cb3a075d8307468b246b&quot;,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &quot;files&quot;: 248,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;uncompressed_bytes&quot;: 902946,</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>       },</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>       &quot;independently_rehashed_source_files&quot;: 248,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         &quot;images&quot;: 182,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         &quot;historical_matches&quot;: 179,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         &quot;unavailable_reasons&quot;: {</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>           &quot;LATEST_STATE_HEALTH&quot;: 1,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;NO_BRACKET&quot;: 2</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         },</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         &quot;source_states&quot;: 994,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &quot;fault&quot;: null,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           ],</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>           ]</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         },</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &quot;horizon_s&quot;: 1.0,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         &quot;max_bracket_s&quot;: 0.03,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &quot;image_exposure_time_calibrated&quot;: false,</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         &quot;world_projection_applied&quot;: false,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;historical_uncertainty_calibrated&quot;: false,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>       },</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         &quot;source_states&quot;: 994,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         &quot;camera_queries&quot;: 182,</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         &quot;replayed_historical_matches&quot;: 179,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         &quot;queries_agreeing_with_replay&quot;: 182,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         &quot;divergent_query_indices&quot;: [],</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         &quot;unavailable_reasons&quot;: {</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>           &quot;LATEST_STATE_HEALTH&quot;: 1,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>           &quot;NO_BRACKET&quot;: 2</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         },</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         &quot;match_fraction&quot;: 0.9835164835164835,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         &quot;header_age_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>           0.14400315284729004,</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>           0.161853289604187,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>           0.1685736083984375,</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>           0.18900394439697266</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         ],</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &quot;lookup_elapsed_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>           0.0002176434500142932,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>           0.00035351348342373964,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           0.000482277744449675,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>           0.000710085965692997</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         ],</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &quot;maximum_interpolation_bracket_s&quot;: 0.012000322341918945,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         &quot;historical_uncertainty_calibrated&quot;: false,</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &quot;image_exposure_time_calibrated&quot;: false,</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &quot;world_projection_verified&quot;: false,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &quot;analysis_source_sha256&quot;: &quot;073f1ce22cf01b1c98537fdf4764b8dceaa5f25585ba9d4b3f55c04de287a0cc&quot;</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>       },</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         &quot;manifest.json&quot;: &quot;6fe763027c105280306e72f7bce004d8ec1039b12deb1a38a30b7c125394b77e&quot;,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         &quot;history_states.jsonl&quot;: &quot;4310cac5f54460461f20ec89460fbbcb6e0667a203c2a4d859a40de50dce3f3c&quot;,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         &quot;camera_history.jsonl&quot;: &quot;0c9fdf32f9b830d0cc84b0480fdc3e9406ee87e6cd6904583df2ce5675a01f1b&quot;,</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         &quot;pose_history_summary.json&quot;: &quot;22ef24aa6cad718ab9098b9cc825cb4fb921c356be5d64e1efdd0ca87e0269ef&quot;,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         &quot;pose_history_audit.json&quot;: &quot;a59c41307286242f62fc822d6b08b8bf6bdd28815689fd9a0860e08d01a50109&quot;</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>       }</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     },</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     {</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>       &quot;run&quot;: &quot;runs/20261023T060449Z_d922d375bd1442cca36be68efd38679a&quot;,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>       &quot;seed&quot;: 2109,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>       &quot;source_archive&quot;: {</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         &quot;path&quot;: &quot;source_snapshot.tar.gz&quot;,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         &quot;sha256&quot;: &quot;3e5f835b58ca20456cb64cfe7b04611190129a42a75949a83bc391f215f89075&quot;,</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         &quot;files&quot;: 248,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         &quot;uncompressed_bytes&quot;: 904389,</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         &quot;scope&quot;: &quot;workspace_sources_not_container_or_simulator_binaries&quot;</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>       },</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>       &quot;independently_rehashed_source_files&quot;: 248,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>       &quot;original_simulator_files_unchanged&quot;: true,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         &quot;images&quot;: 71,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         &quot;historical_matches&quot;: 68,</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         &quot;unavailable_reasons&quot;: {</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>           &quot;NO_BRACKET&quot;: 2,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>           &quot;BRACKET_HEALTH&quot;: 1</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         },</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         &quot;source_states&quot;: 396,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         &quot;fault&quot;: null,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             &quot;/airsim_node/drone_1/gps&quot;,</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             &quot;/airsim_node/drone_1/imu/imu&quot;,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             &quot;/airsim_node/initial_pose&quot;</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>           ],</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>           ]</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         },</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &quot;horizon_s&quot;: 1.0,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         &quot;max_bracket_s&quot;: 0.03,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>         &quot;image_exposure_time_calibrated&quot;: false,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         &quot;world_projection_applied&quot;: false,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         &quot;historical_uncertainty_calibrated&quot;: false,</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>       },</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         &quot;source_states&quot;: 396,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         &quot;camera_queries&quot;: 71,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         &quot;replayed_historical_matches&quot;: 68,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         &quot;queries_agreeing_with_replay&quot;: 71,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &quot;divergent_query_indices&quot;: [],</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         &quot;unavailable_reasons&quot;: {</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>           &quot;NO_BRACKET&quot;: 2,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>           &quot;BRACKET_HEALTH&quot;: 1</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         },</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         &quot;match_fraction&quot;: 0.9577464788732394,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         &quot;header_age_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>           0.14400315284729004,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           0.1710035800933838,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           0.1860039234161377,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           0.1860039234161377</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>         ],</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>         &quot;lookup_elapsed_p50_p95_p99_max_s&quot;: [</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>           0.0002442270051687956,</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>           0.0004031844437122345,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>           0.000613507884554564,</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           0.0008344929665327072</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>         ],</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         &quot;maximum_interpolation_bracket_s&quot;: 0.012000322341918945,</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;current_control_eligible&quot;: false,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         &quot;historical_uncertainty_calibrated&quot;: false,</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>         &quot;image_exposure_time_calibrated&quot;: false,</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         &quot;world_projection_verified&quot;: false,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>         &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         &quot;analysis_source_sha256&quot;: &quot;073f1ce22cf01b1c98537fdf4764b8dceaa5f25585ba9d4b3f55c04de287a0cc&quot;</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>       },</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>       &quot;analysis_matches_run_source_snapshot&quot;: true,</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>       &quot;artifact_sha256&quot;: {</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>         &quot;manifest.json&quot;: &quot;884883485ea3a7530555d0cda63a2c536a3832c6962676482993404695ba804a&quot;,</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         &quot;history_states.jsonl&quot;: &quot;2e767f2de6f0e945a41c10cd53f4931948eda37a268d7baa348db50f06ef38c8&quot;,</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>         &quot;camera_history.jsonl&quot;: &quot;f62fdde49e1f78231823844dd9bea2366170f4b4f8512afd70db180bac16071e&quot;,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         &quot;pose_history_summary.json&quot;: &quot;24b91ef1270691f8dbe96cf2535ac6a648b5ce102215dd8f858f420fa1a253de&quot;,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         &quot;pose_history_audit.json&quot;: &quot;75d7f87aa54cc7dc6b7307c68e783abfec26fcb66a138693edf2accf152954aa&quot;</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>       }</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>     }</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>   ],</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>   &quot;limitations&quot;: [</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>     &quot;Only camera-header association with historical formal-input ESKF estimates, not actual exposure time or true pose.&quot;,</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>     &quot;Replay uses the retained estimate history; agreement is not independent pose-accuracy or interpolation-error calibration.&quot;,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>     &quot;Position/rotation correction residual guards are local plausibility checks, not certified error bounds.&quot;,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>     &quot;Source covariance diagonals are retained without inventing calibrated interpolated uncertainty.&quot;,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>     &quot;HistoricalPose is not a current StateEstimate, carries no refreshed validity and is ineligible for control.&quot;,</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>     &quot;Default FlightSensors retains no history; camera/stereo validity budgets are unchanged.&quot;,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>     &quot;Source revisions differ between the 10s scene and final-contract 4s smoke; archives are authoritative.&quot;,</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>     &quot;No extrinsic/world projection, online depth, map fusion, VIO or flight acceptance.&quot;</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>   ]</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a> }</span></pre></body></html>

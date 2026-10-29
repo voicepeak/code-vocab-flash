@@ -1,0 +1,72 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/replay_dynamic_lidar.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/replay_dynamic_lidar.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline LiDAR cluster and dynamic association replay from recorded flight.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from collections import Counter</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import hashlib</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import json</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from pathlib import Path</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import numpy as np</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from adapters.ros_noetic.lidar_cloud import LidarCloud</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from evaluation.pipeline.replay_gate_tracks import interpolate_pose</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from perception.object_motion.lidar_clusters import cluster_endpoints</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from world_model.dynamic_tracks.tracker import DynamicTracker</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> from world_model.occupancy.rolling_endpoints import world_endpoints</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> def replay(source,settings,limit=24,center_mode=&quot;bbox&quot;,association_mode=&quot;strict&quot;):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     source=Path(source);directory=source/&#x27;scene_trace&#x27;;index_path=directory/&#x27;index.json&#x27;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     index=json.loads(index_path.read_text());rig=load_nominal_rig(settings)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     manifest=json.loads((source/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     if index[&#x27;fault&#x27;] is not None or manifest[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;]!=rig.settings_sha256:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         raise ValueError(&#x27;capture or simulator settings mismatch&#x27;)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     log=source/(&#x27;pwm_telemetry.jsonl&#x27; if (source/&#x27;pwm_telemetry.jsonl&#x27;).exists() else &#x27;vel_telemetry.jsonl&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     states=[json.loads(s) for s in log.read_text().splitlines()]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     if any(a[&#x27;raw&#x27;][&#x27;stamp&#x27;]&gt;=b[&#x27;raw&#x27;][&#x27;stamp&#x27;] for a,b in zip(states,states[1:])):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         raise ValueError(&#x27;nonmonotonic state recording&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     scans=sorted((r for r in index[&#x27;frames&#x27;] if r[&#x27;sensor&#x27;]==&#x27;lidar&#x27;),key=lambda r:r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     tracker=DynamicTracker(association_mode=association_mode);rows=[];processed=0</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     for scan in scans:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if processed&gt;=limit:break</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         stamp=scan[&#x27;stamp&#x27;]; pose,reason=interpolate_pose(states,stamp)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         if pose is None:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             rows.append({&#x27;file&#x27;:scan[&#x27;file&#x27;],&#x27;status&#x27;:reason});continue</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         path=directory/scan[&#x27;file&#x27;]</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         if path.parent!=directory or path.suffix!=&#x27;.npz&#x27;:raise ValueError(&#x27;invalid point file&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         with np.load(path,allow_pickle=False) as payload:points=np.asarray(payload[&#x27;points&#x27;],dtype=float)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         cloud=LidarCloud(Metadata(stamp,stamp+.2,0,&#x27;recorded_lidar&#x27;,&#x27;lidar&#x27;),points,len(points),0)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         now=pose.bracket_stamps[1];started=time.monotonic()</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         try:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             world=world_endpoints(cloud,pose,rig.lidar_pose);clusters=cluster_endpoints(world,now,0,center_mode=center_mode)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             association=tracker.ingest(clusters,now,0);tracks=tracker.snapshot(now,0)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             rows.append({&#x27;file&#x27;:scan[&#x27;file&#x27;],&#x27;stamp&#x27;:stamp,&#x27;status&#x27;:&#x27;PROCESSED&#x27;,&#x27;input_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                          &#x27;now&#x27;:now,&#x27;duration_s&#x27;:time.monotonic()-started,&#x27;clusters&#x27;:len(clusters.clusters),</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                          &#x27;occupied_voxels&#x27;:clusters.occupied_voxels,&#x27;rejected_components&#x27;:clusters.rejected_components,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                          &#x27;association&#x27;:association,&#x27;tracks&#x27;:[asdict(t) for t in tracks]})</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         except (ValueError,ArithmeticError) as error:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             rows.append({&#x27;file&#x27;:scan[&#x27;file&#x27;],&#x27;stamp&#x27;:stamp,&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:str(error)})</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         processed+=1</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     return {&#x27;source&#x27;:str(source),&#x27;center_mode&#x27;:center_mode,&#x27;association_mode&#x27;:association_mode,&#x27;settings_sha256&#x27;:rig.settings_sha256,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             &#x27;scene_index_sha256&#x27;:hashlib.sha256(index_path.read_bytes()).hexdigest(),</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             &#x27;state_input_sha256&#x27;:hashlib.sha256(log.read_bytes()).hexdigest(),&#x27;statuses&#x27;:dict(Counter(x[&#x27;status&#x27;] for x in rows)),</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             &#x27;uses_truth&#x27;:False,&#x27;now_is_earliest_bracket_not_processing_completion&#x27;:True,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             &#x27;control_eligible&#x27;:False,&#x27;results&#x27;:rows}</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> def main():</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     p=argparse.ArgumentParser(description=__doc__);p.add_argument(&#x27;source&#x27;);p.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     p.add_argument(&#x27;--settings&#x27;,default=&#x27;configs/simulator_settings.json&#x27;);p.add_argument(&#x27;--limit&#x27;,type=int,default=24)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     p.add_argument(&#x27;--center-mode&#x27;,choices=(&#x27;bbox&#x27;,&#x27;centroid&#x27;),default=&#x27;bbox&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     p.add_argument(&#x27;--association-mode&#x27;,choices=(&#x27;strict&#x27;,&#x27;mutual&#x27;),default=&#x27;strict&#x27;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     args=p.parse_args()</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     if not 1&lt;=args.limit&lt;=100:p.error(&#x27;limit must be 1..100&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     result=replay(args.source,args.settings,args.limit,args.center_mode,args.association_mode)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     with Path(args.output).open(&#x27;x&#x27;) as out:json.dump(result,out,indent=2,allow_nan=False);out.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     print(json.dumps({&#x27;output&#x27;:args.output,&#x27;statuses&#x27;:result[&#x27;statuses&#x27;]}))</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a> </span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> </span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> if __name__ == &#x27;__main__&#x27;:main()</span></pre></body></html>

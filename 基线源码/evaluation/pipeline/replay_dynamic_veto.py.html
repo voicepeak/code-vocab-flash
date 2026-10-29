@@ -1,0 +1,58 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/replay_dynamic_veto.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/replay_dynamic_veto.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Probe candidate-dynamic veto against retained LiDAR associations.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import hashlib</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import json</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from pathlib import Path</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.pipeline.replay_gate_tracks import interpolate_pose</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from interfaces.contracts import Metadata, Trajectory, TrajectorySample</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from planning.trajectory_validator.dynamic_candidates import DynamicBounds, DynamicScene, check_dynamic_candidates</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from planning.trajectory_validator.static_sweep import SweepBounds</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from world_model.dynamic_tracks.tracker import ObjectTrack</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def replay(source):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     source=Path(source);data=json.loads(source.read_text());run=Path(data[&#x27;source&#x27;])</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     log=run/(&#x27;pwm_telemetry.jsonl&#x27; if (run/&#x27;pwm_telemetry.jsonl&#x27;).exists() else &#x27;vel_telemetry.jsonl&#x27;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if hashlib.sha256(log.read_bytes()).hexdigest()!=data[&#x27;state_input_sha256&#x27;]:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         raise ValueError(&#x27;recorded state input changed&#x27;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     states=[json.loads(s) for s in log.read_text().splitlines()]</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     body=SweepBounds((.2,.2,.1),.05,0.)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     # Explicit assumptions for a diagnostic model, not calibrated bounds.</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     bounds=DynamicBounds(.2,2.,4.,20.,max_horizon_s=.3)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     rows=[]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     for frame in data[&#x27;results&#x27;]:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         if frame[&#x27;status&#x27;]!=&#x27;PROCESSED&#x27;:continue</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         pose,reason=interpolate_pose(states,frame[&#x27;stamp&#x27;])</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         if pose is None:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             rows.append({&#x27;file&#x27;:frame[&#x27;file&#x27;],&#x27;reason&#x27;:reason});continue</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         now=frame[&#x27;now&#x27;]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         sample=lambda t:TrajectorySample(t,pose.position_ned,(0.,0.,0.),(0.,0.,0.),0.)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         path=Trajectory(Metadata(now,now+.2,0,&#x27;stationary_geometry_probe&#x27;),(sample(now),sample(now+.2)))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         tracks=[]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         for raw in frame[&#x27;tracks&#x27;]:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             allowed={name:raw[name] for name in (&#x27;track_id&#x27;,&#x27;epoch&#x27;,&#x27;center_ned&#x27;,&#x27;half_extents_m&#x27;,&#x27;velocity_ned_m_s&#x27;,&#x27;observations&#x27;,&#x27;stamp&#x27;,&#x27;valid_until&#x27;)}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             for key in (&#x27;center_ned&#x27;,&#x27;half_extents_m&#x27;,&#x27;velocity_ned_m_s&#x27;):allowed[key]=tuple(allowed[key])</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             tracks.append(ObjectTrack(**allowed))</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         scene=DynamicScene(Metadata(frame[&#x27;stamp&#x27;],frame[&#x27;stamp&#x27;]+.2,0,&#x27;recorded_scan&#x27;),tuple(tracks))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         result=check_dynamic_candidates(path,scene,now,0,body,bounds)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         rows.append({&#x27;file&#x27;:frame[&#x27;file&#x27;],&#x27;track_count&#x27;:len(tracks),&#x27;reason&#x27;:result.reason,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                      &#x27;allowed&#x27;:result.allowed,&#x27;safety_certified&#x27;:result.safety_certified,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                      &#x27;track_id&#x27;:result.track_id,&#x27;pair_tests&#x27;:result.pair_tests})</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     return {&#x27;source&#x27;:str(source),&#x27;source_sha256&#x27;:hashlib.sha256(source.read_bytes()).hexdigest(),</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             &#x27;state_sha256&#x27;:data[&#x27;state_input_sha256&#x27;],&#x27;role&#x27;:&#x27;stationary_synthetic_geometry_probe&#x27;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             &#x27;assumptions&#x27;:asdict(bounds),&#x27;body_bounds&#x27;:asdict(body),</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &#x27;source_time_is_idealized_not_processing_completion&#x27;:True,&#x27;control_eligible&#x27;:False,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             &#x27;counts&#x27;:dict(Counter(r[&#x27;reason&#x27;] for r in rows)),&#x27;results&#x27;:rows}</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> </span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> def main():</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     p=argparse.ArgumentParser(description=__doc__);p.add_argument(&#x27;source&#x27;);p.add_argument(&#x27;output&#x27;);a=p.parse_args()</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     result=replay(a.source)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     with Path(a.output).open(&#x27;x&#x27;) as out:json.dump(result,out,indent=2,allow_nan=False);out.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     print(json.dumps({&#x27;output&#x27;:a.output,&#x27;counts&#x27;:result[&#x27;counts&#x27;]}))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

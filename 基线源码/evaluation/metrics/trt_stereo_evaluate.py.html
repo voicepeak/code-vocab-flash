@@ -1,0 +1,50 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/trt_stereo_evaluate.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/trt_stereo_evaluate.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Independent numerical agreement and nominal reference comparison, not calibration.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.metrics.learned_stereo import compare_reference</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def numerical_agreement(reference,reference_valid,candidate,candidate_valid):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     common=reference_valid &amp; candidate_valid;union=reference_valid | candidate_valid</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     errors=np.abs(reference[common]-candidate[common])</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     iou=float(common.sum()/union.sum()) if union.any() else 0.</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     p99=float(np.percentile(errors,99)) if len(errors) else None</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return {&#x27;common_pixels&#x27;:int(common.sum()),&#x27;mask_iou&#x27;:iou,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &#x27;absolute_median_px&#x27;:float(np.median(errors)) if len(errors) else None,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         &#x27;absolute_p99_px&#x27;:p99,&#x27;absolute_max_px&#x27;:float(errors.max()) if len(errors) else None,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         &#x27;min_iou_gate&#x27;:.9,&#x27;p99_error_gate_original_px&#x27;:1.,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &#x27;compatible&#x27;:bool(len(errors) and np.isfinite(errors).all() and iou&gt;=.9 and p99&lt;=1.)}</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> def main():</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     args=parser.parse_args();run=args.run_dir;root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     manifest=json.loads((run/&#x27;manifest.json&#x27;).read_text());source=root/manifest[&#x27;config&#x27;][&#x27;trt_experiment&#x27;][&#x27;source_run&#x27;]</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     records=json.loads((source/&#x27;inputs/index.json&#x27;).read_text());packets=[]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     runtime=json.loads((run/&#x27;trt_runtime.json&#x27;).read_text())</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     for row in records:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         key=row[&#x27;key&#x27;]</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         with np.load(source/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),allow_pickle=False) as baseline, np.load(run/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),allow_pickle=False) as candidate, np.load(source/&#x27;references&#x27;/(key+&#x27;.npz&#x27;),allow_pickle=False) as refs:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             agreement=numerical_agreement(baseline[&#x27;ffs_disparity&#x27;],baseline[&#x27;ffs_valid&#x27;],candidate[&#x27;disparity&#x27;],candidate[&#x27;valid&#x27;])</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             fields={&#x27;pytorch&#x27;:(baseline[&#x27;ffs_disparity&#x27;],baseline[&#x27;ffs_valid&#x27;]),</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 &#x27;tensorrt&#x27;:(candidate[&#x27;disparity&#x27;],candidate[&#x27;valid&#x27;])}</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             nominal,_=compare_reference(refs[&#x27;left_uv&#x27;],refs[&#x27;expected_disparity_px&#x27;],refs[&#x27;candidates&#x27;],fields)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             packets.append({&#x27;key&#x27;:key,&#x27;seed&#x27;:row[&#x27;seed&#x27;],&#x27;source_metadata&#x27;:{&#x27;left&#x27;:row[&#x27;left_metadata&#x27;],&#x27;right&#x27;:row[&#x27;right_metadata&#x27;]},</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 &#x27;numerical_agreement&#x27;:agreement,&#x27;nominal_comparison&#x27;:nominal})</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     compatible=bool(runtime[&#x27;first_pair_repeat_identical&#x27;] and all(p[&#x27;numerical_agreement&#x27;][&#x27;compatible&#x27;] for p in packets)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         and all(p[&#x27;all_raw_values_finite&#x27;] for p in runtime[&#x27;measurements&#x27;]))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     report={&#x27;candidate_numerically_compatible_with_uncalibrated_pytorch&#x27;:compatible,&#x27;packets&#x27;:packets,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         &#x27;runtime&#x27;:runtime,&#x27;historical_only&#x27;:True,&#x27;source_run&#x27;:str(source.relative_to(root)),</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         &#x27;comparison_uses_same_pixels&#x27;:True,&#x27;nominal_reference_not_ground_truth&#x27;:True,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         &#x27;online_latency_verified&#x27;:False,&#x27;metric_calibration_verified&#x27;:False,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         &#x27;current_control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &#x27;interpretation&#x27;:&#x27;Fixed numerical gates compare two uncalibrated candidates, not geometry accuracy or safety. Residuals use nominal sparse LiDAR references and retain large differences. Offline timings exclude ROS, simulator contention and planning.&#x27;}</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     (run/&#x27;trt_comparison.json&#x27;).write_text(json.dumps(report,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     return 0 if compatible else 2</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

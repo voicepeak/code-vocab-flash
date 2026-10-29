@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_bridge_lifetime.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_bridge_lifetime.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from evaluation.metrics.bridge_lifetime import evaluate</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> def row(event, start, end=None, span=1, parameter=&#x27;0x123&#x27;, command=&#x27;0x456&#x27;, thread=1):</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     return {&#x27;event&#x27;: event, &#x27;mode&#x27;: &#x27;lifetime&#x27;, &#x27;start_monotonic_ns&#x27;: start,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>             &#x27;end_monotonic_ns&#x27;: start if end is None else end, &#x27;bridge_span&#x27;: span,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>             &#x27;parameter_address&#x27;: parameter, &#x27;command_address&#x27;: command,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>             &#x27;thread_id&#x27;: thread, &#x27;write_errors&#x27;: 0}</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class BridgeLifetimeAuditTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     def records(self, free_start=25, free_end=26):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         return [row(&#x27;bridge_begin&#x27;, 10), row(&#x27;parameter_borrow&#x27;, 20, 22),</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>                 row(&#x27;command_constructed&#x27;, 30, 32), row(&#x27;command_handoff&#x27;, 40, 42),</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                 row(&#x27;bridge_end&#x27;, 50), row(&#x27;parameter_free_begin&#x27;, free_start, span=0, thread=2),</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 row(&#x27;parameter_free_end&#x27;, free_start, free_end, span=0, thread=2)]</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     def test_freed_parameter_before_handoff_is_a_lifetime_violation_not_causal_proof(self):</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         result = evaluate(self.records())</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.assertEqual(result[&#x27;freed_parameter_handoffs&#x27;], 1)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertEqual(result[&#x27;linked_parameter_handoffs&#x27;], 1)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertTrue(result[&#x27;hook_coverage_valid&#x27;])</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.assertFalse(result[&#x27;physical_impulse_cause_identified&#x27;])</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.assertFalse(result[&#x27;actual_native_consumer_read_observed&#x27;])</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     def test_earlier_address_reuse_overlapping_get_and_later_free_cannot_prove_violation(self):</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         for begin, end in ((1, 2), (21, 25), (45, 46)):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             with self.subTest(begin=begin):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                 self.assertEqual(evaluate(self.records(begin, end))[&#x27;freed_parameter_handoffs&#x27;], 0)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         records = self.records()</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         records[-1][&#x27;parameter_address&#x27;] = &#x27;0x789&#x27;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         self.assertEqual(evaluate(records)[&#x27;freed_parameter_handoffs&#x27;], 0)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def test_incomplete_span_missing_hooks_and_bad_records_do_not_certify_coverage(self):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         records = [r for r in self.records() if r[&#x27;event&#x27;] != &#x27;bridge_end&#x27;]</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.assertFalse(evaluate(records)[&#x27;hook_coverage_valid&#x27;])</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self.assertEqual(evaluate(records)[&#x27;freed_parameter_handoffs&#x27;], 0)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         records = self.records()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         records[0][&#x27;end_monotonic_ns&#x27;] = 0</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             evaluate(records)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     unittest.main()</span></pre></body></html>

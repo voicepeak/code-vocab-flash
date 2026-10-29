@@ -1,0 +1,63 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/dynamic_lidar.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/dynamic_lidar.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Audit timing and read-only policy of dynamic LiDAR diagnostics.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from collections import Counter</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import sys</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from perception.stereo_depth.transport import freshness_reason</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def audit(run):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     run = Path(run)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     summary = json.loads((run / &#x27;dynamic_lidar_summary.json&#x27;).read_text())</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     rows = [json.loads(line) for line in (run / &#x27;dynamic_lidar_results.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     errors = []</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     expected = sorted([&#x27;/airsim_node/drone_1/lidar&#x27;, &#x27;/airsim_node/drone_1/gps&#x27;,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                        &#x27;/airsim_node/drone_1/imu/imu&#x27;, &#x27;/airsim_node/initial_pose&#x27;])</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     if summary.get(&#x27;planning_diagnostic&#x27;): expected.append(&#x27;/airsim_node/end_goal&#x27;); expected.sort()</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     graph = summary[&#x27;node_graph&#x27;] or {}</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     if graph.get(&#x27;subscriptions&#x27;) != expected or set(graph.get(&#x27;publishers&#x27;, [])) - {&#x27;/rosout&#x27;}:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         errors.append(&#x27;GRAPH&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     if (summary[&#x27;faults&#x27;] or summary[&#x27;control_published&#x27;] or summary[&#x27;debug_inputs_used&#x27;]</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             or summary[&#x27;control_eligible&#x27;] or summary[&#x27;acceptance_eligible&#x27;]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             or len(rows) != summary[&#x27;results&#x27;] or dict(Counter(r[&#x27;status&#x27;] for r in rows)) != summary[&#x27;statuses&#x27;]):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         errors.append(&#x27;SUMMARY&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     for row in rows:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         if row.get(&#x27;control_eligible&#x27;) is not False:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             errors.append(&#x27;CONTROL_ELIGIBILITY&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         planner = row.get(&#x27;planner&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if summary.get(&#x27;planning_diagnostic&#x27;) and row[&#x27;status&#x27;] == &#x27;PROCESSED&#x27; and planner is None:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             errors.append(&#x27;PLANNER_MISSING&#x27;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if planner and planner.get(&#x27;control_eligible&#x27;, False):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             errors.append(&#x27;PLANNER_CONTROL_ELIGIBILITY&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if planner and &#x27;goal&#x27; in planner and (planner[&#x27;goal&#x27;][&#x27;epoch&#x27;] != row[&#x27;check_epoch&#x27;]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 or not 0 &lt;= row[&#x27;check_wall&#x27;]-planner[&#x27;goal&#x27;][&#x27;last_arrival_wall&#x27;] &lt; .5):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             errors.append(&#x27;PLANNER_GOAL_STALE&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if row[&#x27;status&#x27;] != &#x27;PROCESSED&#x27;:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             continue</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         meta = Metadata(row[&#x27;source_stamp&#x27;], row[&#x27;source_valid_until&#x27;], row[&#x27;source_epoch&#x27;], &#x27;audit&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         if freshness_reason(meta, row[&#x27;check_imu_stamp&#x27;], row[&#x27;check_epoch&#x27;], row[&#x27;clock_fresh_at_check&#x27;],</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                             row[&#x27;source_arrival_wall&#x27;], row[&#x27;check_wall&#x27;]):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             errors.append(&#x27;SOURCE_EXPIRED&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         if (row[&#x27;pose_stamp&#x27;] != row[&#x27;source_stamp&#x27;] or row[&#x27;pose_bracket_stamps&#x27;][1] &gt; row[&#x27;check_imu_stamp&#x27;]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 or row[&#x27;dynamic_check&#x27;][&#x27;safety_certified&#x27;]):</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             errors.append(&#x27;POSE_OR_CERTIFICATION&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         for track in row[&#x27;tracks&#x27;]:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             if (track[&#x27;epoch&#x27;] != row[&#x27;check_epoch&#x27;] or not track[&#x27;stamp&#x27;] &lt;= row[&#x27;check_imu_stamp&#x27;] &lt; track[&#x27;valid_until&#x27;]</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                     or track[&#x27;safety_certified&#x27;] or track[&#x27;control_eligible&#x27;]):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 errors.append(&#x27;TRACK_INVALID&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     return {&#x27;audit_valid&#x27;: bool(rows and not errors), &#x27;errors&#x27;: errors,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             &#x27;rows&#x27;: len(rows), &#x27;statuses&#x27;: dict(Counter(r[&#x27;status&#x27;] for r in rows)),</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             &#x27;rejection_reasons&#x27;: dict(Counter(r[&#x27;reason&#x27;] for r in rows if r[&#x27;status&#x27;] == &#x27;REJECTED&#x27;)),</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             &#x27;control_eligible&#x27;: False, &#x27;safety_certified&#x27;: False}</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> def main():</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     run = Path(sys.argv[1]); result = audit(run)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     (run / &#x27;dynamic_lidar_audit.json&#x27;).write_text(json.dumps(result, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     print(json.dumps(result, indent=2))</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     return 0 if result[&#x27;audit_valid&#x27;] else 2</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> </span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> </span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> if __name__ == &#x27;__main__&#x27;: raise SystemExit(main())</span></pre></body></html>

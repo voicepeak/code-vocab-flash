@@ -1,0 +1,118 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/gate_geometry/stereo_gate.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/gate_geometry/stereo_gate.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Experimental orange-edge gate candidates with sparse stereo depth support.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> @dataclass(frozen=True)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class GateCandidate:</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     metadata: Metadata</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     image_edges_px: tuple</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     center_body_frd_m: tuple</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     nominal_width_m: float</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     nominal_height_m: float</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     edge_disparities_px: tuple</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     edge_support: tuple</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     # Single-frame color/geometry proposals never certify aperture or clearance.</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     aperture_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     metric_calibration_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> def _vertical_edges(image, encoding, cv2):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if encoding == &#x27;bgr8&#x27;: bgr = image</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     elif encoding == &#x27;rgb8&#x27;: bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     elif encoding == &#x27;bgra8&#x27;: bgr = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     elif encoding == &#x27;rgba8&#x27;: bgr = cv2.cvtColor(image, cv2.COLOR_RGBA2BGR)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     else: raise ValueError(&#x27;gate candidate requires color image&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     mask = cv2.inRange(hsv, (0, 100, 75), (18, 255, 255)) | cv2.inRange(hsv, (170, 100, 75), (179, 255, 255))</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     vertical = cv2.morphologyEx(mask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_RECT, (1, 9)))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     _, _, stats, _ = cv2.connectedComponentsWithStats(vertical, 8)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     # Image borders can truncate a frame; never promote such an edge.</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     h, w = image.shape[:2]</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     edges = []</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     for x, y, width, height, area in stats[1:]:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         x, y, width, height, area = map(int, (x, y, width, height, area))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         if (height &lt; 20 or area &lt; 18 or height &lt; 2 * width or x &lt; 4 or y &lt; 4</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 or x + width &gt;= w - 4 or y + height &gt;= h - 4):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             continue</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         edges.append((x + (width - 1) / 2., float(y), float(y + height - 1), width))</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     return sorted(edges, key=lambda e: (e[0], e[1]))[:128]</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> @dataclass(frozen=True)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> class PreparedGateEdges:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     &quot;&quot;&quot;Edges tied by identity to one immutable left image observation.&quot;&quot;&quot;</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     source_frame: object</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     edges: tuple</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> def prepare_gate_edges(pair):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     import cv2</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     return PreparedGateEdges(pair.left, tuple(_vertical_edges(pair.left.pixels, pair.left.encoding, cv2)))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> def checked_gate_edges(pair, prepared):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     if not isinstance(prepared, PreparedGateEdges) or prepared.source_frame is not pair.left:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         raise ValueError(&#x27;prepared gate edges belong to another image&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     return prepared.edges</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> </span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> def stereo_gate_candidates(pair, disparity, rig, now, epoch, prepared=None):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     &quot;&quot;&quot;Produce nominal 3D proposals, never a gate passage or obstacle clearance.</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> </span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     Conservative source-age checks apply to the original image/derived disparity.</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     Edge depth is a regional median, not a measured precise opening polygon.</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     import cv2</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     if (not pair.metadata.current(now, epoch) or not disparity.metadata.current(now, epoch)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             or disparity.metadata.epoch != pair.metadata.epoch</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             or disparity.metadata.stamp != pair.metadata.stamp</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             or disparity.metadata.valid_until != pair.metadata.valid_until</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             or disparity.left_measurement_stamp != pair.left.metadata.stamp</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             or disparity.right_measurement_stamp != pair.right.metadata.stamp</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             or disparity.metadata.frame_id != &#x27;front_left_image&#x27;</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             or pair.left.pixels.shape[:2] != (rig.left.height, rig.left.width)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             or disparity.disparity_px.shape != (rig.left.height, rig.left.width)):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         raise ValueError(&#x27;gate inputs do not share a current source pair&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     edges = (_vertical_edges(pair.left.pixels, pair.left.encoding, cv2) if prepared is None</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>              else checked_gate_edges(pair, prepared))</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     h, w = disparity.disparity_px.shape</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     supported = []</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     for x, top, bottom, width in edges:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         x0, x1 = max(0, int(x - width / 2 - 4)), min(w, int(x + width / 2 + 5))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         y0, y1 = max(0, int(top + .15 * (bottom-top))), min(h, int(bottom - .15 * (bottom-top)) + 1)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         mask = disparity.valid[y0:y1, x0:x1]</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         values = disparity.disparity_px[y0:y1, x0:x1][mask]</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         if len(values) &lt; 8: continue</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         median = float(np.median(values)); deviation = float(np.median(np.abs(values - median)))</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         if not math.isfinite(median) or median &lt;= 0 or deviation &gt; max(.75, .15 * median): continue</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         supported.append((x, top, bottom, width, median, len(values)))</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     candidates = []</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     for index, left in enumerate(supported):</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         for right in supported[index+1:]:</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             lx, lt, lb, _, ld, lc = left; rx, rt, rb, _, rd, rc = right</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>             lh, rh = lb-lt, rb-rt</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             if (rx-lx &lt; .7 * max(lh, rh) or rx-lx &gt; 6 * min(lh, rh)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                     or min(lh, rh) / max(lh, rh) &lt; .65</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                     or abs((lt+lb)-(rt+rb)) &gt; .4 * max(lh, rh)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                     or abs(ld-rd) &gt; max(.75, .2 * max(ld, rd))):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                 continue</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             left_pixels = np.array(((lx, lt), (lx, lb), (rx, rt), (rx, rb)))</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             right_pixels = left_pixels.copy()</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             right_pixels[:, 0] -= (ld, ld, rd, rd)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             body, valid, _ = rig.triangulate_body(left_pixels, right_pixels, max_depth_m=30.)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             if not valid.all(): continue</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             lcenter, rcenter = (body[0]+body[1])/2., (body[2]+body[3])/2.</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             width_m = float(np.linalg.norm(rcenter-lcenter))</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             height_m = float((np.linalg.norm(body[1]-body[0])+np.linalg.norm(body[3]-body[2])) / 2.)</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             if not (1. &lt;= width_m &lt;= 30. and 1. &lt;= height_m &lt;= 20.): continue</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             meta = Metadata(pair.metadata.stamp, pair.metadata.valid_until, epoch, &#x27;nominal_stereo_gate_candidate&#x27;, &#x27;body_frd&#x27;)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             candidates.append(GateCandidate(meta, ((lx, lt, lb), (rx, rt, rb)),</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                 tuple((lcenter+rcenter)/2.), width_m, height_m, (ld, rd), (lc, rc)))</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>     return tuple(sorted(candidates, key=lambda item: (item.center_body_frd_m[0], -item.nominal_width_m))[:32])</span></pre></body></html>

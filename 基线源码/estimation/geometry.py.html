@@ -1,0 +1,36 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>estimation/geometry.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>estimation/geometry.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;FRD body to NED quaternion operations; radians, wxyz convention.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> def unit(q):</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     q = np.asarray(q, dtype=float)</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     if q.shape != (4,) or not np.all(np.isfinite(q)) or np.linalg.norm(q) &lt; 1e-8:</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>         raise ValueError(&quot;invalid quaternion&quot;)</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     return q / np.linalg.norm(q)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def multiply(a, b):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     w, x, y, z = a</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     v, i, j, k = b</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     return np.array((w*v-x*i-y*j-z*k, w*i+x*v+y*k-z*j,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>                      w*j-x*k+y*v+z*i, w*k+x*j-y*i+z*v))</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def rotation(q):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     w, x, y, z = unit(q)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     return np.array(((1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w)),</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>                      (2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w)),</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                      (2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y))))</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> def delta_quaternion(angle):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     angle = np.asarray(angle, dtype=float)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     norm = np.linalg.norm(angle)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     if norm &lt; 1e-8:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         return unit(np.r_[1., .5*angle])</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     return np.r_[np.cos(norm/2), np.sin(norm/2)*angle/norm]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> def skew(v):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     x, y, z = v</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     return np.array(((0., -z, y), (z, 0., -x), (-y, x, 0.)))</span></pre></body></html>

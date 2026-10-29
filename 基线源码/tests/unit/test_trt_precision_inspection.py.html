@@ -1,0 +1,36 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_trt_precision_inspection.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_trt_precision_inspection.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from evaluation.metrics.trt_precision_inspection import inspect_geometry_precision</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> class GeometryPrecisionInspectionTests(unittest.TestCase):</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>     constraints = [{&#x27;type&#x27;: &#x27;LayerType.GRID_SAMPLE&#x27;, &#x27;name&#x27;: &#x27;/GridSample&#x27;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>         &#x27;coordinate_shape&#x27;: [11520, 1, 9, 2]}]</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     def inspector(self, source=&#x27;Float&#x27;, output=&#x27;Float&#x27;):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         return {&#x27;Layers&#x27;: [{&#x27;Name&#x27;: &#x27;sample_fusion&#x27;, &#x27;Metadata&#x27;: &#x27;[ONNX Layer: /GridSample]&#x27;,</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>             &#x27;Inputs&#x27;: [{&#x27;Name&#x27;: &#x27;grid&#x27;, &#x27;Dimensions&#x27;: [11520, 1, 9, 2], &#x27;Format/Datatype&#x27;: source}],</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>             &#x27;Outputs&#x27;: [{&#x27;Name&#x27;: &#x27;grid_cast&#x27;, &#x27;Dimensions&#x27;: [11520, 1, 9, 2], &#x27;Format/Datatype&#x27;: output},</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>                 {&#x27;Name&#x27;: &#x27;features&#x27;, &#x27;Dimensions&#x27;: [1, 522, 96, 120], &#x27;Format/Datatype&#x27;: &#x27;Half&#x27;}]}]}</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def test_float_coordinate_evidence_does_not_reject_half_feature_output(self):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         result = inspect_geometry_precision(self.inspector(), self.constraints)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         self.assertTrue(result[&#x27;visible_coordinate_formats_verified&#x27;])</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         self.assertFalse(result[&#x27;per_operation_internal_precision_trace&#x27;])</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def test_half_source_cannot_be_certified_by_a_final_float_cast(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         result = inspect_geometry_precision(self.inspector(&#x27;Half&#x27;), self.constraints)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertFalse(result[&#x27;visible_coordinate_formats_verified&#x27;])</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertEqual(result[&#x27;non_fp32_coordinates&#x27;][0][&#x27;side&#x27;], &#x27;Inputs&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     def test_missing_sampler_metadata_does_not_verify_precision(self):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         result = inspect_geometry_precision({&#x27;Layers&#x27;: []}, self.constraints)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertFalse(result[&#x27;visible_coordinate_formats_verified&#x27;])</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def test_missing_format_is_not_treated_as_float(self):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         result = inspect_geometry_precision(self.inspector(None), self.constraints)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         self.assertFalse(result[&#x27;visible_coordinate_formats_verified&#x27;])</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     unittest.main()</span></pre></body></html>

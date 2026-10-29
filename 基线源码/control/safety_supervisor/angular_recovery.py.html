@@ -1,0 +1,76 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/safety_supervisor/angular_recovery.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/safety_supervisor/angular_recovery.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Experimental local attitude recovery, requiring fresh healthy localization.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> This does not reverse a competition collision or authorize continued mission</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> flight. After settling, hold at the trigger position until the experiment ends.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from dataclasses import dataclass</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import math</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from estimation.geometry import rotation</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from interfaces.contracts import Health</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> @dataclass(frozen=True)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> class AngularDecision:</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     phase: str</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     hold_position: tuple</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     hold_yaw: float</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     rate_gain_scale: float</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     attitude_gain_scale: float</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> class AngularRecovery:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     def __init__(self,profile=&#x27;standard&#x27;):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         if profile not in (&#x27;standard&#x27;,&#x27;fast&#x27;):raise ValueError(&#x27;unknown angular recovery profile&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.profile=profile</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         self.phase=&#x27;NORMAL&#x27;</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         self.position=None</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.yaw=0.</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.trigger_stamp=None</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.settled_since=None</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.previous_stamp=None</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         self.epoch=None</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         self.transitions=[]</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     def decide(self,state):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         stamp=state.metadata.stamp</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if state.health!=Health.OK:raise RuntimeError(&#x27;ANGULAR_RECOVERY_LOCALIZATION&#x27;)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         if self.epoch is not None and state.metadata.epoch!=self.epoch:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             raise RuntimeError(&#x27;ANGULAR_RECOVERY_EPOCH&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         if self.previous_stamp is not None and stamp&lt;self.previous_stamp:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             raise RuntimeError(&#x27;ANGULAR_RECOVERY_CLOCK&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         self.previous_stamp=stamp</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         self.epoch=state.metadata.epoch</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         R=rotation(state.orientation_wxyz)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         tilt=math.acos(float(np.clip(R[2,2],-1,1)))</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         rate=float(np.linalg.norm(state.angular_velocity_body))</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         if tilt&gt;.35 or rate&gt;2.5:raise RuntimeError(&#x27;ANGULAR_RECOVERY_HARD_BOUND&#x27;)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         previous=self.phase</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         if self.phase==&#x27;NORMAL&#x27; and (rate&gt;.35 or tilt&gt;.18):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             self.phase=&#x27;ANGULAR_RECOVERY&#x27;</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             self.position=state.position_ned</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             self.yaw=math.atan2(R[1,0],R[0,0])</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             self.trigger_stamp=stamp</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         if self.phase!=&#x27;NORMAL&#x27;:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             if np.linalg.norm(np.array(state.position_ned)-self.position)&gt;.8:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 raise RuntimeError(&#x27;ANGULAR_RECOVERY_POSITION_BOUND&#x27;)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             settled=(rate&lt;.2 and tilt&lt;.12 and np.linalg.norm(state.velocity_ned)&lt;.25)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             if self.phase==&#x27;ANGULAR_RECOVERY&#x27;:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 if settled:</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                     if self.settled_since is None:self.settled_since=stamp</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                     if stamp-self.settled_since&gt;=.35:self.phase=&#x27;RECOVERY_HOLD&#x27;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                 else:self.settled_since=None</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 if self.phase!=&#x27;RECOVERY_HOLD&#x27; and stamp-self.trigger_stamp&gt;3.:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                     raise RuntimeError(&#x27;ANGULAR_RECOVERY_TIMEOUT&#x27;)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             elif rate&gt;.35 or tilt&gt;.18:</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 # A second disturbance gets a new bounded recovery interval,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 # while keeping the original safe hold target.</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 self.phase=&#x27;ANGULAR_RECOVERY&#x27;</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 self.trigger_stamp=stamp</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 self.settled_since=None</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         if previous!=self.phase:</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             self.transitions.append({&#x27;stamp&#x27;:stamp,&#x27;from&#x27;:previous,&#x27;to&#x27;:self.phase,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                 &#x27;rate_rad_s&#x27;:rate,&#x27;tilt_rad&#x27;:tilt})</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         return AngularDecision(self.phase,self.position or state.position_ned,self.yaw,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                                (3. if self.profile==&#x27;fast&#x27; else 2.) if self.phase==&#x27;ANGULAR_RECOVERY&#x27; else 1.,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                                4. if self.phase==&#x27;ANGULAR_RECOVERY&#x27; and self.profile==&#x27;fast&#x27; else 1.)</span></pre></body></html>

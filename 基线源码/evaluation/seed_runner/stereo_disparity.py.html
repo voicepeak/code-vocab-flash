@@ -1,0 +1,62 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/stereo_disparity.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/stereo_disparity.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Archive exact sources for historical stereo disparity or geometry in Noetic.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import os</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import file_hash, prepare_run, source_hashes</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def main():</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     parser.add_argument(&#x27;--source-run&#x27;, type=Path, required=True)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser.add_argument(&#x27;--analysis&#x27;, choices=(&#x27;disparity&#x27;, &#x27;geometry&#x27;), default=&#x27;disparity&#x27;)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     args = parser.parse_args()</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     root = Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     source = args.source_run.resolve()</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     if root / &#x27;runs&#x27; not in source.parents:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         parser.error(&#x27;source must be an owned historical run under main/runs&#x27;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     names = (&#x27;stereo_first_pair.npz&#x27;, &#x27;stereo_pairs.jsonl&#x27;, &#x27;stereo_summary.json&#x27;, &#x27;manifest.json&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     inputs = {name: file_hash(source / name) for name in names}</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     original = json.loads((source / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     key = &#x27;geometry_experiment&#x27; if args.analysis == &#x27;geometry&#x27; else &#x27;disparity_experiment&#x27;</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     config = {key: {&#x27;source_run&#x27;: str(source.relative_to(root)),</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                                      &#x27;input_sha256&#x27;: inputs, &#x27;historical_only&#x27;: True}}</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     if args.analysis == &#x27;geometry&#x27;:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         config[key].update(settings_file=&#x27;configs/simulator_settings.json&#x27;,</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>                            settings_sha256=file_hash(root / &#x27;configs/simulator_settings.json&#x27;))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     container = os.environ.get(&#x27;RMUA_CONTAINER&#x27;, &#x27;rmua_noetic&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     digest = subprocess.check_output([&#x27;docker&#x27;, &#x27;inspect&#x27;, container, &#x27;--format&#x27;, &#x27;{{.Image}}&#x27;], text=True).strip()</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     run, manifest = prepare_run(root, root / &#x27;runs&#x27;, original[&#x27;seed&#x27;], digest, config)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     manifest.update(stage=&#x27;P2_OFFLINE_STEREO_GEOMETRY&#x27; if args.analysis == &#x27;geometry&#x27; else &#x27;P2_OFFLINE_DISPARITY_DIAGNOSIS&#x27;, acceptance_eligible=False,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                     control_published=False, run_state=&#x27;PREPARED&#x27;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     (run / &#x27;manifest.json&#x27;).write_text(json.dumps(manifest, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     print(run, flush=True)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     module = &#x27;evaluation.metrics.stereo_geometry&#x27; if args.analysis == &#x27;geometry&#x27; else &#x27;evaluation.metrics.stereo_disparity&#x27;</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     container_run = &#x27;/workspace/main/&#x27; + str(run.relative_to(root))</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     code = 1</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     try:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         with (run / &#x27;worker.log&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             code = subprocess.call([str(root / &#x27;tools/enter_env.sh&#x27;), &#x27;env&#x27;, &#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                     &#x27;python3&#x27;, &#x27;-m&#x27;, module, &#x27;--run-dir&#x27;, container_run],</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                     stdout=output, stderr=subprocess.STDOUT, timeout=60)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         manifest[&#x27;run_state&#x27;] = &#x27;COMPUTED&#x27; if code == 0 else &#x27;FAILED&#x27;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     except Exception as error:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         manifest.update(run_state=&#x27;FAILED&#x27;, error=str(error))</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     finally:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         manifest[&#x27;terminated_owned_worker_pids&#x27;] = stop_bound_controller(container, module, container_run)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         manifest[&#x27;source_sha256_after&#x27;] = source_hashes(root)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         manifest[&#x27;source_unchanged&#x27;] = manifest[&#x27;source_sha256_before&#x27;] == manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         manifest[&#x27;input_unchanged&#x27;] = inputs == {name: file_hash(source / name) for name in names}</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         manifest[&#x27;worker_exit_code&#x27;] = code</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         manifest[&#x27;telemetry&#x27;] = [&#x27;stereo_disparity_report.json&#x27;, &#x27;diagnostic_disparity.npz&#x27;]</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         if args.analysis == &#x27;geometry&#x27;:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             manifest[&#x27;telemetry&#x27;] = [&#x27;stereo_geometry_report.json&#x27;, &#x27;stereo_geometry_points.npz&#x27;]</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         (run / &#x27;manifest.json&#x27;).write_text(json.dumps(manifest, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     return code if manifest[&#x27;source_unchanged&#x27;] and manifest[&#x27;input_unchanged&#x27;] else 2</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> </span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     raise SystemExit(main())</span></pre></body></html>

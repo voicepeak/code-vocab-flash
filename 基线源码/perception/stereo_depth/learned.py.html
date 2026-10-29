@@ -1,0 +1,150 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/learned.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/learned.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Optional headless Fast-FoundationStereo research inference and pixel masks.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import hashlib</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import sys</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import time</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def rgb_pixels(frame):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     image = frame.pixels</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     if frame.encoding == &#x27;mono8&#x27;:</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         return np.repeat(image, 3, axis=2)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     if frame.encoding in (&#x27;bgr8&#x27;, &#x27;bgra8&#x27;):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         return np.ascontiguousarray(image[:, :, (2, 1, 0)])</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     if frame.encoding in (&#x27;rgb8&#x27;, &#x27;rgba8&#x27;):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         return np.ascontiguousarray(image[:, :, :3])</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     raise ValueError(&#x27;unsupported learned stereo encoding&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> def full_resolution_disparity(disparity, width, height, scale):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &quot;&quot;&quot;Resize a model-grid disparity and convert its units to original pixels.&quot;&quot;&quot;</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     import cv2</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if scale not in (.5,1.) or disparity.shape != (int(height*scale),int(width*scale)):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         raise ValueError(&#x27;incompatible model-grid disparity&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     if scale == 1:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         return disparity.astype(np.float32)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     return cv2.resize(disparity.astype(np.float32),(width,height),interpolation=cv2.INTER_NEAREST)/scale</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> def filter_learned_disparity(forward, reverse_positive, left_gray, right_gray,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                              consistency_px=1., min_texture_std=2.):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     &quot;&quot;&quot;Full-resolution pixel units; right map has positive disparity magnitude.</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> </span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     Returns masked disparity, shared texture/LR mask, and LR-only mask.</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     None of these masks is a calibrated confidence or free-space certificate.</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     import cv2</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     forward = np.asarray(forward, dtype=np.float32)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     reverse_positive = np.asarray(reverse_positive, dtype=np.float32)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     if (forward.ndim != 2 or forward.shape != reverse_positive.shape</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             or forward.shape != left_gray.shape or left_gray.shape != right_gray.shape</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             or left_gray.dtype != np.uint8 or right_gray.dtype != np.uint8</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             or min(forward.shape) &lt; 5 or not math.isfinite(consistency_px)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             or not 0 &lt; consistency_px &lt;= 1.5 or not math.isfinite(min_texture_std)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             or not 1 &lt;= min_texture_std &lt;= 20):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         raise ValueError(&#x27;invalid learned disparity fields or rejection limits&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     h, w = forward.shape</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     finite_forward = np.isfinite(forward)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     finite_forward[finite_forward] = (forward[finite_forward] &gt; 0) &amp; (forward[finite_forward] &lt; w)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     safe = np.where(finite_forward, forward, 0.)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     right_x = np.arange(w, dtype=np.float32)[None, :] - safe</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     # Only potentially in-image coordinates enter integer conversion.</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     inside = (right_x &gt;= 0) &amp; (right_x &lt; w - 1)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     lower = np.floor(np.where(inside, right_x, 0.)).astype(np.int64)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     weight = np.where(inside, right_x - lower, 0.)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     reverse_valid = np.isfinite(reverse_positive)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     reverse_valid[reverse_valid] = ((reverse_positive[reverse_valid] &gt; 0)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                                   &amp; (reverse_positive[reverse_valid] &lt; w))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     reverse_safe = np.where(reverse_valid, reverse_positive, 0.)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     r0 = np.take_along_axis(reverse_safe, lower, axis=1)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     r1 = np.take_along_axis(reverse_safe, lower + 1, axis=1)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     right_ok = (np.take_along_axis(reverse_valid, lower, axis=1)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 &amp; np.take_along_axis(reverse_valid, lower + 1, axis=1))</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     difference = np.abs(safe - ((1-weight)*r0 + weight*r1))</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     lr_valid = finite_forward &amp; (safe &gt; 0) &amp; inside &amp; right_ok &amp; (difference &lt;= consistency_px)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     lr_valid[:2] = False;lr_valid[-2:] = False</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     lr_valid[:, :2] = False;lr_valid[:, -2:] = False</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> </span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     def texture(gray):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         gray = gray.astype(np.float32)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         mean = cv2.boxFilter(gray, cv2.CV_32F, (5,5), borderType=cv2.BORDER_REPLICATE)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         square = cv2.boxFilter(gray*gray, cv2.CV_32F, (5,5), borderType=cv2.BORDER_REPLICATE)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         return np.maximum(square-mean*mean,0.) &gt;= min_texture_std**2</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     right_texture = texture(right_gray)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     common_valid = (lr_valid &amp; texture(left_gray)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &amp; np.take_along_axis(right_texture,lower,axis=1)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &amp; np.take_along_axis(right_texture,lower+1,axis=1))</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     return np.where(common_valid,forward,np.nan).astype(np.float32), common_valid, lr_valid</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a> </span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a> class FastFoundationStereo:</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     &quot;&quot;&quot;CUDA-only optional backend. No ROS, GUI, reference input or control output.&quot;&quot;&quot;</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     def __init__(self, vendor_root, checkpoint, checkpoint_sha256, scale=.5, iterations=4, max_disp=192, mixed_precision=True):</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         if scale not in (.5,1.) or iterations not in (4,8) or max_disp != 192 or not isinstance(mixed_precision,bool):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             raise ValueError(&#x27;unsupported frozen learned stereo profile&#x27;)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         vendor_root, checkpoint = Path(vendor_root).resolve(), Path(checkpoint).resolve()</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         if hashlib.sha256(checkpoint.read_bytes()).hexdigest() != checkpoint_sha256:</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             raise ValueError(&#x27;learned checkpoint differs from its manifest&#x27;)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         sys.path.insert(0,str(vendor_root))</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         import torch</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         import core.foundation_stereo  # Registers upstream checkpoint module aliases.</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         from core.utils.utils import InputPadder</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a> </span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         if not torch.cuda.is_available():</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             raise RuntimeError(&#x27;CUDA is unavailable; a CPU run cannot substitute for this GPU benchmark&#x27;)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         torch.manual_seed(0);torch.cuda.manual_seed_all(0)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         torch.backends.cudnn.deterministic = True</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         torch.backends.cudnn.benchmark = False</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         # Official serialized module checkpoint, pinned by publisher SHA256.</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         self.model = torch.load(str(checkpoint),map_location=&#x27;cpu&#x27;,weights_only=False)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         # Official bp2 checkpoint omits this field. NVIDIA&#x27;s TAO FFS docs require</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         # normalized group-wise correlation; the upstream exporter defaults True.</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         self.normalization_compatibility_default_applied = &#x27;normalize&#x27; not in self.model.args</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         if self.normalization_compatibility_default_applied:</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             self.model.args.normalize = True</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         self.model.args.valid_iters = iterations</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         self.model.args.max_disp = max_disp</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         self.model.args.mixed_precision = mixed_precision</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         self.model.cuda().eval()</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         self.torch, self.padder = torch, InputPadder</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         self.scale, self.iterations, self.max_disp = scale, iterations, max_disp</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         self.mixed_precision = mixed_precision</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         self.checkpoint_sha256 = checkpoint_sha256</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> </span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     def predict(self, left_rgb, right_rgb):</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         import cv2</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a> </span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         if (left_rgb.dtype != np.uint8 or right_rgb.dtype != np.uint8</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>                 or left_rgb.ndim != 3 or left_rgb.shape[2] != 3 or left_rgb.shape != right_rgb.shape):</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             raise ValueError(&#x27;matching RGB byte images required&#x27;)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         torch = self.torch</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         torch.cuda.synchronize()</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         begin = time.monotonic()</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         height, width = left_rgb.shape[:2]</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         size = (int(width*self.scale),int(height*self.scale))</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         if min(size) &lt; 32 or size[0]/width != self.scale or size[1]/height != self.scale:</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>             raise ValueError(&#x27;profile requires exact image scaling&#x27;)</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         left = cv2.resize(left_rgb,size,interpolation=cv2.INTER_AREA) if self.scale != 1 else left_rgb</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         right = cv2.resize(right_rgb,size,interpolation=cv2.INTER_AREA) if self.scale != 1 else right_rgb</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         def tensor(image):</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             return torch.as_tensor(np.ascontiguousarray(image),device=&#x27;cuda&#x27;).float()[None].permute(0,3,1,2).contiguous()</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>         a,b = tensor(left),tensor(right)</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         padder = self.padder(a.shape,divis_by=32,force_square=False)</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         def one(x,y):</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>             x,y = padder.pad(x,y)</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>             output = self.model.forward(x,y,iters=self.iterations,test_mode=True,optimize_build_volume=&#x27;pytorch1&#x27;)</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>             return padder.unpad(output.float())</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         with torch.inference_mode(),torch.amp.autocast(&#x27;cuda&#x27;,enabled=self.mixed_precision,dtype=torch.float16):</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>             forward = one(a,b)</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>             reverse = one(torch.flip(b,(-1,)),torch.flip(a,(-1,))).flip(-1)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         forward = forward.cpu().numpy().reshape(size[1],size[0])</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         reverse = reverse.cpu().numpy().reshape(size[1],size[0])</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         forward = full_resolution_disparity(forward,width,height,self.scale)</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         reverse = full_resolution_disparity(reverse,width,height,self.scale)</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         torch.cuda.synchronize()</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         return forward.astype(np.float32),reverse.astype(np.float32),time.monotonic()-begin</span></pre></body></html>

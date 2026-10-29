@@ -1,0 +1,156 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_static_candidates.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_static_candidates.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import replace</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from itertools import product</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from interfaces.contracts import Health, Metadata, StateEstimate, TrajectorySample</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from planning.spacetime_local.static_candidates import LocalPlannerLimits, QuinticReference, plan_static_local</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from planning.trajectory_validator.static_sweep import SweepBounds</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from world_model.occupancy.grid import Cell, Occupancy, OccupancySnapshot</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def scene(wall=False, empty=False):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     meta = Metadata(10., 30., 0, &#x27;synthetic_static_world&#x27;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     cells = tuple(Cell(key, Occupancy.OCCUPIED if wall and key == (1, 0, 0) else Occupancy.FREE, meta)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>                   for key in product(range(-2, 6), range(-4, 6), range(-1, 3)))</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     grid = OccupancySnapshot(meta, 1., () if empty else cells)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     state = StateEstimate(replace(meta, valid_until=10.2), (.5, .5, .5), (0., 0., 0.),</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         (1., 0., 0., 0.), (0., 0., 0.), Health.OK)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     initial = TrajectorySample(10., state.position_ned, state.velocity_ned, (0., 0., 0.), 0.)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     limits = LocalPlannerLimits(SweepBounds((.1, .1, .1), .02, 2.), 1.2)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     return state, initial, grid, limits</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> def plan(wall=False, empty=False, changes=None):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     state, initial, grid, limits = scene(wall, empty)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     values = {&#x27;state&#x27;: state, &#x27;initial_reference&#x27;: initial, &#x27;snapshot&#x27;: grid, &#x27;limits&#x27;: limits,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>               &#x27;goal&#x27;: (2.5, .5, .5), &#x27;now&#x27;: 10., &#x27;epoch&#x27;: 0}</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     values.update(changes or {})</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     return plan_static_local(**values)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> class StaticCandidateTests(unittest.TestCase):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def test_quintic_preserves_initial_pva_and_stops_at_target(self):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         initial = TrajectorySample(10., (.2, -.3, .5), (.3, .1, -.2), (.1, -.2, .3), .4)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         curve = QuinticReference.to_rest(initial, (2., 1., .7), 2.)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         start, end = curve.sample(10.), curve.sample(12.)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         for name in (&#x27;position_ned&#x27;, &#x27;velocity_ned&#x27;, &#x27;acceleration_ned&#x27;):</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             for actual, expected in zip(getattr(start, name), getattr(initial, name)):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 self.assertAlmostEqual(actual, expected, places=13)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self.assertEqual(end.position_ned, (2., 1., .7))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         self.assertEqual(end.velocity_ned, (0., 0., 0.))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         self.assertEqual(end.acceleration_ned, (0., 0., 0.))</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     def test_large_sensor_timestamp_keeps_endpoint_constraints(self):</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         for duration in (.1, .3):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             initial = TrajectorySample(1792824811.1234, (0., 0., 0.), (.2, 0., 0.), (.1, 0., 0.), 0.)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             curve = QuinticReference.to_rest(initial, (.01, 0., 0.), duration)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             self.assertAlmostEqual(curve.sample(curve.stamp).velocity_ned[0], .2)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             self.assertEqual(curve.sample(curve.end_stamp).position_ned, (.01, 0., 0.))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             self.assertEqual(curve.sample(curve.end_stamp).acceleration_ned, (0., 0., 0.))</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> </span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     def test_continuous_derivative_bounds_enclose_dense_samples(self):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         initial = TrajectorySample(10., (0., 0., 0.), (.2, -.1, 0.), (.1, .1, 0.), 0.)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         curve = QuinticReference.to_rest(initial, (2., 1., -.5), 3.)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         speed, acceleration = curve.derivative_bounds()</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         for i in range(501):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             value = curve.sample(curve.stamp + i * 3. / 500)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             self.assertLessEqual(math.hypot(*value.velocity_ned), speed + 1e-12)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             self.assertLessEqual(math.hypot(*value.acceleration_ned), acceleration + 1e-12)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> </span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     def test_direct_free_route_is_selected_and_output_lease_is_source_bounded(self):</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         result = plan()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertEqual(result.reason, &#x27;STATIC_CANDIDATE&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertEqual(len(result.pieces), 1)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         self.assertLessEqual(result.trajectory.metadata.valid_until, result.source_state.valid_until)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         self.assertEqual(result.source_state.stamp, 10.)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         self.assertGreater(result.reference_at(10.04, 0).position_ned[0], .5)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         for stamp, epoch in ((result.trajectory.metadata.valid_until, 0), (10.04, 1)):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             with self.assertRaises(ValueError): result.reference_at(stamp, epoch)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a> </span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     def test_wall_forces_a_checked_detour_with_continuous_join(self):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         result = plan(wall=True)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         self.assertIsNotNone(result.trajectory)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         self.assertEqual(len(result.pieces), 2)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         self.assertGreater(result.pieces[0].controls[-1][1], 1.5)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         before = result.pieces[0].sample(result.pieces[0].end_stamp)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         after = result.pieces[1].sample(result.pieces[1].stamp)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         self.assertEqual(before, after)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         self.assertTrue(any(c.reason == &#x27;OCCUPIED_SPACE&#x27; for c in result.checks))</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> </span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     def test_nonzero_initial_velocity_and_acceleration_are_preserved_in_a_plan(self):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         state, initial, _, _ = scene()</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         state = replace(state, velocity_ned=(.2, 0., 0.))</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         initial = replace(initial, velocity_ned=state.velocity_ned, acceleration_ned=(.1, 0., 0.))</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         result = plan(changes={&#x27;state&#x27;: state, &#x27;initial_reference&#x27;: initial})</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         self.assertIsNotNone(result.trajectory)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         start = result.reference_at(10., 0)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         self.assertAlmostEqual(start.velocity_ned[0], .2, places=13)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         self.assertAlmostEqual(start.acceleration_ned[0], .1, places=13)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a> </span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     def test_explicit_stationary_goal_can_use_a_zero_acceleration_bound(self):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         _, initial, _, limits = scene()</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         limits = replace(limits, sweep=replace(limits.sweep, acceleration_bound_m_s2=0.), segment_durations_s=(.1,))</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         result = plan(changes={&#x27;goal&#x27;: initial.position_ned, &#x27;limits&#x27;: limits})</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         self.assertIsNotNone(result.trajectory)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         self.assertEqual(result.reference_at(10.04, 0).velocity_ned, (0., 0., 0.))</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a> </span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     def test_unknown_map_does_not_create_motion_or_a_fake_hold(self):</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         result = plan(empty=True)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         self.assertIsNone(result.trajectory)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         self.assertEqual(result.reason, &#x27;NO_STATIC_CANDIDATE&#x27;)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         with self.assertRaises(ValueError): result.reference_at(10., 0)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a> </span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     def test_expired_unhealthy_future_or_other_epoch_state_rejects(self):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         state, _, _, _ = scene()</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         states = [replace(state, health=Health.LOST),</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                   replace(state, metadata=replace(state.metadata, valid_until=10.)),</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                   replace(state, metadata=replace(state.metadata, stamp=10.1)),</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                   replace(state, metadata=replace(state.metadata, epoch=1))]</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         for value in states:</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             self.assertEqual(plan(changes={&#x27;state&#x27;: value}).reason, &#x27;STATE_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a> </span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     def test_reference_position_velocity_or_time_mismatch_is_not_retimestamped(self):</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         _, initial, _, _ = scene()</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         for value in (replace(initial, stamp=9.99), replace(initial, stamp=10. + 1e-7),</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                       replace(initial, stamp=10. - 1e-7), replace(initial, position_ned=(1., .5, .5)),</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                       replace(initial, velocity_ned=(.3, 0., 0.))):</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             self.assertEqual(plan(changes={&#x27;initial_reference&#x27;: value}).reason, &#x27;REFERENCE_START_MISMATCH&#x27;)</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a> </span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>     def test_map_must_cover_full_stopping_reference_not_just_short_lease(self):</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         _, _, grid, _ = scene()</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>         short = replace(grid, metadata=replace(grid.metadata, valid_until=10.5))</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         result = plan(changes={&#x27;snapshot&#x27;: short})</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         self.assertIsNone(result.trajectory)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         self.assertTrue(all(c.reason == &#x27;MAP_STOP_HORIZON&#x27; for c in result.checks))</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a> </span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     def test_frame_and_map_epoch_do_not_cross(self):</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         _, _, grid, _ = scene()</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         for meta in (replace(grid.metadata, frame_id=&#x27;lidar&#x27;), replace(grid.metadata, epoch=1)):</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>             self.assertIsNone(plan(changes={&#x27;snapshot&#x27;: replace(grid, metadata=meta)}).trajectory)</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a> </span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     def test_kinematic_and_sample_budgets_are_enforced(self):</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         _, _, _, limits = scene()</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         for value, reason in ((replace(limits, speed_limit_m_s=.01), &#x27;KINEMATIC_LIMIT&#x27;),</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             (replace(limits, sweep=replace(limits.sweep, max_segments=1)), &#x27;SAMPLE_BUDGET&#x27;),</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             (replace(limits, sweep=replace(limits.sweep, max_voxel_tests=1)), &#x27;VOXEL_BUDGET&#x27;)):</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             result = plan(changes={&#x27;limits&#x27;: value})</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>             self.assertIsNone(result.trajectory)</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>             self.assertTrue(any(c.reason == reason for c in result.checks))</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a> </span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     def test_attempt_budget_never_returns_an_unchecked_route(self):</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>         _, _, _, limits = scene()</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>         result = plan(wall=True, changes={&#x27;limits&#x27;: replace(limits, max_attempts=1)})</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>         self.assertIsNone(result.trajectory)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         self.assertEqual(len(result.checks), 1)</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a> </span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     def test_invalid_configuration_and_queries_are_rejected(self):</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         _, initial, _, limits = scene()</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>         with self.assertRaises(ValueError): replace(limits, segment_durations_s=())</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         with self.assertRaises(ValueError): replace(limits, lease_s=math.inf)</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         curve = QuinticReference.to_rest(initial, (2., 0., 0.), 2.)</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         with self.assertRaises(ValueError): curve.sample(9.99)</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> </span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a> </span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     unittest.main()</span></pre></body></html>

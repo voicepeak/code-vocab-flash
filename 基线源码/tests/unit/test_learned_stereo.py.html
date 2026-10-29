@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_learned_stereo.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_learned_stereo.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import unittest</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import numpy as np</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from perception.stereo_depth.pairing import ImageFrame</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from perception.stereo_depth.learned import rgb_pixels,filter_learned_disparity,full_resolution_disparity</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> class LearnedStereoChecks(unittest.TestCase):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     def images(self):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         rng=np.random.RandomState(84)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         left=rng.randint(0,256,(40,80)).astype(np.uint8)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         right=np.roll(left,-8,axis=1)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         return left,right</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     def test_rgb_conversion_preserves_declared_channel_order(self):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         metadata=Metadata(1.,1.2,0,&#x27;test&#x27;,&#x27;front_left_image&#x27;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         image=ImageFrame(metadata,&#x27;bgr8&#x27;,np.array([[[1,2,3]]],dtype=np.uint8))</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         np.testing.assert_array_equal(rgb_pixels(image),[[[3,2,1]]])</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         mono=ImageFrame(metadata,&#x27;mono8&#x27;,np.array([[[7]]],dtype=np.uint8))</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         np.testing.assert_array_equal(rgb_pixels(mono),[[[7,7,7]]])</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     def test_positive_reverse_magnitude_and_pixel_units_match_known_shift(self):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         left,right=self.images();forward=np.full(left.shape,8.,dtype=np.float32)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         filtered,common,lr=filter_learned_disparity(forward,forward,left,right)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         self.assertTrue(common[3:-3,10:-3].all())</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         self.assertFalse(lr[:,:8].any())</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertTrue(np.isnan(filtered[~common]).all())</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.assertTrue((filtered[common]==8).all())</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def test_half_resolution_disparity_is_doubled_in_original_pixel_units(self):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         model_grid=np.array(((4.,8.,12.),(3.,6.,9.)),dtype=np.float32)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         restored=full_resolution_disparity(model_grid,6,4,.5)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         np.testing.assert_array_equal(restored,np.repeat(np.repeat(model_grid*2,2,axis=0),2,axis=1))</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         np.testing.assert_array_equal(full_resolution_disparity(model_grid,3,2,1.),model_grid)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     def test_blank_texture_is_not_promoted_by_dense_model_output(self):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         blank=np.zeros((40,80),np.uint8);forward=np.full(blank.shape,8.,dtype=np.float32)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         result,common,lr=filter_learned_disparity(forward,forward,blank,blank)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         self.assertTrue(lr.any());self.assertFalse(common.any());self.assertTrue(np.isnan(result).all())</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def test_inconsistent_or_nonfinite_reverse_fields_stay_unknown(self):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         left,right=self.images();forward=np.full(left.shape,8.,dtype=np.float32)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         reverse=np.full(left.shape,10.,dtype=np.float32)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         self.assertFalse(filter_learned_disparity(forward,reverse,left,right)[1].any())</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         reverse[:]=8.;reverse[:,20:40]=np.inf;forward[:,50:55]=np.nan</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         with np.errstate(all=&#x27;raise&#x27;):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             result,common,lr=filter_learned_disparity(forward,reverse,left,right)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         self.assertFalse(common[:,28:47].any());self.assertFalse(common[:,50:55].any())</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> </span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     def test_incompatible_fields_are_rejected(self):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         left,right=self.images()</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         with self.assertRaises(ValueError):filter_learned_disparity(np.ones((5,5)),np.ones((5,5)),left,right)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     def test_extreme_finite_predictions_fail_closed_without_overflow(self):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         left,right=self.images();forward=np.full(left.shape,8.,dtype=np.float32)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         reverse=forward.copy();forward[:,30:35]=np.finfo(np.float32).max</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         reverse[:,40:45]=-np.finfo(np.float32).max</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         with np.errstate(all=&#x27;raise&#x27;):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             result,common,lr=filter_learned_disparity(forward,reverse,left,right)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         self.assertFalse(common[:,30:35].any());self.assertFalse(common[:,48:52].any())</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertTrue(np.isnan(result[~common]).all())</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a> </span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> if __name__==&#x27;__main__&#x27;:</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     unittest.main()</span></pre></body></html>

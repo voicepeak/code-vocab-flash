@@ -1,0 +1,80 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/integration/test_public_archive.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/integration/test_public_archive.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from contextlib import redirect_stdout</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import gzip</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import io</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import os</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from pathlib import Path</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import tarfile</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import tempfile</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import unittest</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from evaluation.dataset_capture.publish_archive import prepare, pack, scan</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> class PublicArchiveTests(unittest.TestCase):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def fixture(self, base):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         source = base / &quot;source&quot;</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         run = source / &quot;experiments/run001&quot;</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         run.mkdir(parents=True)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         (run / &quot;frame.jpg&quot;).write_bytes(b&quot;simulated image&quot;)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         (run / &quot;telemetry.json&quot;).write_text(&#x27;{&quot;seed&quot;: 456}\n&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         return source, run</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     def test_credentials_snapshots_and_symlinks_are_excluded(self):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         with tempfile.TemporaryDirectory() as temp:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             source, run = self.fixture(Path(temp))</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             (run / &quot;secret.log&quot;).write_text(&quot;hf_&quot; + &quot;a&quot; * 30)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             (run / &quot;controller_sources&quot;).mkdir()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             (run / &quot;controller_sources/manifest.json&quot;).write_text(&quot;{}&quot;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             (run / &quot;private_key.txt&quot;).write_text(&quot;sensitive&quot;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             (run / &quot;outside.jpg&quot;).symlink_to(&quot;/etc/passwd&quot;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             files, excluded, _ = scan(source)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             self.assertEqual({Path(row[&quot;path&quot;]).name for row in files}, {&quot;frame.jpg&quot;, &quot;telemetry.json&quot;})</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             self.assertIn(&quot;possible_credential_content&quot;, {r[&quot;reason&quot;] for r in excluded})</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def test_tar_and_per_file_index_are_deterministic_and_match_content(self):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         with tempfile.TemporaryDirectory() as temp:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             base = Path(temp)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             source, _ = self.fixture(base)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             first, second = base / &quot;a&quot;, base / &quot;b&quot;</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             with redirect_stdout(io.StringIO()):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                 plan = prepare(source, first, 1024 ** 2)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             second.mkdir()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             a, index, receipt = pack(plan, first, plan[&quot;shards&quot;][0])</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             _, _, other = pack(plan, second, plan[&quot;shards&quot;][0])</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             self.assertEqual(receipt[&quot;sha256&quot;], other[&quot;sha256&quot;])</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             self.assertEqual(receipt[&quot;index_sha256&quot;], other[&quot;index_sha256&quot;])</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             with gzip.open(index, &quot;rt&quot;) as f:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 rows = [json.loads(line) for line in f]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             with tarfile.open(a) as tar:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 self.assertEqual(len(tar.getmembers()), 2)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 for row in rows:</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                     member = tar.getmember(row[&quot;path&quot;])</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                     self.assertFalse(member.issym())</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                     self.assertFalse(Path(member.name).is_absolute())</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     self.assertEqual(hashlib.sha256(tar.extractfile(member).read()).hexdigest(), row[&quot;sha256&quot;])</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def test_changed_source_is_rejected(self):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         with tempfile.TemporaryDirectory() as temp:</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             base = Path(temp)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             source, run = self.fixture(base)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             output = base / &quot;out&quot;</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             with redirect_stdout(io.StringIO()):</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 plan = prepare(source, output, 1024 ** 2)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             (run / &quot;frame.jpg&quot;).write_bytes(b&quot;changed&quot;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             with self.assertRaisesRegex(RuntimeError, &quot;Source changed&quot;):</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 pack(plan, output, plan[&quot;shards&quot;][0])</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> </span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     def test_existing_plan_cannot_be_overwritten(self):</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         with tempfile.TemporaryDirectory() as temp:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             base = Path(temp)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             source, _ = self.fixture(base)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             with redirect_stdout(io.StringIO()):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                 prepare(source, base / &quot;out&quot;, 1024 ** 2)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                 with self.assertRaises(FileExistsError):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                     prepare(source, base / &quot;out&quot;, 1024 ** 2)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> </span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     unittest.main()</span></pre></body></html>

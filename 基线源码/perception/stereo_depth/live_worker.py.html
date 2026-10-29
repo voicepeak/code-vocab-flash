@@ -1,0 +1,75 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/live_worker.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/live_worker.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Optional image-only GPU process for the bounded read-only latency experiment.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import resource</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import socket</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from perception.stereo_depth.learned import FastFoundationStereo,filter_learned_disparity</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from perception.stereo_depth.transport import decode_images,encode_disparity,digest,send_packet,receive_packet</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> def main():</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     import cv2</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     import torch</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     parser.add_argument(&#x27;--vendor&#x27;,type=Path,required=True)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     parser.add_argument(&#x27;--checkpoint&#x27;,type=Path,required=True)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     args=parser.parse_args();run=args.run_dir</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     profile=json.loads((run/&#x27;profile.json&#x27;).read_text());cfg=profile[&#x27;profile&#x27;]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     started=time.monotonic();cv2.setNumThreads(1);torch.set_num_threads(1)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     model=FastFoundationStereo(args.vendor,args.checkpoint,profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;],</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         cfg[&#x27;scale&#x27;],cfg[&#x27;iterations&#x27;],cfg[&#x27;max_disparity_model_pixels&#x27;])</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     loaded=time.monotonic()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     dummy=np.zeros((720,960,3),np.uint8)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     model.predict(dummy,dummy)  # Synthetic warmup only, never an online observation.</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     ready=time.monotonic();torch.cuda.reset_peak_memory_stats()</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     sock=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     sock.bind(str(run/&#x27;learned.sock&#x27;));sock.listen(1);sock.settimeout(1.)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     startup={&#x27;started_wall&#x27;:started,&#x27;loaded_wall&#x27;:loaded,&#x27;ready_wall&#x27;:ready,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         &#x27;synthetic_zero_image_warmup&#x27;:True,&#x27;compilation_cache_may_be_warm&#x27;:True,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         &#x27;gpu&#x27;:torch.cuda.get_device_name(0),&#x27;torch&#x27;:torch.__version__,&#x27;cuda_runtime&#x27;:torch.version.cuda,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         &#x27;numpy&#x27;:np.__version__,&#x27;opencv&#x27;:cv2.__version__,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         &#x27;normalization_compatibility_default_applied&#x27;:model.normalization_compatibility_default_applied,</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         &#x27;volume_normalize&#x27;:bool(model.model.args.normalize),&#x27;profile&#x27;:cfg}</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     (run/&#x27;gpu_ready.json&#x27;).write_text(json.dumps(startup,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     jobs=0;connection=None</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     try:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         while time.monotonic()-ready&lt;180:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             try:connection,_=sock.accept();break</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             except socket.timeout:continue</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         if connection is None:raise RuntimeError(&#x27;no owned observer connected in 180s&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         connection.settimeout(45.)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         with (run/&#x27;gpu_jobs.jsonl&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             while True:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 request,payload=receive_packet(connection)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 if request.get(&#x27;command&#x27;)==&#x27;stop&#x27; and not payload:break</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 received=time.monotonic()</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                 left,right=decode_images(request,payload)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                 forward,reverse,inference_s=model.predict(left,right)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 disparity,valid,lr=filter_learned_disparity(forward,reverse,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     cv2.cvtColor(left,cv2.COLOR_RGB2GRAY),cv2.cvtColor(right,cv2.COLOR_RGB2GRAY),</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                     cfg[&#x27;consistency_full_resolution_px&#x27;],cfg[&#x27;common_texture_std&#x27;])</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 body=encode_disparity(disparity,valid)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 response={&#x27;request_id&#x27;:request[&#x27;request_id&#x27;],&#x27;source_metadata&#x27;:request[&#x27;source_metadata&#x27;],</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                     &#x27;input_sha256&#x27;:request[&#x27;input_sha256&#x27;],&#x27;output_sha256&#x27;:digest(body),</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                     &#x27;received_wall&#x27;:received,&#x27;processing_end_wall&#x27;:time.monotonic(),</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                     &#x27;bidirectional_resize_transfer_s&#x27;:inference_s,&#x27;common_valid_fraction&#x27;:float(valid.mean()),</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                     &#x27;lr_valid_fraction&#x27;:float(lr.mean()),&#x27;acceptance_eligible&#x27;:False,&#x27;current_control_eligible&#x27;:False}</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 send_packet(connection,response,body)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 output.write(json.dumps(response,allow_nan=False)+&#x27;\n&#x27;);output.flush();jobs+=1</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     finally:</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         if connection is not None:connection.close()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         sock.close();(run/&#x27;learned.sock&#x27;).unlink(missing_ok=True)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         startup.update(jobs=jobs,peak_cuda_allocated_bytes=torch.cuda.max_memory_allocated(),</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             peak_cuda_reserved_bytes=torch.cuda.max_memory_reserved(),max_rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             acceptance_eligible=False,current_control_eligible=False)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         (run/&#x27;gpu_summary.json&#x27;).write_text(json.dumps(startup,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

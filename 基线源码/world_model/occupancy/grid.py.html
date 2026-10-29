@@ -1,0 +1,51 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>world_model/occupancy/grid.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>world_model/occupancy/grid.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Immutable sparse occupancy. Missing, stale or other-epoch cells are UNKNOWN.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from enum import Enum</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from typing import Tuple</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from interfaces.contracts import Metadata, Vec3, finite_vec3</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> class Occupancy(str, Enum):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     FREE = &quot;FREE&quot;</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     OCCUPIED = &quot;OCCUPIED&quot;</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     UNKNOWN = &quot;UNKNOWN&quot;</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> @dataclass(frozen=True)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> class Cell:</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     key: Tuple[int, int, int]</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     status: Occupancy</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     metadata: Metadata</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def __post_init__(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         if (not isinstance(self.key, tuple) or len(self.key) != 3</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                 or not all(isinstance(k, int) for k in self.key)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                 or not isinstance(self.status, Occupancy)):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             raise ValueError(&quot;invalid occupancy cell&quot;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> @dataclass(frozen=True)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> class OccupancySnapshot:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     metadata: Metadata</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     resolution_m: float</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     cells: Tuple[Cell, ...]</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     def __post_init__(self):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         if not math.isfinite(self.resolution_m) or self.resolution_m &lt;= 0:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             raise ValueError(&quot;positive resolution required&quot;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if not isinstance(self.cells, tuple):</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             raise ValueError(&quot;cells must be immutable&quot;)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         if len({c.key for c in self.cells}) != len(self.cells):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             raise ValueError(&quot;duplicate voxel keys&quot;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def query(self, position: Vec3, now: float, epoch: int) -&gt; Occupancy:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         finite_vec3(position)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         if not self.metadata.current(now, epoch):</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             return Occupancy.UNKNOWN</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         key = tuple(math.floor(x / self.resolution_m) for x in position)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         for cell in self.cells:</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             if cell.key == key:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 return (cell.status if cell.metadata.frame_id == self.metadata.frame_id</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                         and cell.metadata.current(now, epoch) else Occupancy.UNKNOWN)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         return Occupancy.UNKNOWN</span></pre></body></html>

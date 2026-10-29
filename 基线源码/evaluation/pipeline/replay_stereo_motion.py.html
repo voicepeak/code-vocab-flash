@@ -1,0 +1,86 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/replay_stereo_motion.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/replay_stereo_motion.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Replay retained stereo captures through nominal stereo visual odometry.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from adapters.ros_noetic.capture_io import read_payload</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from estimation.geometry import rotation</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from perception.visual_odometry.stereo import estimate_stereo_motion</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def read_pair(directory, epoch):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     frames = []</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     for side in (&#x27;left&#x27;, &#x27;right&#x27;):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         info, payload = read_payload(directory / (side + &#x27;.json&#x27;))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         channels = {&#x27;rgb8&#x27;: 3, &#x27;bgr8&#x27;: 3, &#x27;rgba8&#x27;: 4, &#x27;bgra8&#x27;: 4, &#x27;mono8&#x27;: 1}.get(info[&#x27;encoding&#x27;])</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         if channels is None or info[&#x27;step&#x27;] &lt; info[&#x27;width&#x27;] * channels or len(payload) != info[&#x27;step&#x27;] * info[&#x27;height&#x27;]:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             raise ValueError(&#x27;unsupported recorded image&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         pixels = np.ndarray((info[&#x27;height&#x27;], info[&#x27;width&#x27;], channels), dtype=np.uint8,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                             buffer=payload, strides=(info[&#x27;step&#x27;], channels, 1))</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         stamp = info[&#x27;stamp&#x27;]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         frames.append(ImageFrame(Metadata(stamp, stamp + .2, epoch, &#x27;retained_&#x27; + side,</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                                           &#x27;front_&#x27; + side + &#x27;_image&#x27;), info[&#x27;encoding&#x27;], pixels))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     left, right = frames</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     stamp = max(left.metadata.stamp, right.metadata.stamp)</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     meta = Metadata(stamp, min(left.metadata.valid_until, right.metadata.valid_until), epoch,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                     &#x27;retained_stereo&#x27;, &#x27;front_stereo&#x27;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     return StereoPair(meta, left, right, abs(left.metadata.stamp - right.metadata.stamp))</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> </span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> def replay(source, settings):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     import cv2</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     cv2.setNumThreads(1)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     source = Path(source)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     rig = load_nominal_rig(settings)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     manifest = json.loads((source / &#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     if manifest[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;] != rig.settings_sha256:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         raise ValueError(&#x27;settings do not match recorded capture&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     captures = json.loads((source / &#x27;joint_summary.json&#x27;).read_text())[&#x27;captures&#x27;]</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     frames = []</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     for capture in captures:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         directory = source / capture[&#x27;directory&#x27;]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         packet = json.loads((directory / &#x27;packet.json&#x27;).read_text())</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         frames.append((capture[&#x27;directory&#x27;], read_pair(directory, packet[&#x27;epoch&#x27;]), packet[&#x27;poses&#x27;][&#x27;left&#x27;]))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     results = []</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     for (old_dir, old, old_pose), (new_dir, new, new_pose) in zip(frames, frames[1:]):</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         start = time.monotonic()</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         record = {&#x27;previous&#x27;: old_dir, &#x27;current&#x27;: new_dir, &#x27;gap_s&#x27;: new.metadata.stamp - old.metadata.stamp}</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         try:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             cv2.setRNGSeed(0)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             motion = estimate_stereo_motion(old, new, rig)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             elapsed = time.monotonic() - start</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             prev_rotation = rotation(old_pose[&#x27;orientation_wxyz&#x27;])</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             next_rotation = rotation(new_pose[&#x27;orientation_wxyz&#x27;])</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             expected = prev_rotation.T @ (np.asarray(new_pose[&#x27;position_ned&#x27;]) - old_pose[&#x27;position_ned&#x27;])</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             observed_rotation = np.asarray(motion.rotation_previous_from_current_body)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             difference = observed_rotation.T @ prev_rotation.T @ next_rotation</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             angle = float(np.arccos(np.clip((np.trace(difference) - 1.) / 2., -1., 1.)))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             record.update(status=&#x27;ESTIMATED&#x27;, result=asdict(motion), elapsed_s=elapsed,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                           eskf_delta_previous_body_m=expected.tolist(),</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                           translation_difference_m=float(np.linalg.norm(np.asarray(motion.translation_previous_body_m) - expected)),</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                           rotation_difference_rad=angle)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         except (ValueError, cv2.error) as error:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             record.update(status=&#x27;REJECTED&#x27;, reason=str(error), elapsed_s=time.monotonic() - start)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         results.append(record)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     return {&#x27;source&#x27;: str(source), &#x27;role&#x27;: &#x27;offline_diagnostic&#x27;, &#x27;comparison&#x27;: &#x27;imu_gps_eskf_not_truth&#x27;,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             &#x27;control_eligible&#x27;: False, &#x27;counts&#x27;: dict(Counter(row[&#x27;status&#x27;] for row in results)), &#x27;results&#x27;: results}</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> </span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> def main():</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     parser.add_argument(&#x27;source&#x27;)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     parser.add_argument(&#x27;--settings&#x27;, default=&#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     args = parser.parse_args()</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     print(json.dumps(replay(args.source, args.settings), indent=2, allow_nan=False))</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> </span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a> </span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     main()</span></pre></body></html>

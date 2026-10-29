@@ -1,0 +1,238 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/joint_sensor_observer.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/joint_sensor_observer.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded same-scene stereo/LiDAR/raw IMU-GPS diagnostic recorder.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter, OrderedDict, deque</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import hashlib</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import json</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import math</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from pathlib import Path</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import threading</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import time</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from adapters.ros_noetic.capture_io import save_message</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from adapters.ros_noetic.flight_sensors import FlightSensors</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from adapters.ros_noetic.stereo_images import decode_image</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from estimation.history import HistoryUnavailable, PoseHistory</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from perception.sensor_sync import LidarAssociationBuffer</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> from perception.stereo_depth.pairing import StereoPairBuffer</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> TOPICS = {&#x27;left&#x27;: &#x27;/airsim_node/drone_1/front_left/Scene&#x27;,</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>           &#x27;right&#x27;: &#x27;/airsim_node/drone_1/front_right/Scene&#x27;, &#x27;lidar&#x27;: &#x27;/airsim_node/drone_1/lidar&#x27;}</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> INPUTS = sorted(tuple(TOPICS.values()) + (&#x27;/airsim_node/initial_pose&#x27;,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                 &#x27;/airsim_node/drone_1/gps&#x27;, &#x27;/airsim_node/drone_1/imu/imu&#x27;))</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> def raw_record(tag, message, arrival):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     def vector(v):return (v.x, v.y, v.z)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     def quaternion(q):return (q.w, q.x, q.y, q.z)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     record = {&#x27;sensor&#x27;: tag, &#x27;stamp&#x27;: message.header.stamp.to_sec(),</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>               &#x27;stamp_secs&#x27;: message.header.stamp.secs, &#x27;stamp_nsecs&#x27;: message.header.stamp.nsecs,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>               &#x27;sequence&#x27;: message.header.seq, &#x27;frame_id&#x27;: message.header.frame_id,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>               &#x27;arrival_wall_monotonic&#x27;: arrival}</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     if tag == &#x27;imu&#x27;:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         record.update(acceleration_body=vector(message.linear_acceleration),</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                       omega_body=vector(message.angular_velocity), orientation_wxyz=quaternion(message.orientation),</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                       acceleration_covariance=tuple(message.linear_acceleration_covariance),</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                       omega_covariance=tuple(message.angular_velocity_covariance),</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                       orientation_covariance=tuple(message.orientation_covariance))</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     else:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         record.update(position=vector(message.pose.position), orientation_wxyz=quaternion(message.pose.orientation))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     finite = True</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def sanitize(value):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         nonlocal finite</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         if isinstance(value, (tuple, list)):return [sanitize(v) for v in value]</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         if isinstance(value, float) and not math.isfinite(value):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             finite = False</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             return None</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         return value</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     record = {key: sanitize(value) for key, value in record.items()}</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     record[&#x27;raw_fields_finite&#x27;] = finite</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     return record</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> def observe(run, duration, image_ttl_s):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     import rosgraph</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     import rospy</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     from geometry_msgs.msg import PoseStamped</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     from sensor_msgs.msg import Image, Imu, PointCloud2</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> </span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     rospy.init_node(&#x27;rmua_joint_sensors&#x27;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     history = PoseHistory()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     sensors = FlightSensors(pose_history=history)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     pairs = StereoPairBuffer()</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     clouds = LidarAssociationBuffer()</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     lock = threading.Lock()</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     pending, last_received = {}, {}</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     raw_pending = deque()</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     received = Counter()</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     raw_drops = 0</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> </span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     def receive(tag, message):</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         with lock:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             arrival = time.monotonic()</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             pending[tag] = (message, arrival)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             last_received[tag] = arrival</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             received[tag] += 1</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> </span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     def receive_raw(tag, message):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         nonlocal raw_drops</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         with lock:</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             if len(raw_pending) == 512:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                 raw_pending.popleft()</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                 raw_drops += 1</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             raw_pending.append((tag, message, time.monotonic()))</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             received[tag] += 1</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> </span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     listeners = [rospy.Subscriber(topic, PointCloud2 if tag == &#x27;lidar&#x27; else Image,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                  lambda msg, t=tag: receive(t, msg), queue_size=1, buff_size=4000000)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                  for tag, topic in TOPICS.items()]</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     listeners += [rospy.Subscriber(&#x27;/airsim_node/drone_1/imu/imu&#x27;, Imu,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                                   lambda msg: receive_raw(&#x27;imu&#x27;, msg), queue_size=1),</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                   rospy.Subscriber(&#x27;/airsim_node/drone_1/gps&#x27;, PoseStamped,</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                                    lambda msg: receive_raw(&#x27;gps&#x27;, msg), queue_size=1)]</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     original = {tag: OrderedDict() for tag in TOPICS}</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     packet_root = run / &#x27;joint&#x27;</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     packet_root.mkdir(exist_ok=False)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     captures, reasons = [], Counter()</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     source_count = raw_count = stereo_count = 0</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     dumped = None</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     last_capture = None</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     fault = graph = None</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     started = time.monotonic()</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     with (run / &#x27;joint_states.jsonl&#x27;).open(&#x27;x&#x27;) as states, (run / &#x27;joint_raw_sensors.jsonl&#x27;).open(&#x27;x&#x27;) as raw:</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         def dump_sources():</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             nonlocal source_count, raw_count, dumped</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             for state, arrival in history.snapshot_sources():</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                 key = (state.metadata.epoch, state.metadata.stamp)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                 if dumped is None or key &gt; dumped:</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                     states.write(json.dumps({&#x27;state&#x27;: asdict(state), &#x27;arrival_wall_monotonic&#x27;: arrival}, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                     dumped = key</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                     source_count += 1</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             with lock:</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                 batch = list(raw_pending)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                 raw_pending.clear()</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             for tag, message, arrival in batch:</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                 raw.write(json.dumps(raw_record(tag, message, arrival), allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                 raw_count += 1</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a> </span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         try:</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             while time.monotonic() - started &lt; duration and not rospy.is_shutdown():</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>                 dump_sources()</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>                 with sensors.lock:</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>                     if sensors.fault:raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>                     ready = sensors.estimator.initialized and sensors.raw is not None</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>                     if ready and not sensors.clock.fresh(time.monotonic()):raise RuntimeError(&#x27;STALE_IMU&#x27;)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>                     now, epoch = sensors.clock.stamp, sensors.clock.epoch</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>                 with lock:</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>                     batch = dict(pending);pending.clear()</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>                     latest = dict(last_received)</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>                 if time.monotonic() - started &gt; 5:</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>                     if not ready or set(latest) != set(TOPICS):raise RuntimeError(&#x27;JOINT_STREAM_NOT_READY&#x27;)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>                     if any(time.monotonic() - t &gt; .5 for t in latest.values()):raise RuntimeError(&#x27;STALE_JOINT_STREAM&#x27;)</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>                     if not captures:raise RuntimeError(&#x27;NO_JOINT_CAPTURE_WITHIN_LIMITS&#x27;)</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>                 if not ready:</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>                     time.sleep(.003)</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>                     continue</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>                 for tag, (message, arrival) in batch.items():</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>                     if tag == &#x27;lidar&#x27;:</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>                         decoded = decode_xyz(message, epoch)</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>                         accepted = clouds.add(decoded, arrival)</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>                     else:</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>                         decoded = decode_image(message, tag, epoch, ttl_s=image_ttl_s)</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>                         accepted = pairs.add(tag, decoded, arrival)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>                     if accepted:</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>                         original[tag][decoded.metadata.stamp] = message</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>                         while len(original[tag]) &gt; 8:original[tag].popitem(last=False)</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>                 with sensors.lock:</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>                     if sensors.fault:raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>                     now, epoch = sensors.clock.stamp, sensors.clock.epoch</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>                 pair = pairs.pop(now, time.monotonic())</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>                 if pair is None:</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>                     time.sleep(.003)</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>                     continue</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>                 stereo_count += 1</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>                 if len(captures) &gt;= 6 or (last_capture is not None and time.monotonic() - last_capture &lt; 1.5):</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>                     continue</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>                 selection_wall = time.monotonic()</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>                 association = clouds.select(pair, now, selection_wall, epoch)</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>                 if association is None:</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>                     reasons[&#x27;NO_LIDAR_ASSOCIATION&#x27;] += 1</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>                     continue</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>                 stamps = {&#x27;left&#x27;: pair.left.metadata.stamp, &#x27;right&#x27;: pair.right.metadata.stamp,</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>                           &#x27;lidar&#x27;: association.cloud.metadata.stamp}</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>                 try:</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>                     with sensors.lock:</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>                         if sensors.fault:raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>                         query_now, query_wall = sensors.clock.stamp, time.monotonic()</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>                         poses = {tag: history.lookup(stamp, query_now, query_wall, epoch) for tag, stamp in stamps.items()}</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>                 except HistoryUnavailable as error:</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>                     reasons[&#x27;HISTORY:&#x27; + str(error)] += 1</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>                     continue</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>                 messages = {tag: original[tag].get(stamp) for tag, stamp in stamps.items()}</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>                 if any(message is None for message in messages.values()):</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>                     reasons[&#x27;RAW_MESSAGE_EVICTED&#x27;] += 1</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>                     continue</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>                 directory = packet_root / str(len(captures)).zfill(4)</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>                 directory.mkdir(exist_ok=False)</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>                 for tag, message in messages.items():</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>                     save_message(directory, tag, message, &#x27;lidar&#x27; if tag == &#x27;lidar&#x27; else &#x27;image&#x27;)</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>                 packet = {&#x27;stamps&#x27;: stamps, &#x27;epoch&#x27;: epoch, &#x27;query_now&#x27;: query_now, &#x27;query_wall&#x27;: query_wall,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>                           &#x27;selection_now&#x27;: now, &#x27;selection_wall&#x27;: selection_wall,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>                           &#x27;poses&#x27;: {tag: asdict(pose) for tag, pose in poses.items()},</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>                           &#x27;stereo_header_skew_s&#x27;: pair.skew_s,</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>                           &#x27;left_lidar_header_skew_s&#x27;: association.left_skew_s,</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>                           &#x27;right_lidar_header_skew_s&#x27;: association.right_skew_s,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>                           &#x27;left_source_metadata&#x27;: asdict(pair.left.metadata),</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>                           &#x27;right_source_metadata&#x27;: asdict(pair.right.metadata),</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>                           &#x27;lidar_source_metadata&#x27;: asdict(association.cloud.metadata),</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>                           &#x27;lidar_current_at_selection&#x27;: association.lidar_current_at_selection,</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>                           &#x27;image_age_budget_s&#x27;: image_ttl_s, &#x27;capture_wall&#x27;: time.monotonic(),</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>                           &#x27;current_control_eligible&#x27;: False, &#x27;per_point_motion_compensation_applied&#x27;: False,</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>                           &#x27;exposure_sync_verified&#x27;: False, &#x27;world_projection_applied&#x27;: False}</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>                 packet_path = directory / &#x27;packet.json&#x27;</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>                 packet_path.write_text(json.dumps(packet, indent=2, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>                 captures.append({&#x27;directory&#x27;: str(directory.relative_to(run)),</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>                     &#x27;packet_sha256&#x27;: hashlib.sha256(packet_path.read_bytes()).hexdigest()})</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>                 last_capture = time.monotonic()</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>             if not captures:raise RuntimeError(&#x27;NO_JOINT_CAPTURES&#x27;)</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>         except Exception as error:</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>             fault = str(error)</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>         finally:</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>             try:</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>                 pubs, subs, _ = rosgraph.Master(rospy.get_name()).getSystemState();node = rospy.get_name()</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>                 graph = {&#x27;subscriptions&#x27;: sorted(t for t, nodes in subs if node in nodes),</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>                          &#x27;publishers&#x27;: sorted(t for t, nodes in pubs if node in nodes)}</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>                 if graph[&#x27;subscriptions&#x27;] != INPUTS or set(graph[&#x27;publishers&#x27;]) - {&#x27;/rosout&#x27;}:</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>                     fault = fault or &#x27;JOINT_OBSERVER_GRAPH_POLICY&#x27;</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>             except Exception as error:</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>                 fault = fault or &#x27;GRAPH_AUDIT_FAILED:&#x27; + str(error)</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>             for listener in listeners:listener.unregister()</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>             sensors.close()</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>             dump_sources()</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>     summary = {&#x27;captures&#x27;: captures, &#x27;stereo_pairs&#x27;: stereo_count, &#x27;received&#x27;: dict(received),</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>                &#x27;source_states&#x27;: source_count, &#x27;raw_sensor_records&#x27;: raw_count, &#x27;raw_queue_drops&#x27;: raw_drops,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>                &#x27;rejections&#x27;: dict(reasons), &#x27;stereo_events&#x27;: dict(pairs.events), &#x27;lidar_events&#x27;: dict(clouds.events),</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>                &#x27;fault&#x27;: fault, &#x27;node_graph&#x27;: graph, &#x27;image_age_budget_s&#x27;: image_ttl_s,</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>                &#x27;max_stereo_skew_s&#x27;: .005, &#x27;max_lidar_skew_s&#x27;: clouds.max_skew_s,</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>                &#x27;raw_recording_is_lossy&#x27;: True, &#x27;payloads_retained_exactly_for_selected_captures&#x27;: True,</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>                &#x27;control_published&#x27;: False, &#x27;debug_inputs_used&#x27;: False,</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>                &#x27;per_point_motion_compensation_applied&#x27;: False, &#x27;acceptance_eligible&#x27;: False}</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>     (run / &#x27;joint_summary.json&#x27;).write_text(json.dumps(summary, indent=2) + &#x27;\n&#x27;)</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>     return 0 if captures and fault is None and not raw_drops else 2</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a> </span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a> </span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a> def main():</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>     parser.add_argument(&#x27;--run-dir&#x27;, type=Path, required=True)</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>     parser.add_argument(&#x27;--duration&#x27;, type=float, default=10.)</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>     parser.add_argument(&#x27;--image-age-budget-ms&#x27;, type=int, choices=(150, 200), default=150)</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>     args = parser.parse_args()</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>     if not math.isfinite(args.duration) or not 0 &lt; args.duration &lt;= 30:</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>         parser.error(&#x27;duration must be in (0,30] seconds&#x27;)</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>     return observe(args.run_dir, args.duration, args.image_age_budget_ms / 1000.)</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a> </span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a> </span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>     raise SystemExit(main())</span></pre></body></html>

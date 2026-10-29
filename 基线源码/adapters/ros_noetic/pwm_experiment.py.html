@@ -1,0 +1,371 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/pwm_experiment.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/pwm_experiment.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded local simulator identification/hover. Host MUST stop scene on return.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> No zero-PWM hover fallback. No VEL, debug input, task service or competition mode.</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> These are development experiments, not an accepted competition controller.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import argparse</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from dataclasses import asdict</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import json</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import math</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from pathlib import Path</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import time</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import numpy as np</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from control.control_authority.lease import ControlLease, check_graph</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from control.pwm_publisher.guard import CommandGuard, PwmCommand</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from estimation.geometry import rotation</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from interfaces.contracts import Health</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from adapters.ros_noetic.flight_sensors import FlightSensors</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> from control.motor_allocator.allocator import MotorAllocator,Allocation</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> from control.se3_controller.controller import Se3Controller</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> from control.reference import benchmark_reference,benchmark_yaw</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> from adapters.ros_noetic.sensor_fault import LocalSensorFault</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> from control.control_authority.graph_monitor import GraphMonitor</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> from control.safety_supervisor.hover_recovery import HoverRecovery</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> from control.safety_supervisor.angular_recovery import AngularRecovery</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> from control.reference_worker import BenchmarkSpec,ReferenceWorker</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> from control.safety_supervisor.reference_hold import ReferenceHold</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> from control.collective_identification import CollectivePulse</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> from adapters.ros_noetic.control_connections import expected_control_connections</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> def motor_pattern():</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     # Lift gently, then probe one motor at a time with very small positive pulses.</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     pattern = [(.20,)*4]*4 + [(.176,)*4]*2</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     for motor in range(4):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         values = [.176]*4</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         values[motor] += .003</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         pattern.append(tuple(values))</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         pattern.append((.176,)*4)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     return tuple(pattern)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> def run_experiment(run, levels, pulse_seconds, motor_pulses=False, hover_seconds=0, step=False,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                    sensor_fault=None, fault_seconds=.15, gps_bridge=False, yaw_motion=False,braking=False,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                    stationary_bootstrap=False,angular_recovery=False,angular_pulse=False,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                    isolated_reference=False,reference_stall_seconds=0.,collective_pulse_pwm=None,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                    angular_pulse_moment=.5,angular_recovery_profile=&#x27;standard&#x27;):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     import rospy</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     import rosgraph</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     from airsim_ros.msg import RotorPWM</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     rospy.init_node(&#x27;rmua_next_pwm_identification&#x27;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     master = rosgraph.Master(rospy.get_name())</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     scene_id = rospy.get_param(&#x27;/run_id&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     rows, fault = [], None</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     latest_state,latest_raw,latest_elapsed=None,None,None</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     fresh_read=False</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     fault_observation=None</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     last_published_wall=None</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     def graph(require_self):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         pubs, _, _ = master.getSystemState()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         check_graph(dict(pubs), rospy.get_name(), require_self=require_self)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> </span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     with ControlLease(scene_id, &#x27;PWM&#x27;):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         graph(False)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         sensors = FlightSensors()</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         publisher = None</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         monitor = None</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         recovery = HoverRecovery()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         angular_supervisor=AngularRecovery(angular_recovery_profile)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         pulse_sent=False</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         reference_worker=None</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         reference_hold=ReferenceHold()</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         collective_pulse=CollectivePulse(collective_pulse_pwm) if collective_pulse_pwm is not None else None</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         try:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             deadline = time.monotonic()+5</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             while time.monotonic() &lt; deadline:</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                 try:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                     state, raw = sensors.read()</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                     bootstrap=None</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                     if state.health == Health.OK and stationary_bootstrap:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                         bootstrap=sensors.bootstrap_at_rest_before_control()</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                     if state.health == Health.OK and (not stationary_bootstrap or bootstrap is not None):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                         if bootstrap is not None:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                             (run/&#x27;stationary_bootstrap.json&#x27;).write_text(json.dumps(bootstrap,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                             state,raw=sensors.read()</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                         break</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 except (ValueError, RuntimeError):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                     pass</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                 time.sleep(.01)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             else:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                 raise RuntimeError(&#x27;NO_HEALTHY_STATE&#x27;)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             origin = np.array(state.position_ned)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             publisher = rospy.Publisher(&#x27;/airsim_node/drone_1/rotor_pwm_cmd&#x27;, RotorPWM, queue_size=1)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             expected_connections,backend_nodes=expected_control_connections(master.getSystemState(),</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                                                &#x27;/airsim_node/drone_1/rotor_pwm_cmd&#x27;)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             deadline = time.monotonic()+2</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             while publisher.get_num_connections() &lt; expected_connections and time.monotonic() &lt; deadline:</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                 time.sleep(.01)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             if publisher.get_num_connections() &lt; expected_connections:</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                 raise RuntimeError(&#x27;PWM_SUBSCRIBER_COUNT&#x27;)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>             graph(True)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             _, subscribers, _ = master.getSystemState()</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             runtime_inputs = sorted(topic for topic, nodes in subscribers if rospy.get_name() in nodes)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             official_config = json.loads((Path(__file__).resolve().parents[2]/&#x27;configs/official_baseline.yaml&#x27;).read_text())</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             if any(topic not in official_config[&#x27;sensors&#x27;] for topic in runtime_inputs):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                 raise RuntimeError(&#x27;INPUT_WHITELIST_POLICY&#x27;)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             (run/&#x27;runtime_input_audit.json&#x27;).write_text(json.dumps({&#x27;node&#x27;: rospy.get_name(),</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                 &#x27;topics&#x27;: runtime_inputs, &#x27;debug_inputs&#x27;: False,&#x27;expected_control_connections&#x27;:expected_connections,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                 &#x27;control_connections&#x27;:publisher.get_num_connections(),&#x27;backend_subscriber_nodes&#x27;:backend_nodes}, indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             monitor = GraphMonitor(lambda: graph(True))</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             monitor.start()</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             guard = CommandGuard(sensors.clock.epoch, minimum_period=.0105)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>             pattern = motor_pattern() if motor_pulses else tuple((v,)*4 for v in levels)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             config = json.loads((Path(__file__).resolve().parents[2]/&#x27;configs/vehicle_identification.json&#x27;).read_text())</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             (run/&#x27;vehicle_model.json&#x27;).write_text(json.dumps(config,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             allocator, controller = MotorAllocator(config), Se3Controller(config)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             previous_saturated = False</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             yaw_reference = math.atan2(rotation(state.orientation_wxyz)[1, 0],</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                                        rotation(state.orientation_wxyz)[0, 0])</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             state, raw = sensors.read()</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             if isolated_reference:</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>                 reference_worker=ReferenceWorker(BenchmarkSpec(tuple(origin),yaw_reference,step,braking,yaw_motion),</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>                                                   stall_seconds=reference_stall_seconds)</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>                 reference_worker.start()</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>                 deadline=time.monotonic()+3.</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>                 while time.monotonic()&lt;deadline:</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>                     state,raw=sensors.read()</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>                     reference_worker.submit(state.metadata.stamp,state.metadata.epoch,0.)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>                     packet,reason=reference_worker.snapshot(state.metadata.stamp,state.metadata.epoch)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>                     if packet is not None:break</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>                     time.sleep(.005)</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>                 else:raise RuntimeError(&#x27;REFERENCE_WORKER_STARTUP&#x27;)</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             start = time.monotonic()</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             state, raw = sensors.read()</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>             start_stamp = state.metadata.stamp</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             if sensor_fault:</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>                 sensors.local_injection = LocalSensorFault(sensor_fault, start_stamp+6., fault_seconds)</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             next_tick = start</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>             previous_control_stamp = start_stamp-.01</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>             sequence = 0</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>             while True:</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>                 now = time.monotonic()</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>                 index = int((now-start)/pulse_seconds)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>                 if (hover_seconds and now-start &gt;= hover_seconds) or (not hover_seconds and index &gt;= len(pattern)):</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>                     break</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>                 fresh_read=False</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>                 state, raw = sensors.read()</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>                 latest_state,latest_raw,latest_elapsed=state,raw,now-start</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>                 fresh_read=True</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>                 R = rotation(state.orientation_wxyz)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>                 if state.health != Health.OK and not (hover_seconds and gps_bridge):</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>                     raise RuntimeError(&#x27;STATE_HEALTH_&#x27;+state.health.value)</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>                 angular_decision=angular_supervisor.decide(state) if angular_recovery else None</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>                 if not angular_recovery and R[2, 2] &lt; math.cos(.25):</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>                     raise RuntimeError(&#x27;TILT_LIMIT&#x27;)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>                 if np.linalg.norm(state.velocity_ned) &gt; 4:</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>                     raise RuntimeError(&#x27;SPEED_LIMIT&#x27;)</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>                 if not angular_recovery and np.linalg.norm(state.angular_velocity_body) &gt; 1.:</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>                     raise RuntimeError(&#x27;ANGULAR_RATE_LIMIT&#x27;)</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>                 if np.linalg.norm(np.array(state.position_ned)-origin) &gt; (1.8 if hover_seconds else 1.2):</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>                     raise RuntimeError(&#x27;POSITION_LIMIT&#x27;)</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>                 monitor.check()</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>                 details = {}</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>                 if hover_seconds:</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>                     sim_elapsed = state.metadata.stamp-start_stamp</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>                     if reference_worker is None:</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>                         reference, velocity, acceleration = benchmark_reference(origin, sim_elapsed, step,braking)</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>                         yaw_command,yaw_rate = benchmark_yaw(yaw_reference,sim_elapsed,yaw_motion)</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>                     allow_integral = not previous_saturated</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>                     phase = &#x27;NORMAL&#x27;</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>                     rate_gain_scale=1.</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>                     attitude_gain_scale=1.</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>                     if reference_worker is not None:</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>                         reference_worker.submit(state.metadata.stamp,state.metadata.epoch,sim_elapsed)</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>                         packet,reason=reference_worker.snapshot(state.metadata.stamp,state.metadata.epoch)</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>                         selected=reference_hold.select(state,packet,reason)</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>                         reference,velocity,acceleration=selected.position,selected.velocity,selected.acceleration</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>                         yaw_command,yaw_rate=selected.yaw,selected.yaw_rate</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>                         phase=selected.phase</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>                         allow_integral=allow_integral and selected.allow_integral</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>                     if gps_bridge:</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>                         gps_stamp = raw[&#x27;last_gps_stamp&#x27;]</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>                         gps_age = math.inf if gps_stamp is None else state.metadata.stamp-gps_stamp</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>                         decision = recovery.decide(state,gps_age,(reference,velocity,acceleration))</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>                         reference,velocity,acceleration = decision.position,decision.velocity,decision.acceleration</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>                         allow_integral = allow_integral and decision.allow_integral</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>                         phase = decision.phase</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>                         if phase != &#x27;NORMAL&#x27;:</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>                             yaw_command,yaw_rate = yaw_reference,0.</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>                     if angular_decision is not None and angular_decision.phase!=&#x27;NORMAL&#x27;:</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>                         reference=angular_decision.hold_position</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>                         velocity=acceleration=(0.,0.,0.)</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>                         yaw_command,yaw_rate=angular_decision.hold_yaw,0.</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>                         rate_gain_scale=angular_decision.rate_gain_scale</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>                         attitude_gain_scale=angular_decision.attitude_gain_scale</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>                         allow_integral=False</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>                         phase=angular_decision.phase</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>                     dt = state.metadata.stamp-previous_control_stamp</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>                     if dt &lt;= 0:</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>                         time.sleep(.002)</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>                         continue</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>                     if dt &gt; .05:</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>                         raise RuntimeError(&#x27;CONTROL_STATE_GAP&#x27;)</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>                     wrench = controller.step(state, reference, velocity, acceleration,</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>                                              yaw_command, dt, allow_integral,yaw_rate=yaw_rate,</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>                                              rate_gain_scale=rate_gain_scale,attitude_gain_scale=attitude_gain_scale)</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>                     moment=np.array(wrench.moment)</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>                     pulse_this_tick=(angular_pulse and not pulse_sent and sim_elapsed&gt;=5.</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>                                      and phase==&#x27;NORMAL&#x27;)</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>                     if pulse_this_tick:moment[1]+=angular_pulse_moment</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>                     allocation = allocator.allocate(wrench.thrust, moment)</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>                     collective_values=collective_pulse.request(state,sim_elapsed) if collective_pulse else None</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>                     if collective_values is not None:</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>                         achieved=allocator.B@(allocator.max_thrust*np.array(collective_values))</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>                         allocation=Allocation(collective_values,tuple(achieved),True,0.,</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>                                               min(collective_values[0],1-collective_values[0]))</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>                     previous_saturated = allocation.saturated</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>                     values = allocation.pwm</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>                     details = {&#x27;reference&#x27;: tuple(reference), &#x27;wrench&#x27;: asdict(wrench),</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>                                &#x27;allocation&#x27;: asdict(allocation), &#x27;sim_elapsed&#x27;: sim_elapsed,&#x27;supervisor_phase&#x27;:phase,</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>                                &#x27;yaw_reference&#x27;:yaw_command,&#x27;yaw_rate_reference&#x27;:yaw_rate}</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>                     details[&#x27;angular_pulse_applied&#x27;]=pulse_this_tick</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>                     details[&#x27;rate_gain_scale&#x27;]=rate_gain_scale</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>                     details[&#x27;attitude_gain_scale&#x27;]=attitude_gain_scale</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>                     details[&#x27;moment_requested_including_experiment_pulse&#x27;]=moment.tolist()</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>                     details[&#x27;collective_pulse_applied&#x27;]=collective_values is not None</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>                 else:</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>                     values = pattern[index]</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>                 command = PwmCommand(state.metadata.stamp, state.metadata.epoch, sequence, values)</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>                 with sensors.lock:</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>                     accepted_wall = time.monotonic()</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>                     allowed = guard.accept(command, sensors.clock, accepted_wall)</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>                 if allowed:</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>                     msg = RotorPWM()</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>                     msg.header.stamp = rospy.Time.from_sec(command.stamp)</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>                     msg.header.seq = sequence</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>                     msg.rotorPWM0, msg.rotorPWM1, msg.rotorPWM2, msg.rotorPWM3 = command.values</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>                     publish_begin_wall=time.monotonic()</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>                     publisher.publish(msg)</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>                     published_wall = time.monotonic()</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>                     last_published_wall=published_wall</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>                     guard.published(published_wall)</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>                     rows.append({&#x27;wall_elapsed&#x27;: now-start, &#x27;command&#x27;: asdict(command),</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>                                  &#x27;guard_accept_wall_elapsed&#x27;: accepted_wall-start,</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>                                  &#x27;publish_wall_elapsed&#x27;: published_wall-start,</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>                                  &#x27;publish_begin_wall_monotonic&#x27;:publish_begin_wall,</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>                                  &#x27;publish_end_wall_monotonic&#x27;:published_wall,</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>                                  &#x27;raw&#x27;: raw, &#x27;state&#x27;: {k:v for k,v in asdict(state).items() if k != &#x27;metadata&#x27;},</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>                                  **details})</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>                     sequence += 1</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>                     if details.get(&#x27;angular_pulse_applied&#x27;):pulse_sent=True</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>                     if details.get(&#x27;collective_pulse_applied&#x27;):collective_pulse.published(command.stamp)</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>                 previous_control_stamp = state.metadata.stamp</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>                 next_tick += 1/80.</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>                 delay = next_tick-time.monotonic()</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>                 if delay &lt; -.1:</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>                     raise RuntimeError(&#x27;CONTROL_DEADLINE&#x27;)</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>                 time.sleep(max(0., delay))</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>             if collective_pulse is not None and not collective_pulse.sent:</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>                 raise RuntimeError(&#x27;COLLECTIVE_EXCITATION_NOT_SENT&#x27;)</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>             if angular_pulse and not pulse_sent:raise RuntimeError(&#x27;ANGULAR_EXCITATION_NOT_SENT&#x27;)</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>             if angular_pulse and angular_supervisor.phase!=&#x27;RECOVERY_HOLD&#x27;:</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>                 raise RuntimeError(&#x27;ANGULAR_RECOVERY_NOT_SETTLED&#x27;)</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>         except Exception as error:</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>             fault = str(error)</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>             failed_wall=time.monotonic()</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>             fault_observation={&#x27;reason&#x27;:fault,&#x27;fresh_read_in_fault_iteration&#x27;:fresh_read,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>                 &#x27;failure_wall_monotonic&#x27;:failed_wall,</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>                 &#x27;wall_elapsed_at_last_read&#x27;:latest_elapsed,</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>                 &#x27;wall_since_last_publication_s&#x27;:None if last_published_wall is None else failed_wall-last_published_wall,</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>                 &#x27;state&#x27;:asdict(latest_state) if latest_state else None,&#x27;raw&#x27;:latest_raw}</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>         finally:</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>             control_end_wall=time.monotonic()</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>             if monitor:</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>                 monitor.close()</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>             if publisher:</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>                 publisher.unregister()</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>             if reference_worker:reference_worker.close()</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>             sensors.close()</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>     (run/&#x27;pwm_telemetry.jsonl&#x27;).write_text(&#x27;&#x27;.join(json.dumps(row)+&#x27;\n&#x27; for row in rows))</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>     if fault_observation is not None:</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>         (run/&#x27;fault_observation.json&#x27;).write_text(json.dumps(fault_observation,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>     result = {&#x27;commands&#x27;: len(rows), &#x27;fault&#x27;: fault, &#x27;levels&#x27;: levels,</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>               &#x27;control_end_wall_monotonic&#x27;:control_end_wall,</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>               &#x27;motor_pulses&#x27;: motor_pulses,</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>               &#x27;hover_seconds&#x27;: hover_seconds,</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>               &#x27;step&#x27;: step,</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a>               &#x27;reference_clock&#x27;: &#x27;IMU&#x27;,</span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a>               &#x27;gps_rejections&#x27;: sensors.estimator.rejections,</span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a>               &#x27;injection&#x27;: asdict(sensors.local_injection) if sensors.local_injection else None,</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>               &#x27;graph_monitor&#x27;:monitor.summary() if monitor else None,</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>               &#x27;gps_bridge_enabled&#x27;:gps_bridge,&#x27;recovery_transitions&#x27;:recovery.transitions,</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>               &#x27;yaw_motion&#x27;:yaw_motion,</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>               &#x27;braking&#x27;:braking,</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>               &#x27;angular_recovery_enabled&#x27;:angular_recovery,</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>               &#x27;angular_recovery_phase&#x27;:angular_supervisor.phase,</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>               &#x27;angular_recovery_profile&#x27;:angular_recovery_profile,</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>               &#x27;angular_recovery_transitions&#x27;:angular_supervisor.transitions,</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>               &#x27;angular_pulse_sent&#x27;:pulse_sent,</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>               &#x27;angular_pulse_moment_Nm&#x27;:angular_pulse_moment if angular_pulse else None,</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>               &#x27;reference_worker&#x27;:reference_worker.summary() if reference_worker else None,</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>               &#x27;reference_hold_transitions&#x27;:reference_hold.transitions,</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>               &#x27;collective_excitation&#x27;:None if collective_pulse is None else vars(collective_pulse),</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>               &#x27;pulse_seconds&#x27;: pulse_seconds,</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>               &#x27;stage&#x27;: &#x27;LOCAL_PWM_CLOSED_LOOP_HOVER&#x27; if hover_seconds else &#x27;LOCAL_OPEN_LOOP_IDENTIFICATION&#x27;,</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>               &#x27;official_result&#x27;: &#x27;UNKNOWN&#x27;, &#x27;host_scene_stop_required&#x27;: True}</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>     (run/&#x27;pwm_summary.json&#x27;).write_text(json.dumps(result, indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>     print(json.dumps(result), flush=True)</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>     return 0 if rows and fault is None else 2</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a> </span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a> </span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a> def main():</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>     parser.add_argument(&#x27;--run-dir&#x27;, type=Path, required=True)</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a>     parser.add_argument(&#x27;--levels&#x27;, default=&#x27;.10,.15,.20,.25,.30,.35,.40&#x27;)</span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>     parser.add_argument(&#x27;--pulse-seconds&#x27;, type=float, default=.3)</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>     parser.add_argument(&#x27;--motor-pulses&#x27;, action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>     parser.add_argument(&#x27;--hover-seconds&#x27;, type=float, default=0.)</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>     parser.add_argument(&#x27;--step&#x27;, action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>     parser.add_argument(&#x27;--sensor-fault&#x27;, choices=(&#x27;GPS_ZERO&#x27;,&#x27;IMU_DROP&#x27;,&#x27;IMU_ROLLBACK&#x27;))</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>     parser.add_argument(&#x27;--fault-seconds&#x27;,type=float,default=.15)</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>     parser.add_argument(&#x27;--gps-bridge&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>     parser.add_argument(&#x27;--yaw-motion&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>     parser.add_argument(&#x27;--braking&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>     parser.add_argument(&#x27;--stationary-bootstrap&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>     parser.add_argument(&#x27;--angular-recovery&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>     parser.add_argument(&#x27;--angular-recovery-profile&#x27;,choices=(&#x27;standard&#x27;,&#x27;fast&#x27;),default=&#x27;standard&#x27;)</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>     parser.add_argument(&#x27;--angular-pulse&#x27;,action=&#x27;store_true&#x27;,help=&#x27;single bounded pitch moment pulse at 5s&#x27;)</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>     parser.add_argument(&#x27;--angular-pulse-moment&#x27;,type=float)</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>     parser.add_argument(&#x27;--isolated-reference&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>     parser.add_argument(&#x27;--reference-stall-seconds&#x27;,type=float,default=0.)</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>     parser.add_argument(&#x27;--collective-pulse-pwm&#x27;,type=float)</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>     args = parser.parse_args()</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>     levels = tuple(float(value) for value in args.levels.split(&#x27;,&#x27;))</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>     if (not levels or len(levels) &gt; 20 or not all(0 &lt; v &lt;= .6 for v in levels)</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>             or not .05 &lt;= args.pulse_seconds &lt;= 1 or not 0 &lt;= args.hover_seconds &lt;= 20</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>             or (args.hover_seconds and args.motor_pulses)):</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>         parser.error(&#x27;bounded identification requires &lt;=20 levels in (0,.6], pulses [.05,1]s&#x27;)</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>     if args.step and args.hover_seconds &lt; 10:</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>         parser.error(&#x27;step profile requires hover-seconds &gt;=10&#x27;)</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>     if (args.braking or args.yaw_motion) and args.hover_seconds &lt; 10:</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>         parser.error(&#x27;braking/yaw identification requires &gt;=10s hover experiment&#x27;)</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>     if args.braking and args.step:</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>         parser.error(&#x27;braking and position step are separate experiments&#x27;)</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>     if args.sensor_fault and (args.hover_seconds &lt; 8 or not 0 &lt; args.fault_seconds &lt;= 1):</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>         parser.error(&#x27;local sensor injection requires &gt;=8s hover and duration (0,1]&#x27;)</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>     if args.angular_recovery and (args.hover_seconds&lt;10 or args.gps_bridge or args.sensor_fault):</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>         parser.error(&#x27;angular recovery requires &gt;=10s healthy-state hover without GPS/fault modes&#x27;)</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>     if args.angular_recovery_profile!=&#x27;standard&#x27; and not args.angular_recovery:</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>         parser.error(&#x27;fast recovery profile requires angular-recovery&#x27;)</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>     if args.angular_pulse and (not args.angular_recovery or args.step or args.braking or args.yaw_motion):</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>         parser.error(&#x27;angular pulse requires isolated angular-recovery hover&#x27;)</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>     if args.angular_pulse_moment is not None and (not args.angular_pulse or not 0&lt;args.angular_pulse_moment&lt;=.8):</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>         parser.error(&#x27;angular-pulse-moment requires angular-pulse, moment (0,.8] Nm&#x27;)</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>     if args.isolated_reference and (args.hover_seconds&lt;10 or args.angular_recovery or args.gps_bridge or args.sensor_fault):</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>         parser.error(&#x27;isolated reference requires &gt;=10s healthy-state hover without other fault modes&#x27;)</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>     if args.reference_stall_seconds and (not args.isolated_reference or not .1&lt;=args.reference_stall_seconds&lt;=1.):</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>         parser.error(&#x27;reference stall requires isolated reference and duration [.1,1]&#x27;)</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>     if args.collective_pulse_pwm is not None and (not 0&lt;=args.collective_pulse_pwm&lt;=1</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a>             or args.hover_seconds&lt;10 or args.step or args.braking or args.yaw_motion or args.sensor_fault</span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a>             or args.gps_bridge or args.angular_recovery or args.isolated_reference):</span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a>         parser.error(&#x27;collective pulse requires isolated &gt;=10s healthy-state hover, PWM in [0,1]&#x27;)</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>     return run_experiment(args.run_dir, levels, args.pulse_seconds, args.motor_pulses, args.hover_seconds, args.step,</span>
+<span class="line" id="L363"><a class="ln" href="#L363">  363</a>                           args.sensor_fault,args.fault_seconds,args.gps_bridge,args.yaw_motion,args.braking,</span>
+<span class="line" id="L364"><a class="ln" href="#L364">  364</a>                           args.stationary_bootstrap,args.angular_recovery,args.angular_pulse,</span>
+<span class="line" id="L365"><a class="ln" href="#L365">  365</a>                           args.isolated_reference,args.reference_stall_seconds,args.collective_pulse_pwm,</span>
+<span class="line" id="L366"><a class="ln" href="#L366">  366</a>                           .5 if args.angular_pulse_moment is None else args.angular_pulse_moment,</span>
+<span class="line" id="L367"><a class="ln" href="#L367">  367</a>                           args.angular_recovery_profile)</span>
+<span class="line" id="L368"><a class="ln" href="#L368">  368</a> </span>
+<span class="line" id="L369"><a class="ln" href="#L369">  369</a> </span>
+<span class="line" id="L370"><a class="ln" href="#L370">  370</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L371"><a class="ln" href="#L371">  371</a>     raise SystemExit(main())</span></pre></body></html>

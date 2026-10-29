@@ -1,0 +1,63 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tools/run_sim.sh · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tools/run_sim.sh</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> #!/usr/bin/env bash</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> # One owned scene; the harness starts control separately. Probes are diagnostic.</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> set -euo pipefail</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> CONT=${RMUA_CONTAINER:-rmua_noetic}</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> SEED=${1:-123}</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> MODE=${2:-offscreen}</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> DIAGNOSTIC=${3:-}</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> [[ &quot;$SEED&quot; =~ ^[0-9]+$ ]] || { echo &#x27;Seed must be a nonnegative integer.&#x27; &gt;&amp;2; exit 2; }</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> [[ &quot;$MODE&quot; == offscreen || &quot;$MODE&quot; == render ]] || { echo &#x27;Mode: offscreen|render&#x27; &gt;&amp;2; exit 2; }</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> [[ -z &quot;$DIAGNOSTIC&quot; || &quot;$DIAGNOSTIC&quot; == diagnostic-bridge-probe ]] || { echo &#x27;Unknown diagnostic mode.&#x27; &gt;&amp;2; exit 2; }</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> probe_environment=(-e RMUA_BRIDGE_PROBE_ENABLED=0)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> if [[ &quot;$DIAGNOSTIC&quot; == diagnostic-bridge-probe ]]; then</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>   [[ &quot;${RMUA_BRIDGE_PROBE_MODE:-}&quot; == observe || &quot;${RMUA_BRIDGE_PROBE_MODE:-}&quot; == serialize || &quot;${RMUA_BRIDGE_PROBE_MODE:-}&quot; == lifetime || &quot;${RMUA_BRIDGE_PROBE_MODE:-}&quot; == native-input ]] || exit 2</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>   [[ -n &quot;${RMUA_BRIDGE_PROBE_SO:-}&quot; &amp;&amp; -n &quot;${RMUA_BRIDGE_PROBE_OUTPUT:-}&quot; ]] || exit 2</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>   probe_environment=(-e RMUA_BRIDGE_PROBE_ENABLED=1 -e &quot;RMUA_BRIDGE_PROBE_SO=$RMUA_BRIDGE_PROBE_SO&quot;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>                      -e &quot;RMUA_BRIDGE_PROBE_MODE=$RMUA_BRIDGE_PROBE_MODE&quot;</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                      -e &quot;RMUA_BRIDGE_PROBE_OUTPUT=$RMUA_BRIDGE_PROBE_OUTPUT&quot;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> fi</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> exec 9&gt;/tmp/rmua-next-simulator.lock</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> flock -n 9 || { echo &#x27;Another main simulator is active.&#x27; &gt;&amp;2; exit 1; }</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> docker start &quot;$CONT&quot; &gt;/dev/null</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> if docker exec &quot;$CONT&quot; pgrep -f &#x27;[R]MUA-Linux|[r]osmaster|[r]oute_follower.py&#x27; &gt;/dev/null; then</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>   echo &#x27;Close the existing simulator/ROS/controller before starting a new scene.&#x27; &gt;&amp;2</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>   exit 1</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> fi</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> exec docker exec -u 1000:1000 -e DISPLAY=&quot;${DISPLAY:-:0}&quot; \</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>   &quot;${probe_environment[@]}&quot; \</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>   -w /workspace/main/simulator/simulator_12.0.0.5 &quot;$CONT&quot; \</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>   bash -c &#x27;</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     set -e</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     source /opt/ros/noetic/setup.bash</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     export ROS_HOME=/tmp/rmua_next_ros</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     mkdir -p &quot;$ROS_HOME&quot;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     setsid roscore &gt;&quot;$ROS_HOME/roscore.log&quot; 2&gt;&amp;1 &amp;</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     ros_pid=$!</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     echo &quot;$ros_pid&quot; &gt;&quot;$ROS_HOME/ros.pid&quot;</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     sim_pid=</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     cleanup() {</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>       if [[ -n &quot;$sim_pid&quot; ]]; then kill -- &quot;-$sim_pid&quot; 2&gt;/dev/null || true; fi</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>       kill -- &quot;-$ros_pid&quot; 2&gt;/dev/null || true</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>       rm -f &quot;$ROS_HOME/sim.pid&quot; &quot;$ROS_HOME/ros.pid&quot;</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     }</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     trap cleanup EXIT</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     trap &quot;exit 130&quot; INT TERM</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     ready=false</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     for attempt in {1..100}; do</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>       if rosparam list &gt;/dev/null 2&gt;&amp;1; then ready=true; break; fi</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>       sleep .1</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     done</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     &quot;$ready&quot; || { echo &quot;ROS master failed to start&quot; &gt;&amp;2; exit 1; }</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     if [[ &quot;$2&quot; == offscreen ]]; then flags=(-RenderOffscreen); else flags=(-windowed -ResX=1280 -ResY=720); fi</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     launcher=(./Build/LinuxNoEditor/RMUA.sh seed &quot;$1&quot; &quot;${flags[@]}&quot; -settings=/workspace/main/configs/simulator_settings.json)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     if [[ &quot;${RMUA_BRIDGE_PROBE_ENABLED:-0}&quot; == 1 ]]; then</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>       launcher=(env &quot;LD_PRELOAD=$RMUA_BRIDGE_PROBE_SO&quot;</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         &quot;RMUA_BRIDGE_PROBE_ORIGINAL=/workspace/main/simulator/simulator_12.0.0.5/Build/LinuxNoEditor/RMUA/Plugins/AirSimROS/Binaries/Linux/libairsimros.so&quot;</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         &quot;RMUA_BRIDGE_PROBE_MODE=$RMUA_BRIDGE_PROBE_MODE&quot;</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         &quot;RMUA_BRIDGE_PROBE_OUTPUT=$RMUA_BRIDGE_PROBE_OUTPUT&quot; &quot;${launcher[@]}&quot;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     fi</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     setsid &quot;${launcher[@]}&quot; &amp;</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     sim_pid=$!</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     echo &quot;$sim_pid&quot; &gt;&quot;$ROS_HOME/sim.pid&quot;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     wait &quot;$sim_pid&quot;</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>   &#x27; rmua-next-simulator &quot;$SEED&quot; &quot;$MODE&quot;</span></pre></body></html>

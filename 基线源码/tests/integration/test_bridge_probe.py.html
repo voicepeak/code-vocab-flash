@@ -1,0 +1,75 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/integration/test_bridge_probe.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/integration/test_bridge_probe.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Native probe forwarding/concurrency test using owned mock libraries only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import json</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import subprocess</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import tempfile</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import unittest</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> DECLARATIONS=r&#x27;&#x27;&#x27;</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> #include &lt;memory&gt;</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> namespace boost {template&lt;class T&gt; class shared_ptr;}</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> namespace ros {struct TimerEvent;}</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> namespace airsim_ros {</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> template&lt;class A&gt; struct RotorPWM_;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> namespace commands_impl {void ROTOR_PWM_Callback(const boost::shared_ptr&lt;const RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt;&amp;);}</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> void PublishAsyncCommands(const ros::TimerEvent&amp;);</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> }</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> MOCK=DECLARATIONS+r&#x27;&#x27;&#x27;</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> #include &lt;atomic&gt;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> #include &lt;thread&gt;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> #include &lt;chrono&gt;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> std::atomic&lt;int&gt; active{},peak{};</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> void operation(){int n=++active;int p=peak.load();while(p&lt;n&amp;&amp;!peak.compare_exchange_weak(p,n)){}</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>   std::this_thread::sleep_for(std::chrono::milliseconds(2));--active;}</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> void airsim_ros::commands_impl::ROTOR_PWM_Callback(const boost::shared_ptr&lt;const RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt;&amp;){operation();}</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> void airsim_ros::PublishAsyncCommands(const ros::TimerEvent&amp;){operation();}</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> extern &quot;C&quot; int mock_peak(){return peak.load();}</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> DRIVER=DECLARATIONS+r&#x27;&#x27;&#x27;</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> #include &lt;boost/shared_ptr.hpp&gt;</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> #include &lt;atomic&gt;</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> #include &lt;thread&gt;</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> #include &lt;cstdio&gt;</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> namespace ros {struct TimerEvent{};}</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a> extern &quot;C&quot; int mock_peak();</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> int main(){std::atomic&lt;bool&gt; start{false};</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>   std::thread a([&amp;]{boost::shared_ptr&lt;const airsim_ros::RotorPWM_&lt;std::allocator&lt;void&gt;&gt;&gt; msg;</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     while(!start.load()){};for(int i=0;i&lt;32;++i)airsim_ros::commands_impl::ROTOR_PWM_Callback(msg);});</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>   std::thread b([&amp;]{ros::TimerEvent event;while(!start.load()){};</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     for(int i=0;i&lt;32;++i)airsim_ros::PublishAsyncCommands(event);});</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>   start=true;a.join();b.join();std::printf(&quot;%d\n&quot;,mock_peak());}</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> class BridgeProbeTests(unittest.TestCase):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     def test_observer_forwards_and_serializer_mutually_excludes_the_two_original_calls(self):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         build=subprocess.check_output([&#x27;bash&#x27;,str(root/&#x27;tools/build_bridge_probe.sh&#x27;)],cwd=root,text=True).strip()</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         probe=&#x27;/workspace/main/&#x27;+str(Path(build).relative_to(root))</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         with tempfile.TemporaryDirectory(prefix=&#x27;bridge_probe_test_&#x27;,dir=root/&#x27;runs&#x27;) as temporary:</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             path=Path(temporary);inside=&#x27;/workspace/main/&#x27;+str(path.relative_to(root))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             (path/&#x27;mock.cpp&#x27;).write_text(MOCK);(path/&#x27;driver.cpp&#x27;).write_text(DRIVER)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             def run(*args):</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 return subprocess.check_output([str(root/&#x27;tools/enter_env.sh&#x27;),*args],cwd=root,text=True,stderr=subprocess.STDOUT)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             run(&#x27;g++&#x27;,&#x27;-std=c++14&#x27;,&#x27;-shared&#x27;,&#x27;-fPIC&#x27;,&#x27;-pthread&#x27;,inside+&#x27;/mock.cpp&#x27;,&#x27;-o&#x27;,inside+&#x27;/mock.so&#x27;)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             run(&#x27;g++&#x27;,&#x27;-std=c++14&#x27;,&#x27;-pthread&#x27;,inside+&#x27;/driver.cpp&#x27;,&#x27;-L&#x27;+inside,&#x27;-Wl,-rpath,&#x27;+inside,</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 &#x27;-l:mock.so&#x27;,&#x27;-o&#x27;,inside+&#x27;/driver&#x27;)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             for mode,expected in ((&#x27;observe&#x27;,2),(&#x27;serialize&#x27;,1)):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                 output=run(&#x27;env&#x27;,&#x27;LD_PRELOAD=&#x27;+probe,&#x27;RMUA_BRIDGE_PROBE_ORIGINAL=&#x27;+inside+&#x27;/mock.so&#x27;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                     &#x27;RMUA_BRIDGE_PROBE_OUTPUT=&#x27;+inside+&#x27;/&#x27;+mode+&#x27;.jsonl&#x27;,&#x27;RMUA_BRIDGE_PROBE_MODE=&#x27;+mode,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                     inside+&#x27;/driver&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 self.assertEqual(int(output.strip()),expected)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 records=[json.loads(x) for x in (path/(mode+&#x27;.jsonl&#x27;)).read_text().splitlines()]</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 last=records[-1]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 self.assertEqual(last[&#x27;event&#x27;],&#x27;exit&#x27;)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 self.assertEqual((last[&#x27;pwm_calls&#x27;],last[&#x27;bridge_calls&#x27;]),(32,32))</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 self.assertEqual(last[&#x27;write_errors&#x27;],0)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 self.assertEqual(last[&#x27;overlap_entries&#x27;]&gt;0,mode==&#x27;observe&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 self.assertTrue(all(r[&#x27;end_monotonic_ns&#x27;]&gt;=r[&#x27;start_monotonic_ns&#x27;] for r in records))</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                 self.assertTrue(all(r[&#x27;thread_id&#x27;]!=r[&#x27;other_thread_id&#x27;] and r[&#x27;other_thread_id&#x27;]&gt;0</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                                     for r in records if r[&#x27;event&#x27;]==&#x27;overlap&#x27;))</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

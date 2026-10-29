@@ -1,0 +1,145 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/learned_stereo.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/learned_stereo.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Prepare image-only inputs and independently evaluate nominal sparse residuals.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import numpy as np</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from perception.stereo_depth.lidar_projection import sample_disparity</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def write_json(path, value):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     path.write_text(json.dumps(value, indent=2, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> def prepare(run):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     from adapters.ros_noetic.capture_io import load_message</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     from adapters.ros_noetic.stereo_images import decode_image</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     from evaluation.metrics.joint_sensors import restore_pose</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     from perception.stereo_depth.learned import rgb_pixels</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     from perception.stereo_depth.lidar_projection import project_lidar_into_stereo, sparse_visible</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     root = Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     manifest = json.loads((run/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     rig = load_nominal_rig(root/&#x27;configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     (run/&#x27;inputs&#x27;).mkdir(); (run/&#x27;references&#x27;).mkdir()</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     records = []</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     for source_name in manifest[&#x27;config&#x27;][&#x27;learned_stereo&#x27;][&#x27;source_runs&#x27;]:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         source = root/source_name</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         original = json.loads((source/&#x27;manifest.json&#x27;).read_text())</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if original[&#x27;simulator_preflight&#x27;][&#x27;settings_sha256&#x27;] != rig.settings_sha256:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             raise ValueError(&#x27;captured geometry settings differ&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         summary = json.loads((source/&#x27;joint_summary.json&#x27;).read_text())</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         audit = json.loads((source/&#x27;joint_audit.json&#x27;).read_text())</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         if not audit[&#x27;input_audit_valid&#x27;] or summary[&#x27;fault&#x27;]:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             raise ValueError(&#x27;source capture has not passed the independent payload audit&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         for entry in summary[&#x27;captures&#x27;]:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             directory = source/entry[&#x27;directory&#x27;]</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             packet = json.loads((directory/&#x27;packet.json&#x27;).read_text())</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             if file_hash(directory/&#x27;packet.json&#x27;) != entry[&#x27;packet_sha256&#x27;]:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 raise ValueError(&#x27;capture packet changed&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             frames = {side: decode_image(load_message(directory/(side+&#x27;.json&#x27;)), side,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 packet[&#x27;epoch&#x27;], packet[&#x27;image_age_budget_s&#x27;]) for side in (&#x27;left&#x27;,&#x27;right&#x27;)}</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             for side, frame in frames.items():</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                 if json.loads(json.dumps(asdict(frame.metadata))) != packet[side+&#x27;_source_metadata&#x27;]:</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                     raise ValueError(&#x27;source metadata changed&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             key = &#x27;%04d&#x27; % len(records)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             np.savez_compressed(run/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;),</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 left=rgb_pixels(frames[&#x27;left&#x27;]), right=rgb_pixels(frames[&#x27;right&#x27;]))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             # Recompute all sparse nominal references, without consulting SGBM masks.</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             cloud = decode_xyz(load_message(directory/&#x27;lidar.json&#x27;), packet[&#x27;epoch&#x27;])</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             poses = {tag: restore_pose(data) for tag, data in packet[&#x27;poses&#x27;].items()}</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             luv,lz,ruv,rz,in_view = project_lidar_into_stereo(cloud.points,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 poses[&#x27;lidar&#x27;],poses[&#x27;left&#x27;],poses[&#x27;right&#x27;],rig)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             visible = (sparse_visible(luv,lz,np.isfinite(luv).all(axis=1),rig.left.width,rig.left.height)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 &amp; sparse_visible(ruv,rz,np.isfinite(ruv).all(axis=1),rig.right.width,rig.right.height))</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             expected = np.full(len(luv),np.nan)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             expected[in_view] = luv[in_view,0]-ruv[in_view,0]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             candidates = visible &amp; in_view &amp; np.isfinite(expected)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             candidates[candidates] = expected[candidates] &gt; 0</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             np.savez_compressed(run/&#x27;references&#x27;/(key+&#x27;.npz&#x27;),</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 left_uv=luv, expected_disparity_px=expected, candidates=candidates)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             records.append({&#x27;key&#x27;:key,&#x27;source_run&#x27;:source_name,&#x27;packet_directory&#x27;:entry[&#x27;directory&#x27;],</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                 &#x27;seed&#x27;:original[&#x27;seed&#x27;],&#x27;left_metadata&#x27;:packet[&#x27;left_source_metadata&#x27;],</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                 &#x27;right_metadata&#x27;:packet[&#x27;right_source_metadata&#x27;], &#x27;epoch&#x27;:packet[&#x27;epoch&#x27;],</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 &#x27;image_sha256&#x27;:file_hash(run/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;)),</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 &#x27;reference_sha256&#x27;:file_hash(run/&#x27;references&#x27;/(key+&#x27;.npz&#x27;))})</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     write_json(run/&#x27;inputs&#x27;/&#x27;index.json&#x27;, records)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     return records</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a> def residual_stats(values):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     values = np.asarray(values)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     return {&#x27;count&#x27;:int(len(values)),</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &#x27;absolute_median_px&#x27;:float(np.median(np.abs(values))) if len(values) else None,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &#x27;absolute_p90_px&#x27;:float(np.percentile(np.abs(values),90)) if len(values) else None,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &#x27;signed_median_px&#x27;:float(np.median(values)) if len(values) else None}</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> </span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> def compare_reference(uv, expected, candidates, fields):</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     &quot;&quot;&quot;No residual rejection: compare own support and the exact shared support.&quot;&quot;&quot;</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     sampled, masks = {}, {}</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     for name, (disparity, valid) in fields.items():</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         sampled[name], masks[name] = sample_disparity(uv, disparity, valid, candidates)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     shared = np.logical_and.reduce(list(masks.values()))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     return {&#x27;reference_candidates&#x27;:int(candidates.sum()), &#x27;methods&#x27;:{</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         name:{&#x27;own_support&#x27;:residual_stats(sampled[name][masks[name]]-expected[masks[name]]),</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>               &#x27;shared_support&#x27;:residual_stats(sampled[name][shared]-expected[shared])}</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         for name in fields}}, masks</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a> </span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a> </span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a> def evaluate(run):</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>     records = json.loads((run/&#x27;inputs&#x27;/&#x27;index.json&#x27;).read_text())</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     runtime = json.loads((run/&#x27;predictions&#x27;/&#x27;runtime.json&#x27;).read_text())</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     packets, pooled = [], {method:[] for method in (&#x27;sgbm&#x27;,&#x27;ffs&#x27;)}</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     for record in records:</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         key = record[&#x27;key&#x27;]</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         reference_path, image_path = run/&#x27;references&#x27;/(key+&#x27;.npz&#x27;), run/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         if (file_hash(reference_path) != record[&#x27;reference_sha256&#x27;]</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                 or file_hash(image_path) != record[&#x27;image_sha256&#x27;]):</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             raise ValueError(&#x27;evaluation inputs changed&#x27;)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         with np.load(reference_path,allow_pickle=False) as ref, np.load(run/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),allow_pickle=False) as pred:</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             fields = {name:(pred[name+&#x27;_disparity&#x27;],pred[name+&#x27;_valid&#x27;]) for name in (&#x27;sgbm&#x27;,&#x27;ffs&#x27;)}</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             comparison, masks = compare_reference(ref[&#x27;left_uv&#x27;],ref[&#x27;expected_disparity_px&#x27;],ref[&#x27;candidates&#x27;],fields)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             shared = masks[&#x27;sgbm&#x27;] &amp; masks[&#x27;ffs&#x27;]</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             for name,(disp,valid) in fields.items():</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                 if not (np.isnan(disp[~valid]).all() and np.isfinite(disp[valid]).all() and (disp[valid]&gt;0).all()):</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                     raise ValueError(&#x27;invalid unknown or valid disparity pixels&#x27;)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                 samples,_ = sample_disparity(ref[&#x27;left_uv&#x27;],disp,valid,ref[&#x27;candidates&#x27;])</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                 pooled[name].extend((samples[shared]-ref[&#x27;expected_disparity_px&#x27;][shared]).tolist())</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>             comparison.update(key=key,seed=record[&#x27;seed&#x27;],source_run=record[&#x27;source_run&#x27;],</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                 packet_directory=record[&#x27;packet_directory&#x27;],</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                 source_metadata={&#x27;left&#x27;:record[&#x27;left_metadata&#x27;],&#x27;right&#x27;:record[&#x27;right_metadata&#x27;]},</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                 prediction_sha256=file_hash(run/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;)),</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                 coverage={name:float(valid.mean()) for name,(_,valid) in fields.items()},</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>                 raw_ffs_positive_fraction=float((np.isfinite(pred[&#x27;ffs_forward&#x27;])&amp;(pred[&#x27;ffs_forward&#x27;]&gt;0)).mean()),</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                 ffs_lr_only_fraction=float(pred[&#x27;ffs_lr_valid&#x27;].mean()))</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             packets.append(comparison)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     report = {&#x27;computed&#x27;:True,&#x27;packets&#x27;:packets,&#x27;runtime&#x27;:runtime,</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         &#x27;pooled_shared_residuals&#x27;:{name:residual_stats(values) for name,values in pooled.items()},</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         &#x27;historical_only&#x27;:True,&#x27;reference_type&#x27;:&#x27;nominal_lidar_after_estimated_header_pose_alignment&#x27;,</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         &#x27;reference_selection_uses_disparity_or_residual&#x27;:False,</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         &#x27;development_samples_not_heldout&#x27;:True,&#x27;metric_calibration_verified&#x27;:False,</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>         &#x27;exposure_sync_verified&#x27;:False,&#x27;per_point_motion_compensation_applied&#x27;:False,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         &#x27;sparse_visibility_is_complete_proof&#x27;:False,&#x27;real_scene_accuracy_verified&#x27;:False,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         &#x27;confidence_calibrated&#x27;:False,&#x27;online_latency_verified&#x27;:False,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         &#x27;current_control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False,</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         &#x27;interpretation&#x27;:&#x27;Nominal residuals are not ground-truth accuracy. Shared-support errors use identical reference points without residual filtering. Coverage is not confidence or FREE. Timing is offline without simulator contention or ROS transport. Original source leases are retained.&#x27;}</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     write_json(run/&#x27;learned_stereo_report.json&#x27;,report)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>     return report</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a> </span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a> </span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a> def main():</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     parser.add_argument(&#x27;--stage&#x27;,choices=(&#x27;prepare&#x27;,&#x27;evaluate&#x27;),required=True)</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     args = parser.parse_args()</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     prepare(args.run_dir) if args.stage==&#x27;prepare&#x27; else evaluate(args.run_dir)</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a> </span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a> </span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     main()</span></pre></body></html>

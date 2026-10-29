@@ -1,0 +1,78 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/pipeline/visual_trajectory.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/pipeline/visual_trajectory.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Form local VO segments first; evaluate them against isolated truth afterward.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import bisect</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from dataclasses import asdict</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import hashlib</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import json</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from pathlib import Path</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from types import SimpleNamespace</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import numpy as np</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from estimation.geometry import rotation</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from estimation.history import slerp</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.visual_odometry.trajectory import VisualTrajectory</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def build(estimates):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     segments = []; breaks = []; chain = None</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     for row in estimates[&#x27;results&#x27;]:</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         if row[&#x27;status&#x27;] != &#x27;ESTIMATED&#x27;:</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>             breaks.append({&#x27;previous_stamp&#x27;:row[&#x27;previous_stamp&#x27;], &#x27;current_stamp&#x27;:row[&#x27;current_stamp&#x27;],</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>                            &#x27;reason&#x27;:row.get(&#x27;reason&#x27;, &#x27;MOTION_REJECTED&#x27;)})</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>             if chain is not None: chain.invalidate()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             chain = None</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             continue</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         motion = SimpleNamespace(**row[&#x27;motion&#x27;])</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         if chain is None:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             chain = VisualTrajectory(motion.previous_stamp, motion.epoch)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             segments.append({&#x27;anchor_stamp&#x27;: motion.previous_stamp, &#x27;epoch&#x27;: motion.epoch, &#x27;poses&#x27;: []})</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         try:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             pose = chain.append(motion)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         except ValueError as error:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             breaks.append({&#x27;previous_stamp&#x27;:motion.previous_stamp, &#x27;current_stamp&#x27;:motion.current_stamp,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                            &#x27;reason&#x27;:str(error)})</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             chain = None</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             continue</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         segments[-1][&#x27;poses&#x27;].append(asdict(pose))</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     return {&#x27;source&#x27;: estimates[&#x27;source&#x27;], &#x27;segments&#x27;: segments, &#x27;breaks&#x27;: breaks, &#x27;truth_accessed&#x27;: False,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             &#x27;control_eligible&#x27;: False, &#x27;metric_calibration_verified&#x27;: False}</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a> </span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> def evaluate(estimate, truth_path):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     path = Path(truth_path)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     records = [json.loads(line) for line in path.read_text().splitlines()]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     truth = sorted({r[&#x27;stamp&#x27;]: r for r in records if r[&#x27;stamp&#x27;] &gt; 0}.values(), key=lambda r: r[&#x27;stamp&#x27;])</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     stamps = [r[&#x27;stamp&#x27;] for r in truth]</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     def interpolate(stamp):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         i = bisect.bisect_left(stamps, stamp)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         if i == 0 or i == len(stamps): return None</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         a, b = truth[i-1], truth[i]; span = b[&#x27;stamp&#x27;] - a[&#x27;stamp&#x27;]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         if span &lt;= 0 or span &gt; .05: return None</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         f = (stamp-a[&#x27;stamp&#x27;])/span</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         return (1-f)*np.asarray(a[&#x27;position&#x27;])+f*np.asarray(b[&#x27;position&#x27;]), rotation(slerp(a[&#x27;orientation&#x27;],b[&#x27;orientation&#x27;],f))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     results = []</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     for segment in estimate[&#x27;segments&#x27;]:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         anchor = interpolate(segment[&#x27;anchor_stamp&#x27;]); comparisons = []</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         for pose in segment[&#x27;poses&#x27;]:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             current = interpolate(pose[&#x27;stamp&#x27;])</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             if anchor is None or current is None: continue</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             relative = anchor[1].T @ (current[0]-anchor[0])</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             error = float(np.linalg.norm(np.asarray(pose[&#x27;position_initial_body_m&#x27;])-relative))</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             comparisons.append({&#x27;stamp&#x27;:pose[&#x27;stamp&#x27;],&#x27;elapsed_s&#x27;:pose[&#x27;stamp&#x27;]-segment[&#x27;anchor_stamp&#x27;],</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                                 &#x27;translation_error_m&#x27;:error})</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         results.append({&#x27;anchor_stamp&#x27;:segment[&#x27;anchor_stamp&#x27;],&#x27;steps&#x27;:len(segment[&#x27;poses&#x27;]), &#x27;comparisons&#x27;:comparisons})</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     return {&#x27;source&#x27;:estimate[&#x27;source&#x27;], &#x27;truth_sha256&#x27;:hashlib.sha256(path.read_bytes()).hexdigest(),</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             &#x27;role&#x27;:&#x27;isolated_post_estimate_evaluation&#x27;, &#x27;segments&#x27;:results, &#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> </span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a> def main():</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     p = argparse.ArgumentParser(); sub = p.add_subparsers(dest=&#x27;command&#x27;,required=True)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     b = sub.add_parser(&#x27;build&#x27;); b.add_argument(&#x27;estimate&#x27;); b.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     e = sub.add_parser(&#x27;evaluate&#x27;); e.add_argument(&#x27;estimate&#x27;); e.add_argument(&#x27;truth&#x27;); e.add_argument(&#x27;output&#x27;)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     a = p.parse_args(); source = json.loads(Path(a.estimate).read_text())</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     result = build(source) if a.command == &#x27;build&#x27; else evaluate(source,a.truth)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     with Path(a.output).open(&#x27;x&#x27;) as out: json.dump(result,out,indent=2,allow_nan=False);out.write(&#x27;\n&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     print(json.dumps({&#x27;output&#x27;:a.output,&#x27;segments&#x27;:len(result[&#x27;segments&#x27;])}))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> if __name__ == &#x27;__main__&#x27;: main()</span></pre></body></html>

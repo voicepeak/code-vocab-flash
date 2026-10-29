@@ -1,0 +1,133 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/flight_sensors.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/flight_sensors.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Small shared formal-input sensor adapter; callbacks never wait for perception.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import threading</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import time</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from collections import deque</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import numpy as np</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from estimation.clock import SensorClock</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from estimation.imu_gps import ImuGpsEstimator</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from adapters.ros_noetic.state_reader import pose_values</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class FlightSensors:</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     def __init__(self, subscribe=True, pose_history=None):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         self.lock = threading.RLock()</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         self.clock = SensorClock()</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         self.estimator = ImuGpsEstimator()</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         self.initial = None</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.raw = None</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         self.fault = None</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         self.local_injection = None</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         self.pending_gps = None</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         self.subscribers = []</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.bootstrap_imu=deque(maxlen=180)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.bootstrap_gps=deque(maxlen=24)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.bootstrap_applied=False</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         self.pose_history=pose_history</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         if subscribe:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             import rospy</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             from geometry_msgs.msg import PoseStamped</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             from sensor_msgs.msg import Imu</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             self.subscribers = [</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                 rospy.Subscriber(&#x27;/airsim_node/initial_pose&#x27;, PoseStamped, self.on_initial, queue_size=1),</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 rospy.Subscriber(&#x27;/airsim_node/drone_1/imu/imu&#x27;, Imu, self.on_imu, queue_size=1),</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 rospy.Subscriber(&#x27;/airsim_node/drone_1/gps&#x27;, PoseStamped, self.on_gps, queue_size=1),</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             ]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def on_initial(self, msg):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         with self.lock:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             if self.initial is None:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 self.initial = pose_values(msg.pose)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     def on_imu(self, msg):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         callback_arrival=time.monotonic()</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         with self.lock:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             try:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 stamp = msg.header.stamp.to_sec()</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 if self.local_injection is not None:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                     if self.local_injection.affects(&#x27;IMU_DROP&#x27;, stamp):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                         return</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                     if self.local_injection.affects(&#x27;IMU_ROLLBACK&#x27;, stamp):</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                         stamp -= 1.</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 previous = self.clock.stamp</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                 if self.clock.observe(stamp, time.monotonic()):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                     if self.pose_history is not None:self.pose_history.reset(self.clock.epoch)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                     self.fault = &#x27;IMU_CLOCK_RESET&#x27;</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                     return</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 if previous == stamp:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                     return</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 if self.initial is not None and not self.estimator.initialized:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                     self.estimator.initialize(*self.initial)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                 a, w = msg.linear_acceleration, msg.angular_velocity</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 acceleration, omega = (a.x, a.y, a.z), (w.x, w.y, w.z)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                 self.estimator.propagate(stamp, acceleration, omega)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 if self.pending_gps is not None and self.pending_gps[0] &lt;= stamp:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                     try:</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                         if self.estimator.update_gps(*self.pending_gps):</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                             self.bootstrap_gps.append(self.pending_gps)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                     except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                         self.estimator.reject(&#x27;INVALID_GPS:&#x27;+str(error))</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                     self.pending_gps = None</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 self.raw = {&#x27;stamp&#x27;: stamp, &#x27;acceleration_body&#x27;: acceleration,</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                             &#x27;omega_body&#x27;: omega}</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                 attitude = getattr(msg,&#x27;orientation&#x27;,None)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                 if attitude is not None:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                     # Record for calibration only; it does not enter the filter.</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                     self.raw[&#x27;imu_orientation_wxyz&#x27;]=(attitude.w,attitude.x,attitude.y,attitude.z)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                 if not self.bootstrap_applied:self.bootstrap_imu.append(dict(self.raw))</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 if self.pose_history is not None and self.estimator.initialized:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                     self.pose_history.append(self.estimator.snapshot(), callback_arrival)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 self.fault = str(error)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> </span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     def on_gps(self, msg):</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         with self.lock:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             try:</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 stamp = msg.header.stamp.to_sec()</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 if stamp &gt; 0 and self.clock.fresh(time.monotonic()):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                     position, attitude = pose_values(msg.pose)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                     if self.local_injection is not None and self.local_injection.affects(&#x27;GPS_ZERO&#x27;,stamp):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                         position, attitude = (0.,0.,0.), (0.,0.,0.,0.)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                     if self.clock.stamp &lt; stamp &lt;= self.clock.stamp+.15:</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                         # ROS callback arrival order is not sensor measurement order.</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                         # Defer future GPS to the first IMU propagation covering it.</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                         self.pending_gps = (stamp, position, attitude)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                     else:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                         if self.estimator.update_gps(stamp, position, attitude):</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                             self.bootstrap_gps.append((stamp,position,attitude))</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                 self.estimator.reject(&#x27;INVALID_GPS:&#x27;+str(error))</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     def read(self):</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         with self.lock:</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             if self.fault:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                 raise RuntimeError(self.fault)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             if not self.clock.fresh(time.monotonic()):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                 raise RuntimeError(&#x27;STALE_IMU&#x27;)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             raw = dict(self.raw)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             raw[&#x27;last_gps_stamp&#x27;] = self.estimator.last_gps</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             raw[&#x27;gyro_bias_body&#x27;] = tuple(self.estimator.bg)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             raw[&#x27;accel_bias_body&#x27;] = tuple(self.estimator.ba)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             return self.estimator.snapshot(), raw</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a> </span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     def bootstrap_at_rest_before_control(self):</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         &quot;&quot;&quot;Caller must not have created a control publisher; never call in flight.&quot;&quot;&quot;</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         from estimation.stationary_bootstrap import resting_window</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         with self.lock:</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             if self.bootstrap_applied:raise RuntimeError(&#x27;BOOTSTRAP_ALREADY_APPLIED&#x27;)</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             if self.fault or self.initial is None or not self.clock.fresh(time.monotonic()):return None</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             result=resting_window(self.bootstrap_imu,self.bootstrap_gps,self.initial[1],self.clock.stamp)</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             if result is None:return None</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>             e=self.estimator</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             e.p=np.array(result[&#x27;position&#x27;]);e.v=np.zeros(3)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             e.q=np.array(self.initial[1],dtype=float);e.q/=np.linalg.norm(e.q)</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             e.bg=np.array(result[&#x27;gyro_bias&#x27;]);e.ba=np.zeros(3)</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>             # Retain conservative GPS/attitude/bias uncertainty; averaging does</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             # not establish independent measurement noise or identify accel bias.</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             e.P=np.diag([.01]*3+[.01]*3+[.01]*3+[.01]*3+[.001]*3)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             e.omega=np.array(self.raw[&#x27;omega_body&#x27;])-e.bg</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             self.bootstrap_applied=True</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>             return result</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a> </span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     def close(self):</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         for subscriber in self.subscribers:</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             subscriber.unregister()</span></pre></body></html>

@@ -1,0 +1,101 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_lidar_occupancy.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_lidar_occupancy.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import math</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import struct</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from types import SimpleNamespace as NS</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from world_model.occupancy.grid import Occupancy</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from world_model.occupancy.lidar import endpoint_snapshot</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def message(points=((1., 2., 3.),), big=False, dtype=7, width=None):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     &quot;&quot;&quot;Owned cloud with reordered fields, point padding, and row padding.&quot;&quot;&quot;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     width = len(points) if width is None else width</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     height = len(points) // width if width else 1</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     size = 4 if dtype == 7 else 8</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     step = 4 * size</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     row_step = step * width + 8</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     data = bytearray(row_step * height)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     fields = [NS(name=n, offset=o * size, datatype=dtype, count=1)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>               for n, o in ((&#x27;z&#x27;, 0), (&#x27;x&#x27;, 2), (&#x27;y&#x27;, 1))]</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     for i, (x, y, z) in enumerate(points):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         struct.pack_into((&#x27;&gt;&#x27; if big else &#x27;&lt;&#x27;) + (&#x27;4f&#x27; if dtype == 7 else &#x27;4d&#x27;), data,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                          (i // width) * row_step + (i % width) * step, z, y, x, 999.)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     return NS(header=NS(stamp=NS(to_sec=lambda: 10.), frame_id=&#x27;lidar&#x27;), width=width,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>               height=height, point_step=step, row_step=row_step, fields=fields,</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>               is_bigendian=big, data=bytes(data), is_dense=True)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> class LidarOccupancyTests(unittest.TestCase):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def test_organized_padding_reordered_fields_and_both_byte_orders(self):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         points = ((1., 2., 3.), (-4., 5., -6.), (7., -8., 9.), (10., 11., -12.))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         for big in (False, True):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             for dtype in (7, 8):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                 cloud = decode_xyz(message(points, big, dtype, width=2), 2)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 np.testing.assert_array_equal(cloud.points, points)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 self.assertEqual(cloud.metadata.frame_id, &#x27;lidar&#x27;)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 self.assertEqual(cloud.metadata.epoch, 2)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                 with self.assertRaises(ValueError):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                     cloud.points.setflags(write=True)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def test_nonfinite_returns_are_dropped_even_when_is_dense_is_true(self):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         cloud = decode_xyz(message(((1., 2., 3.), (math.nan, 0., 0.), (0., math.inf, 0.))), 0)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         self.assertEqual(cloud.input_points, 3)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         self.assertEqual(cloud.nonfinite_points, 2)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertEqual(len(cloud.points), 1)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         self.assertFalse(endpoint_snapshot(cloud, 10., 0).query((0., 0., 0.), 10., 0) == Occupancy.FREE)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     def test_malformed_layout_frame_and_time_are_rejected(self):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         for key, value in ((&#x27;point_step&#x27;, 0), (&#x27;row_step&#x27;, 1), (&#x27;data&#x27;, b&#x27;&#x27;),</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>                            (&#x27;width&#x27;, -1), (&#x27;height&#x27;, 250001), (&#x27;width&#x27;, True)):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             msg = message()</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             setattr(msg, key, value)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             with self.assertRaises(ValueError):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 decode_xyz(msg, 0)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         for mutation in (&#x27;duplicate&#x27;, &#x27;missing&#x27;, &#x27;overrun&#x27;, &#x27;array&#x27;, &#x27;integer&#x27;):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             msg = message()</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             if mutation == &#x27;duplicate&#x27;: msg.fields.append(msg.fields[0])</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             if mutation == &#x27;missing&#x27;: msg.fields.pop()</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             if mutation == &#x27;overrun&#x27;: msg.fields[0].offset = msg.point_step</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             if mutation == &#x27;array&#x27;: msg.fields[0].count = 2</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             if mutation == &#x27;integer&#x27;: msg.fields[0].datatype = 5</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             with self.assertRaises(ValueError):</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 decode_xyz(msg, 0)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         msg = message()</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         msg.header.frame_id = &#x27;world_ned&#x27;</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         with self.assertRaises(ValueError): decode_xyz(msg, 0)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         msg = message()</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         msg.header.stamp.to_sec = lambda: math.nan</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         with self.assertRaises(ValueError): decode_xyz(msg, 0)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> </span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     def test_empty_cloud_and_unconfirmed_returns_do_not_create_free_cells(self):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         for points in ((), ((0., 0., 0.), (30., 0., 0.), (31., 0., 0.))):</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             cloud = decode_xyz(message(points), 0)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             snapshot = endpoint_snapshot(cloud, 10., 0)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             self.assertEqual(snapshot.cells, ())</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             self.assertEqual(snapshot.query((1., 0., 0.), 10., 0), Occupancy.UNKNOWN)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> </span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     def test_hit_voxels_use_floor_and_leave_ray_occlusion_and_neighbor_unknown(self):</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         cloud = decode_xyz(message(((2., 0., 0.), (-.01, 0., 0.), (2.01, 0., 0.))), 4)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         snapshot = endpoint_snapshot(cloud, 10., 4)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         self.assertEqual(len(snapshot.cells), 2)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         for position in ((2., 0., 0.), (-.01, 0., 0.)):</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             self.assertEqual(snapshot.query(position, 10., 4), Occupancy.OCCUPIED)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         for position in ((1., 0., 0.), (3., 0., 0.), (2., .3, 0.)):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             self.assertEqual(snapshot.query(position, 10., 4), Occupancy.UNKNOWN)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a> </span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     def test_stale_future_and_epoch_mismatch_cannot_be_fused(self):</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         cloud = decode_xyz(message(), 3)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         for now, epoch in ((9.99, 3), (10.2, 3), (10., 4)):</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             with self.assertRaises(ValueError): endpoint_snapshot(cloud, now, epoch)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         snapshot = endpoint_snapshot(cloud, 10., 3)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         self.assertEqual(snapshot.query((1., 2., 3.), 10.2, 3), Occupancy.UNKNOWN)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         self.assertEqual(snapshot.query((1., 2., 3.), 10., 4), Occupancy.UNKNOWN)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         next_scan = endpoint_snapshot(decode_xyz(message(()), 3), 10., 3)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         self.assertEqual(next_scan.query((1., 2., 3.), 10., 3), Occupancy.UNKNOWN)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> </span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> </span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     unittest.main()</span></pre></body></html>

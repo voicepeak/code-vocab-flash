@@ -1,0 +1,252 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>planning/spacetime_local/static_candidates.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>planning/spacetime_local/static_candidates.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Quintic reference candidates, continuous kinematic bounds and static map checks.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field, replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from typing import Optional, Tuple</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from interfaces.contracts import Health, Metadata, Trajectory, TrajectorySample, finite_vec3</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from planning.trajectory_validator.static_sweep import SweepBounds, check_static_sweep</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from planning.trajectory_validator.dynamic_candidates import check_dynamic_candidates</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def _norm(value):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     return math.hypot(*value)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> def _subtract(first, second):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return tuple(a - b for a, b in zip(first, second))</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def _evaluate(controls, fraction):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     values = controls</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     while len(values) &gt; 1:</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         values = tuple(tuple((1 - fraction) * a + fraction * b for a, b in zip(left, right))</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                        for left, right in zip(values, values[1:]))</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     return values[0]</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> def _derivative(controls, duration):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     factor = (len(controls) - 1) / duration</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     return tuple(tuple(factor * (b - a) for a, b in zip(left, right))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                  for left, right in zip(controls, controls[1:]))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> def _continuous_bound(controls, depth=3):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     # Each Bezier curve lies in its control hull. Subdivision tightens the bound</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     # while retaining coverage of all times, including between emitted samples.</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     if depth == 0:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         return max(_norm(value) for value in controls)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     levels = controls</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     left, right = [levels[0]], [levels[-1]]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     while len(levels) &gt; 1:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         levels = tuple(tuple(.5 * a + .5 * b for a, b in zip(first, second))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                        for first, second in zip(levels, levels[1:]))</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         left.append(levels[0]); right.append(levels[-1])</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     return max(_continuous_bound(tuple(left), depth - 1),</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                _continuous_bound(tuple(reversed(right)), depth - 1))</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> @dataclass(frozen=True)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> class QuinticReference:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     stamp: float</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     duration_s: float</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     controls: tuple</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     yaw: float</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     def __post_init__(self):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         if (not all(math.isfinite(v) for v in (self.stamp, self.duration_s, self.yaw))</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 or self.stamp &lt; 0 or not .05 &lt;= self.duration_s &lt;= 10</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 or not math.isfinite(self.end_stamp) or self.end_stamp &lt;= self.stamp</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 or not isinstance(self.controls, tuple) or len(self.controls) != 6):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             raise ValueError(&#x27;invalid quintic reference&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         for point in self.controls:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             finite_vec3(point)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> </span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     @classmethod</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     def to_rest(cls, initial, target, duration_s):</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         finite_vec3(target)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         elapsed = initial.stamp + duration_s - initial.stamp</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         p, v, a = initial.position_ned, initial.velocity_ned, initial.acceleration_ned</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         first = tuple(x + elapsed * speed / 5 for x, speed in zip(p, v))</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         second = tuple(x + 2 * elapsed * speed / 5 + elapsed**2 * accel / 20</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                        for x, speed, accel in zip(p, v, a))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         return cls(initial.stamp, duration_s, (p, first, second, target, target, target), initial.yaw)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     @property</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     def end_stamp(self):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         return self.stamp + self.duration_s</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     def derivative_bounds(self):</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         elapsed = self.end_stamp - self.stamp</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         velocity = _derivative(self.controls, elapsed)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         acceleration = _derivative(velocity, elapsed)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         for value in velocity + acceleration:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             finite_vec3(value)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         # Small outward padding covers floating-point hull arithmetic.</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         return tuple(0. if value == 0 else value + 1e-12 * max(1., value)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                      for value in (_continuous_bound(velocity), _continuous_bound(acceleration)))</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a> </span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     def sample(self, stamp):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         if not math.isfinite(stamp) or not self.stamp &lt;= stamp &lt;= self.end_stamp:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             raise ValueError(&#x27;reference query outside segment&#x27;)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         elapsed = self.end_stamp - self.stamp</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         fraction = (stamp - self.stamp) / elapsed</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         velocity = _derivative(self.controls, elapsed)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         return TrajectorySample(stamp, _evaluate(self.controls, fraction),</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             _evaluate(velocity, fraction), _evaluate(_derivative(velocity, elapsed), fraction), self.yaw)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> </span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a> </span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> @dataclass(frozen=True)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a> class LocalPlannerLimits:</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     sweep: SweepBounds</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>     speed_limit_m_s: float</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     segment_durations_s: tuple = (2., 4.)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     lateral_offsets_m: tuple = (1., 2.)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>     sample_dt_s: float = .1</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>     lease_s: float = .08</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     max_attempts: int = 16</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>     max_start_velocity_error_m_s: float = .2</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> </span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     def __post_init__(self):</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         if (not isinstance(self.sweep, SweepBounds)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                 or not math.isfinite(self.speed_limit_m_s) or self.speed_limit_m_s &lt;= 0</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                 or not isinstance(self.segment_durations_s, tuple) or not 1 &lt;= len(self.segment_durations_s) &lt;= 8</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                 or any(not math.isfinite(v) or not .05 &lt;= v &lt;= 10 for v in self.segment_durations_s)</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                 or not isinstance(self.lateral_offsets_m, tuple) or len(self.lateral_offsets_m) &gt; 4</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                 or any(not math.isfinite(v) or not 0 &lt; v &lt;= 10 for v in self.lateral_offsets_m)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                 or not math.isfinite(self.sample_dt_s) or not .005 &lt;= self.sample_dt_s &lt;= .1</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                 or not math.isfinite(self.lease_s) or not .01 &lt;= self.lease_s &lt;= .2</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                 or not math.isfinite(self.max_start_velocity_error_m_s) or self.max_start_velocity_error_m_s &lt; 0</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>                 or isinstance(self.max_attempts, bool) or not isinstance(self.max_attempts, int)</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                 or not 1 &lt;= self.max_attempts &lt;= 64):</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             raise ValueError(&#x27;invalid local planner limits&#x27;)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a> </span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a> </span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a> @dataclass(frozen=True)</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a> class CandidateCheck:</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     offset_m: float</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     segment_duration_s: float</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     reason: str</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     speed_bound_m_s: float = 0.</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     acceleration_bound_m_s2: float = 0.</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     voxel_tests: int = 0</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a> </span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a> </span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a> @dataclass(frozen=True)</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a> class LocalPlan:</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     trajectory: Optional[Trajectory]</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     pieces: tuple</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     checks: Tuple[CandidateCheck, ...]</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     reason: str</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     source_state: Metadata</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>     source_map: Metadata</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>     source_dynamic: Optional[Metadata] = None</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>     dynamic_coverage_certified: bool = field(default=False, init=False)</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a> </span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>     def reference_at(self, stamp, epoch):</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         if self.trajectory is None or not self.trajectory.metadata.current(stamp, epoch):</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>             raise ValueError(&#x27;local plan lease is not current&#x27;)</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>         for piece in self.pieces:</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>             if piece.stamp &lt;= stamp &lt;= piece.end_stamp:</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>                 return piece.sample(stamp)</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         raise ValueError(&#x27;reference has no covering segment&#x27;)</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a> </span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> </span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a> def plan_static_local(state, initial_reference, goal, snapshot, now, epoch, limits,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>                       dynamic_scene=None, dynamic_bounds=None):</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     &quot;&quot;&quot;Select a fully checked stop-at-waypoint reference with a short output lease.</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a> </span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>     Candidate paths include direct and left/right midpoints relative to the</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>     current goal, without seed maps. All pieces preserve endpoint p/v/a; each</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>     waypoint ends at rest. The WHOLE stopping reference is checked in the map,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>     then only a source-bounded short lease is issued. This is a static/kinematic</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>     candidate, not proof of actual braking, dynamic clearance or control health.</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>     An optional dynamic candidate veto refuses predicted intersections but</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>     does not certify sensing coverage or dynamic safety.</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>     finite_vec3(goal)</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     if (dynamic_scene is None) != (dynamic_bounds is None):</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>         raise ValueError(&#x27;dynamic scene and bounds must be supplied together&#x27;)</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>     def result(reason, trajectory=None, pieces=(), checks=()):</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>         return LocalPlan(trajectory, pieces, tuple(checks), reason, state.metadata, snapshot.metadata,</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>                          dynamic_scene.metadata if dynamic_scene is not None else None)</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>     if not state.metadata.current(now, epoch) or state.health != Health.OK:</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>         return result(&#x27;STATE_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>     if state.metadata.frame_id != &#x27;world_ned&#x27; or snapshot.metadata.frame_id != &#x27;world_ned&#x27;:</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         return result(&#x27;WORLD_FRAME_REQUIRED&#x27;)</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>     if not snapshot.metadata.current(now, epoch):</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         return result(&#x27;MAP_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>     if (initial_reference.stamp != now</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>             or _norm(_subtract(initial_reference.position_ned, state.position_ned)) &gt; limits.sweep.tracking_error_m + 1e-9</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             or _norm(_subtract(initial_reference.velocity_ned, state.velocity_ned)) &gt; limits.max_start_velocity_error_m_s):</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         return result(&#x27;REFERENCE_START_MISMATCH&#x27;)</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>     start = initial_reference.position_ned</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>     delta = _subtract(goal, start)</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>     horizontal = math.hypot(delta[0], delta[1])</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>     routes = [(0., (goal,))]</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>     if horizontal &gt; 1e-6:</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>         perpendicular = (-delta[1] / horizontal, delta[0] / horizontal, 0.)</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         middle = tuple(.5 * a + .5 * b for a, b in zip(start, goal))</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         for magnitude in limits.lateral_offsets_m:</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>             for offset in (magnitude, -magnitude):</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>                 via = tuple(value + offset * axis for value, axis in zip(middle, perpendicular))</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>                 routes.append((offset, (via, goal)))</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>     best = None</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>     checks = []</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>     for offset, waypoints in routes:</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>         for duration in limits.segment_durations_s:</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>             if len(checks) &gt;= limits.max_attempts:</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>                 break</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>             end_stamp = now + duration * len(waypoints)</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>             if not snapshot.metadata.current(end_stamp, epoch):</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>                 checks.append(CandidateCheck(offset, duration, &#x27;MAP_STOP_HORIZON&#x27;))</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>                 continue</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>             steps = math.ceil(duration / limits.sample_dt_s)</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>             if steps * len(waypoints) &gt; limits.sweep.max_segments:</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>                 checks.append(CandidateCheck(offset, duration, &#x27;SAMPLE_BUDGET&#x27;))</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>                 continue</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>             pieces, samples = [], []</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>             current = initial_reference</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>             try:</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>                 for waypoint in waypoints:</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>                     piece = QuinticReference.to_rest(current, waypoint, duration)</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>                     pieces.append(piece)</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>                     first_index = 0 if not samples else 1</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>                     samples.extend(piece.sample(piece.end_stamp if i == steps else</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>                         piece.stamp + i * (piece.end_stamp - piece.stamp) / steps)</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>                         for i in range(first_index, steps + 1))</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>                     current = piece.sample(piece.end_stamp)</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>                 bounds = [piece.derivative_bounds() for piece in pieces]</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>                 speed = max(v[0] for v in bounds)</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>                 acceleration = max(v[1] for v in bounds)</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>                 if not all(math.isfinite(v) for v in (speed, acceleration)):</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>                     raise ValueError(&#x27;nonfinite derivative bounds&#x27;)</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>             except (ValueError, OverflowError):</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>                 checks.append(CandidateCheck(offset, duration, &#x27;NUMERICAL_RANGE&#x27;))</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>                 continue</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>             if speed &gt; limits.speed_limit_m_s or acceleration &gt; limits.sweep.acceleration_bound_m_s2:</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>                 checks.append(CandidateCheck(offset, duration, &#x27;KINEMATIC_LIMIT&#x27;, speed, acceleration))</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>                 continue</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>             full = Trajectory(Metadata(now, pieces[-1].end_stamp, epoch, &#x27;static_local_quintic&#x27;), tuple(samples))</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>             sweep = check_static_sweep(full, snapshot, now, epoch, limits.sweep)</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>             reason = sweep.reason</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>             accepted = sweep.clear</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>             if accepted and dynamic_scene is not None:</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>                 dynamic = check_dynamic_candidates(full, dynamic_scene, now, epoch, limits.sweep, dynamic_bounds)</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>                 reason, accepted = dynamic.reason, dynamic.allowed</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>             checks.append(CandidateCheck(offset, duration, reason, speed, acceleration, sweep.voxel_tests))</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>             if not accepted:</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>                 continue</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>             length = sum(_norm(_subtract(b, a)) for piece in pieces</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>                          for a, b in zip(piece.controls, piece.controls[1:]))</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>             cost = length + .05 * duration * len(pieces)</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>             if best is None or cost &lt; best[0]:</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>                 best = cost, full, tuple(pieces)</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>     if best is None:</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>         return result(&#x27;NO_STATIC_CANDIDATE&#x27;, checks=checks)</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>     _, full, pieces = best</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>     lease_end = min(now + limits.lease_s, state.metadata.valid_until, full.metadata.valid_until)</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>     if dynamic_scene is not None:</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         lease_end = min(lease_end, dynamic_scene.metadata.valid_until,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>                         *(track.valid_until for track in dynamic_scene.tracks))</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>     leased = replace(full, metadata=replace(full.metadata, valid_until=lease_end))</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>     return result(&#x27;STATIC_CANDIDATE&#x27;, leased, pieces, checks)</span></pre></body></html>

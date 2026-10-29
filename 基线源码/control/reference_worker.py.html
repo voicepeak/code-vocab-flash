@@ -1,0 +1,154 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/reference_worker.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/reference_worker.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded latest-only reference IPC. The worker never creates ROS publishers.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Perception/planning may later replace this development reference generator.</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> Worker liveness and freshness do not certify obstacle clearance or localization.</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> &quot;&quot;&quot;</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from dataclasses import dataclass</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import math</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import multiprocessing as mp</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import os</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from queue import Empty,Full</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import time</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from control.reference import benchmark_reference,benchmark_yaw</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from interfaces.contracts import finite_vec3</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> @dataclass(frozen=True)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> class BenchmarkSpec:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     origin: tuple</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     yaw: float</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     step: bool=False</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     braking: bool=False</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     yaw_motion: bool=False</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> @dataclass(frozen=True)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> class ReferencePacket:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     stamp: float</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     epoch: int</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     requested_wall: float</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     position: tuple</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     velocity: tuple</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     acceleration: tuple</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     yaw: float</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     yaw_rate: float</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     max_compute_wall_s: float</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     stall_performed: bool</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a> </span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     def __post_init__(self):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         for value in (self.position,self.velocity,self.acceleration):finite_vec3(value)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         if (not all(math.isfinite(x) for x in (self.stamp,self.requested_wall,self.yaw,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                     self.yaw_rate,self.max_compute_wall_s)) or self.stamp&lt;=0 or self.epoch&lt;0</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                     or self.max_compute_wall_s&lt;0):raise ValueError(&#x27;invalid reference packet&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> def offer_latest(queue,item):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     try:</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         queue.put_nowait(item)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         return True</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     except Full:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         try:queue.get_nowait()</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         except Empty:return False</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         try:</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             queue.put_nowait(item)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             return True</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         except Full:return False</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a> </span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> def process_main(spec,requests,results,stop,stall_seconds,parent_pid):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     # Linux process lifetime belongs to the flight invocation even if the host</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     # has to terminate its parent before Python finally blocks can execute.</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     import ctypes</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     import signal</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     libc=ctypes.CDLL(None,use_errno=True)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     if libc.prctl(1,signal.SIGTERM,0,0,0)!=0:</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         offer_latest(results,{&#x27;error&#x27;:&#x27;PARENT_DEATH_SIGNAL_UNAVAILABLE&#x27;})</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         return</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     if os.getppid()!=parent_pid:return</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     stalled=False</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     max_compute=0.</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     while not stop.is_set() and os.getppid()==parent_pid:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         try:request=requests.get(timeout=.05)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         except Empty:continue</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         stamp,epoch,elapsed,requested_wall=request</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         begin=time.monotonic()</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         try:</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             if stall_seconds and not stalled and elapsed&gt;=6.:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 stalled=True</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 # Deliberately block only this worker. The PWM loop receives no</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                 # special injection notification and must detect stale output.</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 time.sleep(stall_seconds)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             p,v,a=benchmark_reference(spec.origin,elapsed,spec.step,spec.braking)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             yaw,rate=benchmark_yaw(spec.yaw,elapsed,spec.yaw_motion)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             max_compute=max(max_compute,time.monotonic()-begin)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             packet=ReferencePacket(stamp,epoch,requested_wall,tuple(p),tuple(v),tuple(a),</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                                    yaw,rate,max_compute,stalled)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>             offer_latest(results,packet)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         except Exception as error:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             offer_latest(results,{&#x27;error&#x27;:str(error)})</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             return</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a> </span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a> </span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a> class ReferenceWorker:</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     def __init__(self,spec,stall_seconds=0.,sensor_ttl=.08,wall_ttl=.15):</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         finite_vec3(spec.origin)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         if (not math.isfinite(spec.yaw) or not 0&lt;=stall_seconds&lt;=1.</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                 or not 0&lt;sensor_ttl&lt;=.1 or not 0&lt;wall_ttl&lt;=.3):</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             raise ValueError(&#x27;invalid reference worker configuration&#x27;)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         context=mp.get_context(&#x27;spawn&#x27;)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         self.requests=context.Queue(maxsize=1)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         self.results=context.Queue(maxsize=1)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         self.stop=context.Event()</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         self.process=context.Process(target=process_main,args=(spec,self.requests,self.results,self.stop,stall_seconds,os.getpid()),</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                                      name=&#x27;rmua_reference_worker&#x27;,daemon=True)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         self.sensor_ttl,self.wall_ttl=sensor_ttl,wall_ttl</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         self.latest=None</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         self.error=None</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         self.submitted=self.dropped=self.received=self.stale_observations=0</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         self.max_compute=0.</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         self.stall_observed=False</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a> </span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     def start(self):self.process.start()</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a> </span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     def submit(self,stamp,epoch,elapsed):</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         if not all(math.isfinite(v) for v in (stamp,elapsed)) or stamp&lt;=0 or epoch&lt;0:</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             raise ValueError(&#x27;invalid reference request&#x27;)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         if offer_latest(self.requests,(stamp,epoch,elapsed,time.monotonic())):self.submitted+=1</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         else:self.dropped+=1</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> </span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     def snapshot(self,stamp,epoch):</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         # Each mailbox holds one result. Never drain an unbounded producer loop.</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         try:</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             value=self.results.get_nowait()</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             if isinstance(value,ReferencePacket):</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>                 self.latest=value;self.received+=1</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>                 self.max_compute=max(self.max_compute,value.max_compute_wall_s)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>                 self.stall_observed=self.stall_observed or value.stall_performed</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             else:self.error=value.get(&#x27;error&#x27;,&#x27;INVALID_REFERENCE_RESULT&#x27;)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>         except Empty:pass</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>         if self.error:return None,&#x27;WORKER_ERROR&#x27;</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>         if not self.process.is_alive():return None,&#x27;WORKER_EXITED&#x27;</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         p=self.latest</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>         if p is None:return None,&#x27;NO_REFERENCE&#x27;</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>         if p.epoch!=epoch:return None,&#x27;REFERENCE_EPOCH&#x27;</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>         if not 0&lt;=stamp-p.stamp&lt;=self.sensor_ttl or not 0&lt;=time.monotonic()-p.requested_wall&lt;=self.wall_ttl:</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             self.stale_observations+=1</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             return None,&#x27;REFERENCE_STALE&#x27;</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         return p,None</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a> </span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>     def close(self):</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>         self.stop.set()</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         if self.process.pid is not None:</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>             self.process.join(timeout=.2)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>             if self.process.is_alive():</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>                 self.process.terminate()</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>                 self.process.join(timeout=1.)</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         for queue in (self.requests,self.results):</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>             queue.cancel_join_thread();queue.close()</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a> </span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>     def summary(self):</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>         return {&#x27;pid&#x27;:self.process.pid,&#x27;submitted&#x27;:self.submitted,&#x27;requests_dropped&#x27;:self.dropped,</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>                 &#x27;received&#x27;:self.received,&#x27;stale_observations&#x27;:self.stale_observations,</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>                 &#x27;max_compute_wall_s&#x27;:self.max_compute,&#x27;stall_observed&#x27;:self.stall_observed,</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>                 &#x27;fault&#x27;:self.error,&#x27;sensor_ttl_s&#x27;:self.sensor_ttl,&#x27;wall_ttl_s&#x27;:self.wall_ttl,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>                 &#x27;alive_after_close&#x27;:self.process.is_alive()}</span></pre></body></html>

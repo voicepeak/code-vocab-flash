@@ -1,0 +1,43 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/visual_odometry/online.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/visual_odometry/online.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Causal, bounded visual-odometry window for an isolated online observer.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import asdict</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from perception.stereo_depth.transport import freshness_reason</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from perception.visual_odometry.stereo import estimate_stereo_motion</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> class MotionWindow:</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     def __init__(self, rig, method=&#x27;orb_lk&#x27;, estimator=estimate_stereo_motion):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         if method not in (&#x27;orb&#x27;, &#x27;orb_lk&#x27;, &#x27;orb_lk_half&#x27;):</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>             raise ValueError(&#x27;unknown motion method&#x27;)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>         self.rig, self.method, self.estimator = rig, method, estimator</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         self.previous = None</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     def process(self, pair, source_arrival, clock_snapshot, wall_clock):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         &quot;&quot;&quot;Consume one pair; previous pair is historical and never gets a new lease.</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         clock_snapshot() returns (sim_time, epoch, fresh), using an independent</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         IMU clock. A returned estimate is diagnostic even if timing is current.</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         &quot;&quot;&quot;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         now, epoch, healthy = clock_snapshot()</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         reason = freshness_reason(pair.metadata, now, epoch, healthy, source_arrival, wall_clock())</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         if reason:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>             self.previous = None</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             return {&#x27;status&#x27;: &#x27;REJECTED&#x27;, &#x27;reason&#x27;: &#x27;INPUT_&#x27; + reason, &#x27;control_eligible&#x27;: False}</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         previous, self.previous = self.previous, pair</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         if previous is None or previous.metadata.epoch != pair.metadata.epoch:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             return {&#x27;status&#x27;: &#x27;WARMUP&#x27;, &#x27;control_eligible&#x27;: False}</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         try:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             motion = self.estimator(previous, pair, self.rig, method=self.method)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         except (ValueError, ArithmeticError) as error:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             return {&#x27;status&#x27;: &#x27;REJECTED&#x27;, &#x27;reason&#x27;: &#x27;MOTION_&#x27; + str(error), &#x27;control_eligible&#x27;: False}</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         now, epoch, healthy = clock_snapshot()</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         checked_wall = wall_clock()</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         reason = freshness_reason(pair.metadata, now, epoch, healthy, source_arrival, checked_wall)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         # A stale current frame must not serve as an anchor for the next estimate.</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if reason:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             self.previous = None</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         return {&#x27;status&#x27;: &#x27;ESTIMATED&#x27;, &#x27;motion&#x27;: asdict(motion), &#x27;timing_current&#x27;: reason is None,</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                 &#x27;timing_rejection&#x27;: reason, &#x27;check_imu_stamp&#x27;: now, &#x27;check_epoch&#x27;: epoch,</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 &#x27;source_stamp&#x27;: pair.metadata.stamp, &#x27;source_valid_until&#x27;: pair.metadata.valid_until,</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                 &#x27;source_arrival_wall&#x27;: source_arrival, &#x27;check_wall&#x27;: checked_wall,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                 &#x27;clock_fresh_at_check&#x27;: healthy, &#x27;control_eligible&#x27;: False}</span></pre></body></html>

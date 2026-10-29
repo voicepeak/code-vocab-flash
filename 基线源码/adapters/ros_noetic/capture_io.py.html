@@ -1,0 +1,72 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/capture_io.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/capture_io.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Exact bounded ROS sensor payload retention; never modifies source messages.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import gzip</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> def save_message(directory, prefix, message, kind):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     if prefix not in (&#x27;left&#x27;, &#x27;right&#x27;, &#x27;lidar&#x27;) or kind not in (&#x27;image&#x27;, &#x27;lidar&#x27;):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         raise ValueError(&#x27;unsupported captured sensor&#x27;)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     directory = Path(directory)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     data = bytes(message.data)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     if len(data) &gt; 32 * 1024 * 1024:</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         raise ValueError(&#x27;oversized captured payload&#x27;)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     stamp = message.header.stamp</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     document = {&#x27;kind&#x27;: kind, &#x27;stamp_secs&#x27;: stamp.secs, &#x27;stamp_nsecs&#x27;: stamp.nsecs,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                 &#x27;stamp&#x27;: stamp.to_sec(), &#x27;sequence&#x27;: message.header.seq,</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 &#x27;frame_id&#x27;: message.header.frame_id, &#x27;width&#x27;: message.width, &#x27;height&#x27;: message.height,</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>                 &#x27;is_bigendian&#x27;: message.is_bigendian, &#x27;payload_file&#x27;: prefix + &#x27;.bin.gz&#x27;,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>                 &#x27;raw_bytes&#x27;: len(data), &#x27;raw_sha256&#x27;: hashlib.sha256(data).hexdigest()}</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     if kind == &#x27;image&#x27;:</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         document.update(encoding=message.encoding, step=message.step)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     else:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         document.update(point_step=message.point_step, row_step=message.row_step, is_dense=message.is_dense,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                         fields=[{&#x27;name&#x27;: f.name, &#x27;offset&#x27;: f.offset, &#x27;datatype&#x27;: f.datatype, &#x27;count&#x27;: f.count}</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                                 for f in message.fields])</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     with (directory / document[&#x27;payload_file&#x27;]).open(&#x27;xb&#x27;) as raw:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         with gzip.GzipFile(filename=&#x27;&#x27;, mode=&#x27;wb&#x27;, fileobj=raw, compresslevel=1, mtime=0) as output:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             output.write(data)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     with (directory / (prefix + &#x27;.json&#x27;)).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         output.write(json.dumps(document, indent=2, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     return document</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> </span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> </span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> def read_payload(path):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     path = Path(path)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     document = json.loads(path.read_text())</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     size = document[&#x27;raw_bytes&#x27;]</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     name = document[&#x27;payload_file&#x27;]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     if (not isinstance(size, int) or not 0 &lt;= size &lt;= 32 * 1024 * 1024</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             or Path(name).name != name or name in (&#x27;.&#x27;, &#x27;..&#x27;)):</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         raise ValueError(&#x27;invalid retained sensor descriptor&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     with gzip.open(path.parent / name, &#x27;rb&#x27;) as source:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         payload = source.read(size + 1)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     if len(payload) != size or hashlib.sha256(payload).hexdigest() != document[&#x27;raw_sha256&#x27;]:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         raise ValueError(&#x27;captured payload differs from its descriptor&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     return document, payload</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> </span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> def load_message(path):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     import rospy</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     from sensor_msgs.msg import Image, PointCloud2, PointField</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     document, payload = read_payload(path)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     if document[&#x27;kind&#x27;] == &#x27;image&#x27;:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         message = Image()</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         keys = (&#x27;width&#x27;, &#x27;height&#x27;, &#x27;step&#x27;, &#x27;is_bigendian&#x27;, &#x27;encoding&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     elif document[&#x27;kind&#x27;] == &#x27;lidar&#x27;:</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         message = PointCloud2()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         keys = (&#x27;width&#x27;, &#x27;height&#x27;, &#x27;point_step&#x27;, &#x27;row_step&#x27;, &#x27;is_bigendian&#x27;, &#x27;is_dense&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         message.fields = [PointField(**f) for f in document[&#x27;fields&#x27;]]</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     else:</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         raise ValueError(&#x27;unknown captured sensor kind&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     message.header.stamp = rospy.Time(document[&#x27;stamp_secs&#x27;], document[&#x27;stamp_nsecs&#x27;])</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     message.header.seq = document[&#x27;sequence&#x27;]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     message.header.frame_id = document[&#x27;frame_id&#x27;]</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     for key in keys:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         setattr(message, key, document[key])</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     message.data = payload</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     if message.header.stamp.to_sec() != document[&#x27;stamp&#x27;]:</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         raise ValueError(&#x27;captured timestamp did not reconstruct exactly&#x27;)</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     return message</span></pre></body></html>

@@ -1,0 +1,118 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/sgbm.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/sgbm.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Diagnostic pixel disparity with left/right and texture rejection.</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> </span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> Input rectification and exposures are unverified; this does not return depth.</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> &quot;&quot;&quot;</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import math</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> @dataclass(frozen=True)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> class SgbmConfig:</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     num_disparities: int = 128</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     block_size: int = 5</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     uniqueness_ratio: int = 10</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     consistency_px: float = 1.</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     min_texture_std: float = 2.</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def __post_init__(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         if (not isinstance(self.num_disparities, int) or not 16 &lt;= self.num_disparities &lt;= 256</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>                 or self.num_disparities % 16 or not isinstance(self.block_size, int)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                 or not 3 &lt;= self.block_size &lt;= 11 or self.block_size % 2 != 1</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                 or not isinstance(self.uniqueness_ratio, int) or not 5 &lt;= self.uniqueness_ratio &lt;= 30</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                 or not math.isfinite(self.consistency_px) or not 0 &lt; self.consistency_px &lt;= 1.5</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                 or not math.isfinite(self.min_texture_std) or not 1 &lt;= self.min_texture_std &lt;= 20):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             raise ValueError(&#x27;invalid bounded SGBM parameters&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> </span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> @dataclass(frozen=True)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> class DisparityObservation:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     metadata: Metadata</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     disparity_px: np.ndarray</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     valid: np.ndarray</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     left_measurement_stamp: float</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     right_measurement_stamp: float</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     rectification_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     metric_depth_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     acceptance_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def __post_init__(self):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         values, valid = np.asarray(self.disparity_px), np.asarray(self.valid)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         if (values.ndim != 2 or not np.issubdtype(values.dtype, np.floating)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 or valid.shape != values.shape or valid.dtype != np.bool_</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 or not np.isfinite(values[valid]).all() or np.any(values[valid] &lt;= 0)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                 or np.any(values[valid] &gt; np.finfo(np.float32).max)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                 or not np.isnan(values[~valid]).all()):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             raise ValueError(&#x27;invalid disparity mask or unknown pixels&#x27;)</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         object.__setattr__(self, &#x27;disparity_px&#x27;, np.frombuffer(</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             values.astype(np.float32).tobytes(), dtype=np.float32).reshape(values.shape))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         object.__setattr__(self, &#x27;valid&#x27;, np.frombuffer(valid.tobytes(), dtype=np.bool_).reshape(valid.shape))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> def _gray(frame, cv2):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     if frame.encoding == &#x27;mono8&#x27;:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         return frame.pixels[:, :, 0].copy()</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     conversion = {&#x27;bgr8&#x27;: cv2.COLOR_BGR2GRAY, &#x27;rgb8&#x27;: cv2.COLOR_RGB2GRAY,</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                   &#x27;bgra8&#x27;: cv2.COLOR_BGRA2GRAY, &#x27;rgba8&#x27;: cv2.COLOR_RGBA2GRAY}[frame.encoding]</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     return cv2.cvtColor(frame.pixels, conversion)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a> </span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> </span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a> def compute_diagnostic_disparity(pair, config=None):</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     import cv2</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     config = config or SgbmConfig()</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     left, right = _gray(pair.left, cv2), _gray(pair.right, cv2)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     if (left.shape != right.shape or left.shape[1] &lt;= config.num_disparities + config.block_size</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             or left.shape[0] &lt;= 2 * config.block_size</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             or pair.left.metadata.epoch != pair.right.metadata.epoch</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             or pair.left.metadata.epoch != pair.metadata.epoch</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             or abs(pair.left.metadata.stamp - pair.right.metadata.stamp) &gt; .005):</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         raise ValueError(&#x27;incompatible diagnostic stereo input&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> </span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     def matcher(minimum):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         block = config.block_size</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         return cv2.StereoSGBM_create(minDisparity=minimum,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             numDisparities=config.num_disparities, blockSize=block,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             P1=8 * block * block, P2=32 * block * block,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             disp12MaxDiff=1, preFilterCap=31, uniquenessRatio=config.uniqueness_ratio,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             speckleWindowSize=100, speckleRange=2, mode=cv2.STEREO_SGBM_MODE_SGBM)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     minimum_right = 1 - config.num_disparities</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     forward = matcher(0).compute(left, right).astype(np.float32) / 16.</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     reverse = matcher(minimum_right).compute(right, left).astype(np.float32) / 16.</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     width = left.shape[1]</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     right_x = np.arange(width, dtype=np.float32)[None, :] - forward</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     lower = np.floor(right_x).astype(np.int32)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     clipped = np.clip(lower, 0, width - 2)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     r0 = np.take_along_axis(reverse, clipped, axis=1)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     r1 = np.take_along_axis(reverse, clipped + 1, axis=1)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     weight = right_x - lower</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     interpolated = (1. - weight) * r0 + weight * r1</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a> </span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     def texture(image):</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         image = image.astype(np.float32)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         size = (config.block_size, config.block_size)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         mean = cv2.boxFilter(image, cv2.CV_32F, size, borderType=cv2.BORDER_REPLICATE)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         square = cv2.boxFilter(image * image, cv2.CV_32F, size, borderType=cv2.BORDER_REPLICATE)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         return np.maximum(square - mean * mean, 0) &gt;= config.min_texture_std ** 2</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a> </span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>     right_texture = texture(right)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     valid = ((forward &gt; 0) &amp; (forward &lt; config.num_disparities)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>              &amp; (lower &gt;= 0) &amp; (lower + 1 &lt; width)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>              &amp; (r0 &gt;= minimum_right) &amp; (r0 &lt; 0) &amp; (r1 &gt;= minimum_right) &amp; (r1 &lt; 0)</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>              &amp; (np.abs(forward + interpolated) &lt;= config.consistency_px)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>              &amp; texture(left) &amp; np.take_along_axis(right_texture, clipped, axis=1)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>              &amp; np.take_along_axis(right_texture, clipped + 1, axis=1))</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     radius = config.block_size // 2</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     valid[:radius] = False</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     valid[-radius:] = False</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     valid[:, :radius] = False</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     valid[:, -radius:] = False</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>     disparity = np.where(valid, forward, np.nan).astype(np.float32)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     metadata = Metadata(pair.metadata.stamp, pair.metadata.valid_until, pair.metadata.epoch,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                         &#x27;opencv_sgbm_diagnostic_pixels&#x27;, &#x27;front_left_image&#x27;)</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>     return DisparityObservation(metadata, disparity, valid,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                                 pair.left.metadata.stamp, pair.right.metadata.stamp)</span></pre></body></html>

@@ -1,0 +1,46 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/audit.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/audit.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Host provenance + existing-container read-only observation, no dependency install.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import os</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import subprocess</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import prepare_run, source_hashes</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def main():</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     root = Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser.add_argument(&quot;--seed&quot;, type=int, required=True)</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     parser.add_argument(&quot;--duration&quot;, type=float, default=10.)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     parser.add_argument(&quot;--output&quot;, type=Path, default=root / &quot;runs&quot;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     parser.add_argument(&quot;--config&quot;, type=Path, default=root / &quot;configs/official_baseline.yaml&quot;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     args = parser.parse_args()</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     if not math.isfinite(args.duration) or not 0 &lt; args.duration &lt;= 120:</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         parser.error(&quot;duration must be in (0, 120] seconds&quot;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     try:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         args.output.resolve().relative_to(root)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     except ValueError:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         parser.error(&quot;output must be inside main so the existing container can access it&quot;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     config = json.loads(args.config.read_text())</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     container = os.environ.get(&quot;RMUA_CONTAINER&quot;, &quot;rmua_noetic&quot;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     digest = subprocess.check_output([&quot;docker&quot;, &quot;inspect&quot;, container, &quot;--format&quot;, &quot;{{.Image}}&quot;], text=True).strip()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     run, manifest = prepare_run(root, args.output, args.seed, digest, config)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     container_run = Path(&quot;/workspace/main&quot;) / run.relative_to(root)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     code = 1</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     try:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         code = subprocess.call([str(root / &quot;tools/enter_env.sh&quot;), &quot;python3&quot;, &quot;-m&quot;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                                 &quot;adapters.ros_noetic.interface_audit&quot;, &quot;--run-dir&quot;, str(container_run),</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                                 &quot;--duration&quot;, str(args.duration)])</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     finally:</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         manifest = json.loads((run / &quot;manifest.json&quot;).read_text())</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         manifest[&quot;source_sha256_after&quot;] = source_hashes(root)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         manifest[&quot;source_unchanged&quot;] = manifest[&quot;source_sha256_before&quot;] == manifest[&quot;source_sha256_after&quot;]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         manifest[&quot;observer_exit_code&quot;] = code</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         (run / &quot;manifest.json&quot;).write_text(json.dumps(manifest, indent=2) + &quot;\n&quot;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     return code</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> </span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     raise SystemExit(main())</span></pre></body></html>

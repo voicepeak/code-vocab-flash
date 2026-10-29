@@ -1,0 +1,278 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>docs/evidence/p3_gate_roi_online.json · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>docs/evidence/p3_gate_roi_online.json</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> {</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a>   &quot;iteration&quot;: 53,</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a>   &quot;acceptance_eligible&quot;: false,</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a>   &quot;control_published&quot;: false,</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a>   &quot;offline_comparison&quot;: [</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     {</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a>       &quot;mode&quot;: &quot;pwm&quot;,</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>       &quot;full_artifact_sha256&quot;: &quot;3adaf006b4cb3f94677ba4890dcaf669cb4e3e0c8c8b08c3153bf8c7486126f9&quot;,</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>       &quot;roi_artifact_sha256&quot;: &quot;48db497154b676e54cc285c6c4b7b6fea4c6b07ae370e9f0d7a4479140d74bed&quot;,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>       &quot;frames&quot;: [</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>         {</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>           &quot;left&quot;: &quot;front_left_0000.png&quot;,</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>           &quot;full_s&quot;: 0.35823659086599946,</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>           &quot;roi_s&quot;: 0.06340639409609139,</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>             0.0</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>           ]</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         },</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         {</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>           &quot;left&quot;: &quot;front_left_0005.png&quot;,</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>           &quot;full_s&quot;: 0.3461048149038106,</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>           &quot;roi_s&quot;: 0.05818708706647158,</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             0.0</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>           ]</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         },</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         {</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>           &quot;left&quot;: &quot;front_left_0010.png&quot;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>           &quot;full_s&quot;: 0.345900721848011,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>           &quot;roi_s&quot;: 0.057204606011509895,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             0.0</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>           ]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         },</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         {</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>           &quot;left&quot;: &quot;front_left_0015.png&quot;,</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>           &quot;full_s&quot;: 0.3391869750339538,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>           &quot;roi_s&quot;: 0.06373387994244695,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             0.0</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>           ]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         },</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         {</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>           &quot;left&quot;: &quot;front_left_0020.png&quot;,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>           &quot;full_count&quot;: 0,</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>           &quot;roi_count&quot;: 0,</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>           &quot;full_s&quot;: 0.29270873009227216,</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>           &quot;roi_s&quot;: 0.06151878903619945,</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>           &quot;paired_center_differences_m&quot;: []</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         },</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         {</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>           &quot;left&quot;: &quot;front_left_0025.png&quot;,</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>           &quot;full_count&quot;: 0,</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>           &quot;roi_count&quot;: 0,</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>           &quot;full_s&quot;: 0.29196841712109745,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>           &quot;roi_s&quot;: 0.057665542932227254,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>           &quot;paired_center_differences_m&quot;: []</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         }</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>       ],</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>       &quot;full_elapsed_median_s&quot;: 0.3425438484409824,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>       &quot;roi_elapsed_median_s&quot;: 0.059852938051335514</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     },</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     {</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>       &quot;mode&quot;: &quot;vel&quot;,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>       &quot;full_artifact_sha256&quot;: &quot;f0568a9ecc315b74b9d1298da30c74de099df43ae54567cd7caa47f2ceea8893&quot;,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>       &quot;roi_artifact_sha256&quot;: &quot;2775eb3b1c3ef6b6ef405074862221fafa60cdc145b0017c4ddcba2308b2e65a&quot;,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>       &quot;frames&quot;: [</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         {</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>           &quot;left&quot;: &quot;front_left_0000.png&quot;,</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>           &quot;full_s&quot;: 0.34457292687147856,</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>           &quot;roi_s&quot;: 0.06265544495545328,</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             0.0</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>           ]</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         },</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         {</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>           &quot;left&quot;: &quot;front_left_0005.png&quot;,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>           &quot;full_s&quot;: 0.291750974021852,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>           &quot;roi_s&quot;: 0.056015306152403355,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             0.0</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>           ]</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         },</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         {</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>           &quot;left&quot;: &quot;front_left_0010.png&quot;,</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>           &quot;full_s&quot;: 0.292725367937237,</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>           &quot;roi_s&quot;: 0.05704639689065516,</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             0.0</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>           ]</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>         },</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         {</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>           &quot;left&quot;: &quot;front_left_0015.png&quot;,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>           &quot;full_s&quot;: 0.29316623602062464,</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>           &quot;roi_s&quot;: 0.05444668489508331,</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             0.07660395997972261</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>           ]</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         },</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         {</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>           &quot;left&quot;: &quot;front_left_0020.png&quot;,</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>           &quot;full_count&quot;: 1,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>           &quot;roi_count&quot;: 1,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>           &quot;full_s&quot;: 0.2916770810261369,</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>           &quot;roi_s&quot;: 0.05426043597981334,</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>           &quot;paired_center_differences_m&quot;: [</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>             0.0</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>           ]</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         }</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>       ],</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>       &quot;full_elapsed_median_s&quot;: 0.292725367937237,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>       &quot;roi_elapsed_median_s&quot;: 0.056015306152403355</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     }</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>   ],</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>   &quot;online_runs&quot;: [</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>     {</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>       &quot;path&quot;: &quot;runs/20261027T104349Z_f7721f2bd9d147ea98df252d0fe5d0ef&quot;,</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>       &quot;simulator_unchanged&quot;: true,</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>         &quot;pairs&quot;: 131,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>         &quot;received&quot;: {</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>           &quot;imu&quot;: 804,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>           &quot;right&quot;: 133,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>           &quot;left&quot;: 132</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>         },</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>         &quot;overwritten&quot;: {},</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>         &quot;pairing_events&quot;: {</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>           &quot;SENSOR_EXPIRED_right&quot;: 1,</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>           &quot;SUPERSEDED_right&quot;: 0</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>         },</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>           &quot;submitted&quot;: 131,</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>           &quot;superseded&quot;: 8,</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>           &quot;taken&quot;: 122,</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>           &quot;discarded_on_close&quot;: 1</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>         },</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>         &quot;results&quot;: 122,</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>           &quot;GATE_CANDIDATES&quot;: 11,</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>           &quot;REJECTED&quot;: 111</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         },</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>         &quot;timing_current_results&quot;: 11,</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>           ],</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>           ]</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>         },</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>         &quot;image_age_budget_s&quot;: 0.2,</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>         &quot;source_settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;,</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>         &quot;method&quot;: &quot;orb_lk&quot;,</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>         &quot;pipeline&quot;: &quot;gate_roi&quot;,</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>       },</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>         &quot;rows&quot;: 122,</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>         &quot;timing_current_results&quot;: 11,</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>         &quot;status_counts&quot;: {</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>           &quot;GATE_CANDIDATES&quot;: 11,</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>           &quot;REJECTED&quot;: 111</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>         },</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>       },</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>       &quot;rejection_reasons&quot;: {</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>         &quot;AFTER_DEPTH_SOURCE_LEASE_NOT_CURRENT&quot;: 89,</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>         &quot;INPUT_SOURCE_LEASE_NOT_CURRENT&quot;: 22</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>       },</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>       &quot;timely_nonempty_candidate_count&quot;: 3,</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>       &quot;result_sha256&quot;: &quot;da7aebf8ec2282913748cc2e961b07ef0c65acd5b6f24365edc67ade578df7db&quot;,</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>       &quot;manifest_sha256&quot;: &quot;39a26f6c81d614cee712c280ddc4149d5c18c4f324c30918ba9f8691fd89d86a&quot;</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>     },</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>     {</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>       &quot;path&quot;: &quot;runs/20261027T104420Z_802c6fe2894d41b98649b8d64678e84a&quot;,</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>       &quot;run_state&quot;: &quot;OBSERVED&quot;,</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>       &quot;source_unchanged&quot;: true,</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>       &quot;simulator_unchanged&quot;: true,</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>       &quot;cleanup_errors&quot;: [],</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>       &quot;summary&quot;: {</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>         &quot;faults&quot;: [],</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>         &quot;pairs&quot;: 13,</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>         &quot;received&quot;: {</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>           &quot;imu&quot;: 599,</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>           &quot;left&quot;: 107,</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>           &quot;right&quot;: 107</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>         },</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>         &quot;overwritten&quot;: {},</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a>         &quot;pairing_events&quot;: {</span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a>           &quot;SUPERSEDED_left&quot;: 0,</span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a>           &quot;SUPERSEDED_right&quot;: 0,</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>           &quot;SENSOR_EXPIRED_left&quot;: 94,</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>           &quot;SENSOR_EXPIRED_right&quot;: 93</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>         },</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>         &quot;slot&quot;: {</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>           &quot;capacity&quot;: 1,</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>           &quot;pending&quot;: 0,</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a>           &quot;submitted&quot;: 13,</span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>           &quot;superseded&quot;: 0,</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>           &quot;taken&quot;: 13,</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>           &quot;discarded_on_close&quot;: 0</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>         },</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a>         &quot;results&quot;: 13,</span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>         &quot;statuses&quot;: {</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>           &quot;REJECTED&quot;: 13</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>         },</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>         &quot;node_graph&quot;: {</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>           &quot;subscriptions&quot;: [</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>             &quot;/airsim_node/drone_1/front_left/Scene&quot;,</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>             &quot;/airsim_node/drone_1/front_right/Scene&quot;,</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>             &quot;/airsim_node/drone_1/imu/imu&quot;</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>           ],</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>           &quot;publishers&quot;: [</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>             &quot;/rosout&quot;</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>           ]</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>         },</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>         &quot;image_age_budget_s&quot;: 0.15,</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>         &quot;source_settings_sha256&quot;: &quot;0d72886f92b091cbc5ba2ae58d25b4b4bc589045d4e725f483603efdc26c6c17&quot;,</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>         &quot;method&quot;: &quot;orb_lk&quot;,</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>         &quot;pipeline&quot;: &quot;gate_roi&quot;,</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>         &quot;control_published&quot;: false,</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>         &quot;debug_inputs_used&quot;: false,</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>       },</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>       &quot;audit&quot;: {</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>         &quot;audit_valid&quot;: true,</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>         &quot;errors&quot;: [],</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>         &quot;rows&quot;: 13,</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>         &quot;timing_current_results&quot;: 0,</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>         &quot;status_counts&quot;: {</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>           &quot;REJECTED&quot;: 13</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>         },</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a>         &quot;control_eligible&quot;: false,</span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>         &quot;acceptance_eligible&quot;: false</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>       },</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>       &quot;rejection_reasons&quot;: {</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>         &quot;AFTER_DEPTH_SOURCE_LEASE_NOT_CURRENT&quot;: 9,</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>         &quot;INPUT_SOURCE_LEASE_NOT_CURRENT&quot;: 4</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a>       },</span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>       &quot;timely_nonempty_candidate_count&quot;: 0,</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>       &quot;result_sha256&quot;: &quot;90bbfac9111c6ac644c16d689d72e91710a89052beb4115ee98d7778ef617a59&quot;,</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>       &quot;manifest_sha256&quot;: &quot;7255eaca011dec61515302db3832007d1d27579d25af7b636c7bc2820b5bde48&quot;</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>     }</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>   ]</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a> }</span></pre></body></html>

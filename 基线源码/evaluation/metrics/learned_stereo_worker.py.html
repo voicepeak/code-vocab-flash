@@ -1,0 +1,93 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/learned_stereo_worker.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/learned_stereo_worker.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Image-only headless candidate worker; no reference data or ROS imports.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import hashlib</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import numpy as np</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.stereo_depth.learned import FastFoundationStereo, filter_learned_disparity</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from perception.stereo_depth.pairing import ImageFrame, StereoPair</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from perception.stereo_depth.sgbm import SgbmConfig, compute_diagnostic_disparity</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> def main():</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     import cv2</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     import torch</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     parser.add_argument(&#x27;--vendor&#x27;,type=Path,required=True)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     parser.add_argument(&#x27;--checkpoint&#x27;,type=Path,required=True)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     args = parser.parse_args(); run = args.run_dir</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     config = json.loads((run/&#x27;profile.json&#x27;).read_text())</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     records = json.loads((run/&#x27;inputs&#x27;/&#x27;index.json&#x27;).read_text())</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     cv2.setNumThreads(1); torch.set_num_threads(1)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     begin = time.monotonic()</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     model = FastFoundationStereo(args.vendor,args.checkpoint,config[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;],</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         scale=config[&#x27;profile&#x27;][&#x27;scale&#x27;],iterations=config[&#x27;profile&#x27;][&#x27;iterations&#x27;],</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         max_disp=config[&#x27;profile&#x27;][&#x27;max_disparity_model_pixels&#x27;])</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     load_s = time.monotonic()-begin</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     (run/&#x27;predictions&#x27;).mkdir()</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     measurements = []</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     with np.load(run/&#x27;inputs&#x27;/(records[0][&#x27;key&#x27;]+&#x27;.npz&#x27;),allow_pickle=False) as first:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         _,_,warmup_s = model.predict(first[&#x27;left&#x27;],first[&#x27;right&#x27;])</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     torch.cuda.reset_peak_memory_stats()</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     baseline = SgbmConfig()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     for record in records:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         key=record[&#x27;key&#x27;]; image_path=run/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         if file_hash(image_path)!=record[&#x27;image_sha256&#x27;]:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             raise ValueError(&#x27;image input changed&#x27;)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         with np.load(image_path,allow_pickle=False) as images:</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             left,right=images[&#x27;left&#x27;],images[&#x27;right&#x27;]</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         begin=time.monotonic()</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         forward,reverse,inference_s=model.predict(left,right)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         masked,valid,lr_valid=filter_learned_disparity(forward,reverse,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             cv2.cvtColor(left,cv2.COLOR_RGB2GRAY),cv2.cvtColor(right,cv2.COLOR_RGB2GRAY),</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             config[&#x27;profile&#x27;][&#x27;consistency_full_resolution_px&#x27;],config[&#x27;profile&#x27;][&#x27;common_texture_std&#x27;])</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         ffs_s=time.monotonic()-begin</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         def frame(side, pixels):</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             meta=dict(record[side+&#x27;_metadata&#x27;]);meta[&#x27;covariance_or_bounds&#x27;]=tuple(meta[&#x27;covariance_or_bounds&#x27;])</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             return ImageFrame(Metadata(**meta),&#x27;rgb8&#x27;,pixels)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         a,b=frame(&#x27;left&#x27;,left),frame(&#x27;right&#x27;,right)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         pair=StereoPair(Metadata(max(a.metadata.stamp,b.metadata.stamp),min(a.metadata.valid_until,b.metadata.valid_until),</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             record[&#x27;epoch&#x27;],&#x27;retained_learned_comparison&#x27;,&#x27;front_stereo&#x27;),a,b,abs(a.metadata.stamp-b.metadata.stamp))</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         begin=time.monotonic(); sgbm=compute_diagnostic_disparity(pair,baseline)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         sgbm_s=time.monotonic()-begin</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         if key == records[0][&#x27;key&#x27;]:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             first_hash=hashlib.sha256(forward.tobytes()+reverse.tobytes()).hexdigest()</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         np.savez_compressed(run/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),ffs_forward=forward,</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             ffs_reverse_positive=reverse,ffs_disparity=masked,ffs_valid=valid,ffs_lr_valid=lr_valid,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             sgbm_disparity=sgbm.disparity_px,sgbm_valid=sgbm.valid)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         measurements.append({&#x27;key&#x27;:key,&#x27;ffs_bidirectional_resize_transfer_s&#x27;:inference_s,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             &#x27;ffs_with_gray_and_mask_s&#x27;:ffs_s,&#x27;sgbm_gray_bidirectional_mask_s&#x27;:sgbm_s})</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         print(json.dumps(measurements[-1]),flush=True)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     with np.load(run/&#x27;inputs&#x27;/(records[0][&#x27;key&#x27;]+&#x27;.npz&#x27;),allow_pickle=False) as first:</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         repeat_forward,repeat_reverse,repeat_s=model.predict(first[&#x27;left&#x27;],first[&#x27;right&#x27;])</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     repeat_hash=hashlib.sha256(repeat_forward.tobytes()+repeat_reverse.tobytes()).hexdigest()</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     report={&#x27;model_load_s&#x27;:load_s,&#x27;warmup_bidirectional_s&#x27;:warmup_s,&#x27;warmup_runs&#x27;:1,</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         &#x27;first_pair_repeat_identical&#x27;:first_hash==repeat_hash,</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         &#x27;first_pair_raw_sha256&#x27;:[first_hash,repeat_hash],&#x27;repeat_inference_s&#x27;:repeat_s,</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         &#x27;compilation_cache_may_be_warm&#x27;:True,&#x27;cold_process_startup_measured&#x27;:False,</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         &#x27;normalization_compatibility_default_applied&#x27;:model.normalization_compatibility_default_applied,</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         &#x27;volume_normalize&#x27;:bool(model.model.args.normalize),</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         &#x27;measurements&#x27;:measurements,&#x27;gpu&#x27;:torch.cuda.get_device_name(0),&#x27;torch&#x27;:torch.__version__,</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>         &#x27;cuda_runtime&#x27;:torch.version.cuda,&#x27;numpy&#x27;:np.__version__,&#x27;opencv&#x27;:cv2.__version__,</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         &#x27;opencv_threads&#x27;:cv2.getNumThreads(),&#x27;torch_cpu_threads&#x27;:torch.get_num_threads(),</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         &#x27;peak_cuda_allocated_bytes&#x27;:torch.cuda.max_memory_allocated(),</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         &#x27;peak_cuda_reserved_bytes&#x27;:torch.cuda.max_memory_reserved(),</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         &#x27;sgbm_config&#x27;:asdict(baseline),&#x27;profile&#x27;:config[&#x27;profile&#x27;],</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         &#x27;timing_excludes&#x27;:&#x27;image loading, archive I/O, ROS transport, simulator contention, planning&#x27;,</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         &#x27;same_search_range&#x27;:False,&#x27;sgbm_search_max_px&#x27;:128,&#x27;ffs_search_max_original_px&#x27;:384,</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         &#x27;online_latency_verified&#x27;:False}</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     (run/&#x27;predictions&#x27;/&#x27;runtime.json&#x27;).write_text(json.dumps(report,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>     if first_hash!=repeat_hash:</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         raise RuntimeError(&#x27;first-pair GPU repeat differs; retain diagnostic outputs for investigation&#x27;)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a> </span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a> </span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a> if __name__==&#x27;__main__&#x27;:</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     main()</span></pre></body></html>

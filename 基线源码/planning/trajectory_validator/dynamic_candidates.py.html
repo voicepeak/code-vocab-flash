@@ -1,0 +1,111 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>planning/trajectory_validator/dynamic_candidates.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>planning/trajectory_validator/dynamic_candidates.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Continuous candidate-obstacle veto; does not certify dynamic clearance.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import sys</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from interfaces.contracts import Metadata, finite_vec3</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from planning.trajectory_validator.static_sweep import SweepBounds, _contact_interval</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> @dataclass(frozen=True)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class DynamicScene:</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     metadata: Metadata</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     tracks: tuple</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     coverage_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def __post_init__(self):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         if (not isinstance(self.metadata,Metadata) or not isinstance(self.tracks,tuple) or len(self.tracks)&gt;128</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>                 or self.metadata.frame_id!=&#x27;world_ned&#x27;):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             raise ValueError(&#x27;invalid dynamic candidate snapshot&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         ids=[track.track_id for track in self.tracks]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         if len(set(ids))!=len(ids):raise ValueError(&#x27;duplicate dynamic track ID&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> </span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> @dataclass(frozen=True)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> class DynamicBounds:</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     position_error_m: float</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     velocity_error_m_s: float</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     acceleration_bound_m_s2: float</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     single_observation_speed_bound_m_s: float</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     max_horizon_s: float = .5</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     max_pair_tests: int = 32768</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def __post_init__(self):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         if (not all(math.isfinite(x) and x&gt;=0 for x in (self.position_error_m,self.velocity_error_m_s,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 self.acceleration_bound_m_s2,self.single_observation_speed_bound_m_s))</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                 or not math.isfinite(self.max_horizon_s) or not 0&lt;self.max_horizon_s&lt;=.5</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 or isinstance(self.max_pair_tests,bool) or not isinstance(self.max_pair_tests,int)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 or not 1&lt;=self.max_pair_tests&lt;=262144):</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             raise ValueError(&#x27;invalid dynamic candidate bounds&#x27;)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a> </span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> @dataclass(frozen=True)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> class DynamicCheck:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     allowed: bool</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     reason: str</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     pair_tests: int = 0</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     track_id: int = None</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     segment_index: int = None</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     # Passing this veto does not certify detection coverage or object geometry.</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     safety_certified: bool = field(default=False, init=False)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a> </span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a> </span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> def check_dynamic_candidates(trajectory, scene, now, epoch, body, bounds):</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     &quot;&quot;&quot;Check full sampled trajectory against linearly predicted candidate boxes.</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     Inflate by tracking error, continuous drone-acceleration chord bound and</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     explicit position/velocity/acceleration uncertainty for the obstacle. The</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     interval uses its maximum uncertainty and closed faces so crossings and</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     tangencies between samples are rejected. Missing/uncertified objects cannot</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     be proved absent; a passing result is only a candidate conflict veto.</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     if not isinstance(scene,DynamicScene) or not isinstance(body,SweepBounds) or not isinstance(bounds,DynamicBounds):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         raise ValueError(&#x27;dynamic scene and bounds required&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     if not trajectory.metadata.current(now,epoch) or not scene.metadata.current(now,epoch):</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         return DynamicCheck(False,&#x27;DYNAMIC_SOURCE_UNAVAILABLE&#x27;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     if trajectory.metadata.frame_id!=&#x27;world_ned&#x27; or scene.metadata.frame_id!=&#x27;world_ned&#x27;:</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         return DynamicCheck(False,&#x27;DYNAMIC_FRAME&#x27;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     horizon=trajectory.metadata.valid_until</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     if horizon-now &gt; bounds.max_horizon_s + 1e-9:</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         return DynamicCheck(False,&#x27;DYNAMIC_HORIZON&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     samples=trajectory.samples</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     if len(samples)-1&gt;body.max_segments or (len(samples)-1)*len(scene.tracks)&gt;bounds.max_pair_tests:</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         return DynamicCheck(False,&#x27;DYNAMIC_BUDGET&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     if any(math.hypot(*sample.acceleration_ned)&gt;body.acceleration_bound_m_s2+1e-9 for sample in samples):</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         return DynamicCheck(False,&#x27;DYNAMIC_ACCELERATION_BOUND&#x27;)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     for track in scene.tracks:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         try:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             finite_vec3(track.center_ned);finite_vec3(track.velocity_ned_m_s);finite_vec3(track.half_extents_m)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             if (track.epoch!=epoch or not track.stamp&lt;=now&lt;track.valid_until or track.observations&lt;1</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                     or any(v&lt;=0 for v in track.half_extents_m)):</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                 return DynamicCheck(False,&#x27;DYNAMIC_TRACK_UNAVAILABLE&#x27;,track_id=track.track_id)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         except (TypeError,ValueError):</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             return DynamicCheck(False,&#x27;DYNAMIC_TRACK_INVALID&#x27;)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     tested=0</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     for i,(first,second) in enumerate(zip(samples,samples[1:])):</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         begin,finish=max(now,first.stamp),min(horizon,second.stamp)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         if begin&gt;finish:continue</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>         duration=second.stamp-first.stamp</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         if not math.isfinite(duration) or duration&lt;=0:return DynamicCheck(False,&#x27;DYNAMIC_NUMERICAL_RANGE&#x27;,tested,segment_index=i)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         def drone_at(stamp):</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>             fraction=(stamp-first.stamp)/duration</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             return tuple((1-fraction)*a+fraction*b for a,b in zip(first.position_ned,second.position_ned))</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         start,end=drone_at(begin),drone_at(finish)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         deviation=body.tracking_error_m+body.acceleration_bound_m_s2*duration*duration/8</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         for track in scene.tracks:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             tested+=1</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             dt0,dt1=begin-track.stamp,finish-track.stamp</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             velocity=track.velocity_ned_m_s if track.observations&gt;=2 else (0.,0.,0.)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             velocity_error=(bounds.velocity_error_m_s if track.observations&gt;=2</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                             else bounds.single_observation_speed_bound_m_s)</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             inflation=bounds.position_error_m+velocity_error*dt1+.5*bounds.acceleration_bound_m_s2*dt1*dt1</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             relative0=tuple(p-(q+v*dt0) for p,q,v in zip(start,track.center_ned,velocity))</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             relative1=tuple(p-(q+v*dt1) for p,q,v in zip(end,track.center_ned,velocity))</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             extents=tuple(a+b+deviation+inflation for a,b in zip(body.half_extents_m,track.half_extents_m))</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             values=relative0+relative1+extents</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             if not all(math.isfinite(v) for v in values):return DynamicCheck(False,&#x27;DYNAMIC_NUMERICAL_RANGE&#x27;,tested,track.track_id,i)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             scale=max(1.,*(abs(v) for v in values));padding=32*sys.float_info.epsilon*scale</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             extents=tuple(v+padding for v in extents)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             if _contact_interval(relative0,relative1,tuple(-v for v in extents),extents) is not None:</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                 return DynamicCheck(False,&#x27;DYNAMIC_CANDIDATE_CONFLICT&#x27;,tested,track.track_id,i)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     return DynamicCheck(True,&#x27;NO_DETECTED_DYNAMIC_CONFLICT_UNCERTIFIED&#x27;,tested)</span></pre></body></html>

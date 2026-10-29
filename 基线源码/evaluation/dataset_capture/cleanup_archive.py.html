@@ -1,0 +1,362 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/dataset_capture/cleanup_archive.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/dataset_capture/cleanup_archive.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Delete only unchanged, publicly backed-up archive members after full verification.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import fcntl</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import gzip</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import hashlib</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import itertools</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import json</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import os</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from pathlib import Path</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> import shutil</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> import stat</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> import tempfile</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> import time</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> import urllib.request</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from evaluation.dataset_capture.publish_archive import sha256, write_json</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> class PublicationPending(ValueError):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     pass</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> </span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a> class PublicArchive:</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     def __init__(self, repo_id):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         for name in (&quot;ALL_PROXY&quot;, &quot;all_proxy&quot;):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             if os.environ.get(name, &quot;&quot;).startswith(&quot;socks://&quot;):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                 os.environ.pop(name)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         from huggingface_hub import HfApi</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.api = HfApi(token=False)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self.repo_id = repo_id</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         info = self.api.repo_info(repo_id, repo_type=&quot;dataset&quot;)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if info.private:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             raise ValueError(&quot;Expected the authorized public dataset&quot;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         self.revision = info.sha</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def read(self, path):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         from huggingface_hub import hf_hub_url</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         url = hf_hub_url(self.repo_id, path, repo_type=&quot;dataset&quot;, revision=self.revision)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         with urllib.request.urlopen(url, timeout=60) as response:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             return response.read()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def metadata(self, paths):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         rows = self.api.get_paths_info(self.repo_id, paths, repo_type=&quot;dataset&quot;, revision=self.revision)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         return {r.path: {&quot;size&quot;: r.size, &quot;sha256&quot;: r.lfs.sha256 if r.lfs else None}</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 for r in rows}</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> def verify_publication(plan, state, remote, output, shard_names=None):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     expected = {s[&quot;name&quot;] for s in plan[&quot;shards&quot;]}</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     partial = shard_names is not None</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     selected = set(shard_names) if partial else expected</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     if not selected or not selected &lt;= expected or not selected &lt;= set(state[&quot;verified&quot;]):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         raise ValueError(&quot;Requested shards are not locally verified&quot;)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     if len(expected) != len(plan[&quot;shards&quot;]) or (not partial and set(state[&quot;verified&quot;]) != expected):</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         raise ValueError(&quot;Local upload receipts are incomplete&quot;)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     status = json.loads(remote.read(&quot;publication_status.json&quot;))</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     if not partial and (status.get(&quot;state&quot;) != &quot;COMPLETE&quot; or status.get(&quot;shards_expected&quot;) != len(expected)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                         or status.get(&quot;shards_verified&quot;) != len(expected)):</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         raise PublicationPending(&quot;Remote publication is not COMPLETE&quot;)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     summary = json.loads(remote.read(&quot;dataset_summary.json&quot;))</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     for key in (&quot;file_count&quot;, &quot;source_bytes&quot;):</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         if summary.get(key) != plan[key]:</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             raise ValueError(&quot;Remote summary does not match reviewed plan&quot;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     records = json.loads(remote.read(&quot;shards.json&quot;))</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     by_name = {r[&quot;name&quot;]: r for r in records}</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     if len(by_name) != len(records) or not set(by_name) &lt;= expected:</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         raise ValueError(&quot;Remote shard index is incomplete&quot;)</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     if not selected &lt;= set(by_name):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         raise PublicationPending(&quot;Remote shard index has not committed requested receipts yet&quot;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     paths = []</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     for name in sorted(selected):</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         paths.extend((&quot;data/&quot; + name, &quot;indices/&quot; + name + &quot;.files.jsonl.gz&quot;))</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     metadata = remote.metadata(paths)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>     indices = output / &quot;cleanup_indices&quot;</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     indices.mkdir(exist_ok=True)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     for shard in plan[&quot;shards&quot;]:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>         name = shard[&quot;name&quot;]</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         if name not in selected:</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             continue</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         receipt, published = state[&quot;verified&quot;][name], by_name[name]</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         for key in (&quot;sha256&quot;, &quot;size&quot;, &quot;index_sha256&quot;, &quot;index_size&quot;, &quot;file_count&quot;):</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             if receipt[key] != published[key]:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                 raise ValueError(&quot;Published receipt differs from local receipt: &quot; + name)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         for path, size, digest in (</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 (&quot;data/&quot; + name, receipt[&quot;size&quot;], receipt[&quot;sha256&quot;]),</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 (&quot;indices/&quot; + name + &quot;.files.jsonl.gz&quot;, receipt[&quot;index_size&quot;], receipt[&quot;index_sha256&quot;])):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             info = metadata.get(path)</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             if info is None or info[&quot;size&quot;] != size:</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 raise ValueError(&quot;Remote artifact missing or size mismatch: &quot; + path)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>             if info[&quot;sha256&quot;] is not None and info[&quot;sha256&quot;] != digest:</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                 raise ValueError(&quot;Remote artifact hash mismatch: &quot; + path)</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>             if path.startswith(&quot;data/&quot;) and info[&quot;sha256&quot;] is None:</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                 raise ValueError(&quot;Missing content-addressed hash for remote data shard&quot;)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         data = remote.read(&quot;indices/&quot; + name + &quot;.files.jsonl.gz&quot;)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         if hashlib.sha256(data).hexdigest() != receipt[&quot;index_sha256&quot;] or len(data) != receipt[&quot;index_size&quot;]:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>             raise ValueError(&quot;Downloaded index checksum mismatch: &quot; + name)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         rows = (json.loads(line) for line in gzip.decompress(data).decode().splitlines())</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         for entry, row in itertools.zip_longest(shard[&quot;entries&quot;], rows):</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             if (entry is None or row is None or entry[&quot;path&quot;] != row[&quot;path&quot;]</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                     or entry[&quot;size&quot;] != row[&quot;size&quot;] or len(row[&quot;sha256&quot;]) != 64):</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>                 raise ValueError(&quot;Per-file index differs from reviewed plan: &quot; + name)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         (indices / (name + &quot;.files.jsonl.gz&quot;)).write_bytes(data)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     return {&quot;repo_id&quot;: state[&quot;repo_id&quot;], &quot;revision&quot;: remote.revision,</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             &quot;shards_verified&quot;: len(selected),</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             &quot;file_count&quot;: sum(len(s[&quot;entries&quot;]) for s in plan[&quot;shards&quot;] if s[&quot;name&quot;] in selected)}</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a> </span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a> </span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a> def parent_fd(root_fd, relative):</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>     path = Path(relative)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>     if path.is_absolute() or not path.parts or any(p in (&quot;.&quot;, &quot;..&quot;) for p in path.parts):</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         raise ValueError(&quot;Unsafe archive member path&quot;)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>     descriptor = os.dup(root_fd)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>     try:</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         for name in path.parts[:-1]:</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>             next_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=descriptor)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             os.close(descriptor)</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             descriptor = next_fd</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         return descriptor, path.name</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     except BaseException:</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         os.close(descriptor)</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         raise</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a> </span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a> </span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a> def fingerprint(info):</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     return [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns]</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a> </span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a> </span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a> def delete_verified_members(plan, output, progress=lambda **kwargs: None):</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     root = Path(plan[&quot;source_root&quot;])</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     root_fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     report = {&quot;deleted_files&quot;: 0, &quot;deleted_bytes&quot;: 0, &quot;preserved_changed_files&quot;: 0,</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>               &quot;already_missing_files&quot;: 0, &quot;removed_empty_directories&quot;: 0,</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>               &quot;disk_free_bytes_before&quot;: shutil.disk_usage(root).free}</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>     empty_candidates = set()</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>     last_update = time.monotonic()</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>     try:</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>         # All remote artifacts for this selection have already been verified.</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>         # Hash all members of the selected shard before deleting its first member.</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         with tempfile.TemporaryFile(mode=&quot;w+t&quot;, dir=output) as candidates, \</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>                 (output / &quot;cleanup_preserved.local.jsonl&quot;).open(&quot;a&quot;) as preserved:</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>             inspected = 0</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>             for shard in plan[&quot;shards&quot;]:</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>                 index = output / &quot;cleanup_indices&quot; / (shard[&quot;name&quot;] + &quot;.files.jsonl.gz&quot;)</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>                 with gzip.open(index, &quot;rt&quot;) as stream:</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>                     for line in stream:</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>                         row = json.loads(line)</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>                         directory = None</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>                         try:</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>                             directory, name = parent_fd(root_fd, row[&quot;path&quot;])</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>                             fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a>                             with os.fdopen(fd, &quot;rb&quot;) as source:</span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a>                                 before = os.fstat(source.fileno())</span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a>                                 if not stat.S_ISREG(before.st_mode):</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>                                     raise ValueError(&quot;Not a regular file&quot;)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>                                 digest = hashlib.sha256()</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>                                 for block in iter(lambda: source.read(1024 * 1024), b&quot;&quot;):</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>                                     digest.update(block)</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>                                 after = os.fstat(source.fileno())</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>                             current = os.stat(name, dir_fd=directory, follow_symlinks=False)</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>                             if (fingerprint(before) != fingerprint(after) or fingerprint(after) != fingerprint(current)</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>                                     or after.st_size != row[&quot;size&quot;] or digest.hexdigest() != row[&quot;sha256&quot;]):</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>                                 raise ValueError(&quot;Local data changed after backup&quot;)</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>                             candidates.write(json.dumps({&quot;path&quot;: row[&quot;path&quot;], &quot;fingerprint&quot;: fingerprint(after)}) + &quot;\n&quot;)</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>                         except FileNotFoundError:</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>                             report[&quot;already_missing_files&quot;] += 1</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>                         except (OSError, ValueError) as error:</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>                             report[&quot;preserved_changed_files&quot;] += 1</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a>                             preserved.write(json.dumps({&quot;path&quot;: row[&quot;path&quot;], &quot;reason&quot;: str(error)}) + &quot;\n&quot;)</span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a>                         finally:</span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a>                             if directory is not None:</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>                                 os.close(directory)</span>
+<span class="line" id="L172"><a class="ln" href="#L172">  172</a>                         inspected += 1</span>
+<span class="line" id="L173"><a class="ln" href="#L173">  173</a>                         if time.monotonic() - last_update &gt; 20:</span>
+<span class="line" id="L174"><a class="ln" href="#L174">  174</a>                             progress(phase=&quot;HASHING_LOCAL&quot;, inspected_files=inspected, **report)</span>
+<span class="line" id="L175"><a class="ln" href="#L175">  175</a>                             last_update = time.monotonic()</span>
+<span class="line" id="L176"><a class="ln" href="#L176">  176</a>             if inspected != plan[&quot;file_count&quot;]:</span>
+<span class="line" id="L177"><a class="ln" href="#L177">  177</a>                 raise ValueError(&quot;Local candidate count mismatch; nothing deleted&quot;)</span>
+<span class="line" id="L178"><a class="ln" href="#L178">  178</a>             candidates.flush()</span>
+<span class="line" id="L179"><a class="ln" href="#L179">  179</a>             candidates.seek(0)</span>
+<span class="line" id="L180"><a class="ln" href="#L180">  180</a>             progress(phase=&quot;DELETING_VERIFIED_MEMBERS&quot;, inspected_files=inspected, **report)</span>
+<span class="line" id="L181"><a class="ln" href="#L181">  181</a>             for line in candidates:</span>
+<span class="line" id="L182"><a class="ln" href="#L182">  182</a>                 candidate = json.loads(line)</span>
+<span class="line" id="L183"><a class="ln" href="#L183">  183</a>                 directory = None</span>
+<span class="line" id="L184"><a class="ln" href="#L184">  184</a>                 try:</span>
+<span class="line" id="L185"><a class="ln" href="#L185">  185</a>                     directory, name = parent_fd(root_fd, candidate[&quot;path&quot;])</span>
+<span class="line" id="L186"><a class="ln" href="#L186">  186</a>                     current = os.stat(name, dir_fd=directory, follow_symlinks=False)</span>
+<span class="line" id="L187"><a class="ln" href="#L187">  187</a>                     if fingerprint(current) != candidate[&quot;fingerprint&quot;]:</span>
+<span class="line" id="L188"><a class="ln" href="#L188">  188</a>                         raise ValueError(&quot;File changed between verification and removal&quot;)</span>
+<span class="line" id="L189"><a class="ln" href="#L189">  189</a>                     os.unlink(name, dir_fd=directory)</span>
+<span class="line" id="L190"><a class="ln" href="#L190">  190</a>                     report[&quot;deleted_files&quot;] += 1</span>
+<span class="line" id="L191"><a class="ln" href="#L191">  191</a>                     report[&quot;deleted_bytes&quot;] += current.st_size</span>
+<span class="line" id="L192"><a class="ln" href="#L192">  192</a>                     parts = Path(candidate[&quot;path&quot;]).parts</span>
+<span class="line" id="L193"><a class="ln" href="#L193">  193</a>                     empty_candidates.update(&quot;/&quot;.join(parts[:i]) for i in range(1, len(parts)))</span>
+<span class="line" id="L194"><a class="ln" href="#L194">  194</a>                 except FileNotFoundError:</span>
+<span class="line" id="L195"><a class="ln" href="#L195">  195</a>                     report[&quot;already_missing_files&quot;] += 1</span>
+<span class="line" id="L196"><a class="ln" href="#L196">  196</a>                 except (OSError, ValueError) as error:</span>
+<span class="line" id="L197"><a class="ln" href="#L197">  197</a>                     report[&quot;preserved_changed_files&quot;] += 1</span>
+<span class="line" id="L198"><a class="ln" href="#L198">  198</a>                     preserved.write(json.dumps({&quot;path&quot;: candidate[&quot;path&quot;], &quot;reason&quot;: str(error)}) + &quot;\n&quot;)</span>
+<span class="line" id="L199"><a class="ln" href="#L199">  199</a>                 finally:</span>
+<span class="line" id="L200"><a class="ln" href="#L200">  200</a>                     if directory is not None:</span>
+<span class="line" id="L201"><a class="ln" href="#L201">  201</a>                         os.close(directory)</span>
+<span class="line" id="L202"><a class="ln" href="#L202">  202</a>                 if time.monotonic() - last_update &gt; 20:</span>
+<span class="line" id="L203"><a class="ln" href="#L203">  203</a>                     progress(phase=&quot;DELETING_VERIFIED_MEMBERS&quot;, **report)</span>
+<span class="line" id="L204"><a class="ln" href="#L204">  204</a>                     last_update = time.monotonic()</span>
+<span class="line" id="L205"><a class="ln" href="#L205">  205</a>         for relative in sorted(empty_candidates, key=lambda p: len(Path(p).parts), reverse=True):</span>
+<span class="line" id="L206"><a class="ln" href="#L206">  206</a>             directory = None</span>
+<span class="line" id="L207"><a class="ln" href="#L207">  207</a>             try:</span>
+<span class="line" id="L208"><a class="ln" href="#L208">  208</a>                 directory, name = parent_fd(root_fd, relative)</span>
+<span class="line" id="L209"><a class="ln" href="#L209">  209</a>                 os.rmdir(name, dir_fd=directory)</span>
+<span class="line" id="L210"><a class="ln" href="#L210">  210</a>                 report[&quot;removed_empty_directories&quot;] += 1</span>
+<span class="line" id="L211"><a class="ln" href="#L211">  211</a>             except OSError:</span>
+<span class="line" id="L212"><a class="ln" href="#L212">  212</a>                 pass  # Nonempty, changed or already missing directories stay untouched.</span>
+<span class="line" id="L213"><a class="ln" href="#L213">  213</a>             finally:</span>
+<span class="line" id="L214"><a class="ln" href="#L214">  214</a>                 if directory is not None:</span>
+<span class="line" id="L215"><a class="ln" href="#L215">  215</a>                     os.close(directory)</span>
+<span class="line" id="L216"><a class="ln" href="#L216">  216</a>     finally:</span>
+<span class="line" id="L217"><a class="ln" href="#L217">  217</a>         os.close(root_fd)</span>
+<span class="line" id="L218"><a class="ln" href="#L218">  218</a>     report[&quot;disk_free_bytes_after&quot;] = shutil.disk_usage(root).free</span>
+<span class="line" id="L219"><a class="ln" href="#L219">  219</a>     return report</span>
+<span class="line" id="L220"><a class="ln" href="#L220">  220</a> </span>
+<span class="line" id="L221"><a class="ln" href="#L221">  221</a> </span>
+<span class="line" id="L222"><a class="ln" href="#L222">  222</a> def incremental_cleanup(plan, output, update, plan_digest):</span>
+<span class="line" id="L223"><a class="ln" href="#L223">  223</a>     journal_path = output / &quot;per_shard_cleanup_state.local.json&quot;</span>
+<span class="line" id="L224"><a class="ln" href="#L224">  224</a>     journal = json.loads(journal_path.read_text()) if journal_path.exists() else {</span>
+<span class="line" id="L225"><a class="ln" href="#L225">  225</a>         &quot;plan_sha256&quot;: plan_digest, &quot;cleaned&quot;: {}}</span>
+<span class="line" id="L226"><a class="ln" href="#L226">  226</a>     if journal[&quot;plan_sha256&quot;] != plan_digest:</span>
+<span class="line" id="L227"><a class="ln" href="#L227">  227</a>         raise ValueError(&quot;Cleanup journal belongs to another reviewed plan&quot;)</span>
+<span class="line" id="L228"><a class="ln" href="#L228">  228</a>     shards = {s[&quot;name&quot;]: s for s in plan[&quot;shards&quot;]}</span>
+<span class="line" id="L229"><a class="ln" href="#L229">  229</a> </span>
+<span class="line" id="L230"><a class="ln" href="#L230">  230</a>     def totals():</span>
+<span class="line" id="L231"><a class="ln" href="#L231">  231</a>         keys = (&quot;deleted_files&quot;, &quot;deleted_bytes&quot;, &quot;preserved_changed_files&quot;, &quot;already_missing_files&quot;)</span>
+<span class="line" id="L232"><a class="ln" href="#L232">  232</a>         records = list(journal[&quot;cleaned&quot;].values()) + list(journal.get(&quot;retry_previous&quot;, {}).values())</span>
+<span class="line" id="L233"><a class="ln" href="#L233">  233</a>         return {key: sum(r.get(key, 0) for r in records) for key in keys}</span>
+<span class="line" id="L234"><a class="ln" href="#L234">  234</a> </span>
+<span class="line" id="L235"><a class="ln" href="#L235">  235</a>     while len(journal[&quot;cleaned&quot;]) &lt; len(shards):</span>
+<span class="line" id="L236"><a class="ln" href="#L236">  236</a>         if sha256(output / &quot;plan.json&quot;) != plan_digest:</span>
+<span class="line" id="L237"><a class="ln" href="#L237">  237</a>             raise ValueError(&quot;Reviewed upload plan changed&quot;)</span>
+<span class="line" id="L238"><a class="ln" href="#L238">  238</a>         state_path = output / &quot;upload_state.local.json&quot;</span>
+<span class="line" id="L239"><a class="ln" href="#L239">  239</a>         state = json.loads(state_path.read_text()) if state_path.exists() else {&quot;verified&quot;: {}}</span>
+<span class="line" id="L240"><a class="ln" href="#L240">  240</a>         pending = sorted(set(state[&quot;verified&quot;]) - set(journal[&quot;cleaned&quot;]))</span>
+<span class="line" id="L241"><a class="ln" href="#L241">  241</a>         if not pending:</span>
+<span class="line" id="L242"><a class="ln" href="#L242">  242</a>             update(state=&quot;WAITING_FOR_NEXT_SHARD&quot;, error=None, cleaned_shards=len(journal[&quot;cleaned&quot;]), **totals())</span>
+<span class="line" id="L243"><a class="ln" href="#L243">  243</a>             time.sleep(10)</span>
+<span class="line" id="L244"><a class="ln" href="#L244">  244</a>             continue</span>
+<span class="line" id="L245"><a class="ln" href="#L245">  245</a>         for name in pending:</span>
+<span class="line" id="L246"><a class="ln" href="#L246">  246</a>             update(state=&quot;VERIFYING_SHARD&quot;, current_shard=name, cleaned_shards=len(journal[&quot;cleaned&quot;]), **totals())</span>
+<span class="line" id="L247"><a class="ln" href="#L247">  247</a>             for attempt in range(1, 13):</span>
+<span class="line" id="L248"><a class="ln" href="#L248">  248</a>                 try:</span>
+<span class="line" id="L249"><a class="ln" href="#L249">  249</a>                     remote = PublicArchive(state[&quot;repo_id&quot;])</span>
+<span class="line" id="L250"><a class="ln" href="#L250">  250</a>                     verified = verify_publication(plan, state, remote, output, {name})</span>
+<span class="line" id="L251"><a class="ln" href="#L251">  251</a>                     break</span>
+<span class="line" id="L252"><a class="ln" href="#L252">  252</a>                 except PublicationPending:</span>
+<span class="line" id="L253"><a class="ln" href="#L253">  253</a>                     if attempt == 12:</span>
+<span class="line" id="L254"><a class="ln" href="#L254">  254</a>                         raise</span>
+<span class="line" id="L255"><a class="ln" href="#L255">  255</a>                     time.sleep(5)</span>
+<span class="line" id="L256"><a class="ln" href="#L256">  256</a>                 except ValueError:</span>
+<span class="line" id="L257"><a class="ln" href="#L257">  257</a>                     raise</span>
+<span class="line" id="L258"><a class="ln" href="#L258">  258</a>                 except Exception as error:</span>
+<span class="line" id="L259"><a class="ln" href="#L259">  259</a>                     if attempt == 12:</span>
+<span class="line" id="L260"><a class="ln" href="#L260">  260</a>                         raise</span>
+<span class="line" id="L261"><a class="ln" href="#L261">  261</a>                     update(state=&quot;RETRYING_SHARD_VERIFICATION&quot;, error=str(error), current_shard=name)</span>
+<span class="line" id="L262"><a class="ln" href="#L262">  262</a>                     time.sleep(10)</span>
+<span class="line" id="L263"><a class="ln" href="#L263">  263</a>             subset = {&quot;source_root&quot;: plan[&quot;source_root&quot;], &quot;file_count&quot;: len(shards[name][&quot;entries&quot;]),</span>
+<span class="line" id="L264"><a class="ln" href="#L264">  264</a>                       &quot;shards&quot;: [shards[name]]}</span>
+<span class="line" id="L265"><a class="ln" href="#L265">  265</a>             base = totals()</span>
+<span class="line" id="L266"><a class="ln" href="#L266">  266</a> </span>
+<span class="line" id="L267"><a class="ln" href="#L267">  267</a>             def progress(**values):</span>
+<span class="line" id="L268"><a class="ln" href="#L268">  268</a>                 for key in base:</span>
+<span class="line" id="L269"><a class="ln" href="#L269">  269</a>                     if key in values:</span>
+<span class="line" id="L270"><a class="ln" href="#L270">  270</a>                         values[key] += base[key]</span>
+<span class="line" id="L271"><a class="ln" href="#L271">  271</a>                 update(state=&quot;CLEANING_SHARD&quot;, current_shard=name, cleaned_shards=len(journal[&quot;cleaned&quot;]), **values)</span>
+<span class="line" id="L272"><a class="ln" href="#L272">  272</a> </span>
+<span class="line" id="L273"><a class="ln" href="#L273">  273</a>             result = delete_verified_members(subset, output, progress)</span>
+<span class="line" id="L274"><a class="ln" href="#L274">  274</a>             previous = journal.get(&quot;retry_previous&quot;, {}).pop(name, None)</span>
+<span class="line" id="L275"><a class="ln" href="#L275">  275</a>             if previous:</span>
+<span class="line" id="L276"><a class="ln" href="#L276">  276</a>                 result[&quot;already_missing_files&quot;] = max(previous.get(&quot;already_missing_files&quot;, 0),</span>
+<span class="line" id="L277"><a class="ln" href="#L277">  277</a>                     result[&quot;already_missing_files&quot;] - previous.get(&quot;deleted_files&quot;, 0))</span>
+<span class="line" id="L278"><a class="ln" href="#L278">  278</a>                 result[&quot;deleted_files&quot;] += previous.get(&quot;deleted_files&quot;, 0)</span>
+<span class="line" id="L279"><a class="ln" href="#L279">  279</a>                 result[&quot;deleted_bytes&quot;] += previous.get(&quot;deleted_bytes&quot;, 0)</span>
+<span class="line" id="L280"><a class="ln" href="#L280">  280</a>             result[&quot;remote_revision&quot;] = verified[&quot;revision&quot;]</span>
+<span class="line" id="L281"><a class="ln" href="#L281">  281</a>             journal[&quot;cleaned&quot;][name] = result</span>
+<span class="line" id="L282"><a class="ln" href="#L282">  282</a>             write_json(journal_path, journal)</span>
+<span class="line" id="L283"><a class="ln" href="#L283">  283</a>             update(state=&quot;SHARD_CLEANED&quot;, error=None, current_shard=name, cleaned_shards=len(journal[&quot;cleaned&quot;]), **totals())</span>
+<span class="line" id="L284"><a class="ln" href="#L284">  284</a>             print(json.dumps({&quot;shard_cleaned&quot;: name, &quot;deleted_bytes&quot;: result[&quot;deleted_bytes&quot;],</span>
+<span class="line" id="L285"><a class="ln" href="#L285">  285</a>                               &quot;cleaned_shards&quot;: len(journal[&quot;cleaned&quot;])}), flush=True)</span>
+<span class="line" id="L286"><a class="ln" href="#L286">  286</a>     update(state=&quot;COMPLETE&quot;, cleaned_shards=len(journal[&quot;cleaned&quot;]), **totals())</span>
+<span class="line" id="L287"><a class="ln" href="#L287">  287</a> </span>
+<span class="line" id="L288"><a class="ln" href="#L288">  288</a> </span>
+<span class="line" id="L289"><a class="ln" href="#L289">  289</a> def main():</span>
+<span class="line" id="L290"><a class="ln" href="#L290">  290</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L291"><a class="ln" href="#L291">  291</a>     parser.add_argument(&quot;--output&quot;, type=Path, default=Path(&quot;/home/tianbot/RUMA-hf-public-20261019&quot;))</span>
+<span class="line" id="L292"><a class="ln" href="#L292">  292</a>     parser.add_argument(&quot;--authorize-cleanup&quot;, action=&quot;store_true&quot;, required=True)</span>
+<span class="line" id="L293"><a class="ln" href="#L293">  293</a>     parser.add_argument(&quot;--per-shard&quot;, action=&quot;store_true&quot;,</span>
+<span class="line" id="L294"><a class="ln" href="#L294">  294</a>                         help=&quot;remove each verified shard immediately while the rest uploads&quot;)</span>
+<span class="line" id="L295"><a class="ln" href="#L295">  295</a>     args = parser.parse_args()</span>
+<span class="line" id="L296"><a class="ln" href="#L296">  296</a>     output = args.output.resolve()</span>
+<span class="line" id="L297"><a class="ln" href="#L297">  297</a>     with (output / &quot;cleanup_service.lock&quot;).open(&quot;a&quot;) as lock:</span>
+<span class="line" id="L298"><a class="ln" href="#L298">  298</a>         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)</span>
+<span class="line" id="L299"><a class="ln" href="#L299">  299</a>         plan_path = output / &quot;plan.json&quot;</span>
+<span class="line" id="L300"><a class="ln" href="#L300">  300</a>         plan_digest = sha256(plan_path)</span>
+<span class="line" id="L301"><a class="ln" href="#L301">  301</a>         plan = json.loads(plan_path.read_text())</span>
+<span class="line" id="L302"><a class="ln" href="#L302">  302</a>         source = Path(plan[&quot;source_root&quot;])</span>
+<span class="line" id="L303"><a class="ln" href="#L303">  303</a>         if (source != Path(&quot;/home/tianbot/RUMA-legacy-archive-20261019&quot;) or source.is_symlink()</span>
+<span class="line" id="L304"><a class="ln" href="#L304">  304</a>                 or source.resolve() == output or source in output.parents):</span>
+<span class="line" id="L305"><a class="ln" href="#L305">  305</a>             raise ValueError(&quot;Refusing cleanup outside the explicitly authorized historical archive&quot;)</span>
+<span class="line" id="L306"><a class="ln" href="#L306">  306</a>         status_path = output / &quot;local_cleanup_status.local.json&quot;</span>
+<span class="line" id="L307"><a class="ln" href="#L307">  307</a>         status = {&quot;pid&quot;: os.getpid(), &quot;source_root&quot;: str(source), &quot;plan_sha256&quot;: plan_digest,</span>
+<span class="line" id="L308"><a class="ln" href="#L308">  308</a>                   &quot;authorized&quot;: True, &quot;per_shard&quot;: args.per_shard,</span>
+<span class="line" id="L309"><a class="ln" href="#L309">  309</a>                   &quot;state&quot;: &quot;WAITING_FOR_UPLOAD&quot;, &quot;updated_at_unix&quot;: time.time()}</span>
+<span class="line" id="L310"><a class="ln" href="#L310">  310</a> </span>
+<span class="line" id="L311"><a class="ln" href="#L311">  311</a>         def update(**values):</span>
+<span class="line" id="L312"><a class="ln" href="#L312">  312</a>             status.update(values, updated_at_unix=time.time())</span>
+<span class="line" id="L313"><a class="ln" href="#L313">  313</a>             write_json(status_path, status)</span>
+<span class="line" id="L314"><a class="ln" href="#L314">  314</a> </span>
+<span class="line" id="L315"><a class="ln" href="#L315">  315</a>         update()</span>
+<span class="line" id="L316"><a class="ln" href="#L316">  316</a>         if args.per_shard:</span>
+<span class="line" id="L317"><a class="ln" href="#L317">  317</a>             try:</span>
+<span class="line" id="L318"><a class="ln" href="#L318">  318</a>                 incremental_cleanup(plan, output, update, plan_digest)</span>
+<span class="line" id="L319"><a class="ln" href="#L319">  319</a>             except Exception as error:</span>
+<span class="line" id="L320"><a class="ln" href="#L320">  320</a>                 update(state=&quot;FAILED&quot;, error=str(error))</span>
+<span class="line" id="L321"><a class="ln" href="#L321">  321</a>                 raise</span>
+<span class="line" id="L322"><a class="ln" href="#L322">  322</a>             return</span>
+<span class="line" id="L323"><a class="ln" href="#L323">  323</a>         while True:</span>
+<span class="line" id="L324"><a class="ln" href="#L324">  324</a>             if sha256(plan_path) != plan_digest:</span>
+<span class="line" id="L325"><a class="ln" href="#L325">  325</a>                 update(state=&quot;FAILED&quot;, error=&quot;Reviewed upload plan changed; no cleanup attempted&quot;)</span>
+<span class="line" id="L326"><a class="ln" href="#L326">  326</a>                 return</span>
+<span class="line" id="L327"><a class="ln" href="#L327">  327</a>             state_path = output / &quot;upload_state.local.json&quot;</span>
+<span class="line" id="L328"><a class="ln" href="#L328">  328</a>             completion = json.loads((output / &quot;public/publication_status.json&quot;).read_text())</span>
+<span class="line" id="L329"><a class="ln" href="#L329">  329</a>             state = json.loads(state_path.read_text()) if state_path.exists() else None</span>
+<span class="line" id="L330"><a class="ln" href="#L330">  330</a>             if completion.get(&quot;state&quot;) == &quot;COMPLETE&quot; and state and len(state[&quot;verified&quot;]) == len(plan[&quot;shards&quot;]):</span>
+<span class="line" id="L331"><a class="ln" href="#L331">  331</a>                 break</span>
+<span class="line" id="L332"><a class="ln" href="#L332">  332</a>             time.sleep(30)</span>
+<span class="line" id="L333"><a class="ln" href="#L333">  333</a>         try:</span>
+<span class="line" id="L334"><a class="ln" href="#L334">  334</a>             update(state=&quot;VERIFYING_REMOTE&quot;)</span>
+<span class="line" id="L335"><a class="ln" href="#L335">  335</a>             for attempt in range(1, 13):</span>
+<span class="line" id="L336"><a class="ln" href="#L336">  336</a>                 try:</span>
+<span class="line" id="L337"><a class="ln" href="#L337">  337</a>                     remote = PublicArchive(state[&quot;repo_id&quot;])</span>
+<span class="line" id="L338"><a class="ln" href="#L338">  338</a>                     verified = verify_publication(plan, state, remote, output)</span>
+<span class="line" id="L339"><a class="ln" href="#L339">  339</a>                     break</span>
+<span class="line" id="L340"><a class="ln" href="#L340">  340</a>                 except PublicationPending:</span>
+<span class="line" id="L341"><a class="ln" href="#L341">  341</a>                     if attempt == 12:</span>
+<span class="line" id="L342"><a class="ln" href="#L342">  342</a>                         raise</span>
+<span class="line" id="L343"><a class="ln" href="#L343">  343</a>                     update(state=&quot;WAITING_FOR_REMOTE_COMPLETION&quot;, verification_attempt=attempt)</span>
+<span class="line" id="L344"><a class="ln" href="#L344">  344</a>                     time.sleep(30)</span>
+<span class="line" id="L345"><a class="ln" href="#L345">  345</a>                 except ValueError:</span>
+<span class="line" id="L346"><a class="ln" href="#L346">  346</a>                     raise  # An integrity mismatch must never authorize deletion.</span>
+<span class="line" id="L347"><a class="ln" href="#L347">  347</a>                 except Exception as error:</span>
+<span class="line" id="L348"><a class="ln" href="#L348">  348</a>                     if attempt == 12:</span>
+<span class="line" id="L349"><a class="ln" href="#L349">  349</a>                         raise</span>
+<span class="line" id="L350"><a class="ln" href="#L350">  350</a>                     update(state=&quot;RETRYING_REMOTE_VERIFICATION&quot;, error=str(error), verification_attempt=attempt)</span>
+<span class="line" id="L351"><a class="ln" href="#L351">  351</a>                     time.sleep(30)</span>
+<span class="line" id="L352"><a class="ln" href="#L352">  352</a>             write_json(output / &quot;cleanup_remote_verification.local.json&quot;, verified)</span>
+<span class="line" id="L353"><a class="ln" href="#L353">  353</a>             result = delete_verified_members(plan, output, lambda **values: update(state=&quot;VERIFYING_AND_CLEANING&quot;, **values))</span>
+<span class="line" id="L354"><a class="ln" href="#L354">  354</a>             update(state=&quot;COMPLETE&quot;, **result, remote_revision=verified[&quot;revision&quot;])</span>
+<span class="line" id="L355"><a class="ln" href="#L355">  355</a>             print(json.dumps(status), flush=True)</span>
+<span class="line" id="L356"><a class="ln" href="#L356">  356</a>         except Exception as error:</span>
+<span class="line" id="L357"><a class="ln" href="#L357">  357</a>             update(state=&quot;FAILED&quot;, error=str(error))</span>
+<span class="line" id="L358"><a class="ln" href="#L358">  358</a>             raise</span>
+<span class="line" id="L359"><a class="ln" href="#L359">  359</a> </span>
+<span class="line" id="L360"><a class="ln" href="#L360">  360</a> </span>
+<span class="line" id="L361"><a class="ln" href="#L361">  361</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L362"><a class="ln" href="#L362">  362</a>     main()</span></pre></body></html>

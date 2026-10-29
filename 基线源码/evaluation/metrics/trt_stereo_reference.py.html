@@ -1,0 +1,55 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/trt_stereo_reference.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/trt_stereo_reference.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Separate FP32 PyTorch reference to diagnose precision versus conversion drift.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import time</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import numpy as np</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.metrics.trt_stereo_evaluate import numerical_agreement</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from evaluation.seed_runner.manifest import file_hash</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from perception.stereo_depth.learned import FastFoundationStereo,filter_learned_disparity</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> def main():</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     import cv2</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     import torch</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     args=parser.parse_args();run=args.run_dir;root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     manifest=json.loads((run/&#x27;manifest.json&#x27;).read_text());cfg=manifest[&#x27;config&#x27;][&#x27;precision_reference&#x27;]</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     source=root/cfg[&#x27;source_run&#x27;];profile=json.loads((root/&#x27;configs/fast_foundation_stereo.json&#x27;).read_text())</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     runtime=root/&#x27;runs/ffs_runtime&#x27;;cv2.setNumThreads(1);torch.set_num_threads(1)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     torch.backends.cuda.matmul.allow_tf32=False;torch.backends.cudnn.allow_tf32=False</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     model=FastFoundationStereo(runtime/&#x27;Fast-FoundationStereo&#x27;,runtime/&#x27;model&#x27;/profile[&#x27;checkpoint&#x27;][&#x27;filename&#x27;],</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;],mixed_precision=False)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     records=json.loads((source/&#x27;inputs/index.json&#x27;).read_text());output=run/&#x27;fp32_predictions&#x27;;output.mkdir()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     packets=[]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     for row in records:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         key=row[&#x27;key&#x27;];path=source/&#x27;inputs&#x27;/(key+&#x27;.npz&#x27;)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         if file_hash(path)!=row[&#x27;image_sha256&#x27;]:raise ValueError(&#x27;reference image input changed&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         with np.load(path,allow_pickle=False) as pair:</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             begin=time.monotonic();forward,reverse,_=model.predict(pair[&#x27;left&#x27;],pair[&#x27;right&#x27;])</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             disp,valid,lr=filter_learned_disparity(forward,reverse,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 cv2.cvtColor(pair[&#x27;left&#x27;],cv2.COLOR_RGB2GRAY),cv2.cvtColor(pair[&#x27;right&#x27;],cv2.COLOR_RGB2GRAY))</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         np.savez_compressed(output/(key+&#x27;.npz&#x27;),forward=forward,reverse=reverse,disparity=disp,valid=valid)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         comparisons={}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         paths={&#x27;pytorch_amp&#x27;:(source/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),&#x27;ffs_disparity&#x27;,&#x27;ffs_valid&#x27;,&#x27;ffs_forward&#x27;)}</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         paths.update({name:(root/location/&#x27;predictions&#x27;/(key+&#x27;.npz&#x27;),&#x27;disparity&#x27;,&#x27;valid&#x27;,&#x27;forward&#x27;) for name,location in cfg[&#x27;candidate_runs&#x27;].items()})</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         for name,(candidate_path,dkey,vkey,fkey) in paths.items():</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             with np.load(candidate_path,allow_pickle=False) as candidate:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 result=numerical_agreement(disp,valid,candidate[dkey],candidate[vkey])</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                 raw_error=np.abs(forward-candidate[fkey]);finite=np.isfinite(raw_error)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                 result[&#x27;forward_raw_p99_px&#x27;]=float(np.percentile(raw_error[finite],99)) if finite.any() else None</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                 result[&#x27;forward_raw_max_px&#x27;]=float(raw_error[finite].max()) if finite.any() else None</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 comparisons[name]=result</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         packets.append({&#x27;key&#x27;:key,&#x27;comparisons_with_pytorch_fp32&#x27;:comparisons,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             &#x27;prediction_sha256&#x27;:file_hash(output/(key+&#x27;.npz&#x27;)),&#x27;elapsed_with_comparisons_s&#x27;:time.monotonic()-begin})</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     report={&#x27;packets&#x27;:packets,&#x27;tf32_enabled&#x27;:False,&#x27;mixed_precision&#x27;:False,&#x27;compile_disabled&#x27;:True,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         &#x27;same_source_images&#x27;:True,&#x27;torch&#x27;:torch.__version__,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         &#x27;acceptance_eligible&#x27;:False,&#x27;current_control_eligible&#x27;:False,</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         &#x27;interpretation&#x27;:&#x27;Controlled precision/conversion diagnosis on development images, not ground-truth accuracy or production acceptance.&#x27;}</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     (run/&#x27;precision_reference.json&#x27;).write_text(json.dumps(report,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> if __name__==&#x27;__main__&#x27;:main()</span></pre></body></html>

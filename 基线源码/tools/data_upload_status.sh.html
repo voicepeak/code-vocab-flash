@@ -1,0 +1,33 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tools/data_upload_status.sh · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tools/data_upload_status.sh</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> #!/usr/bin/env bash</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> set -euo pipefail</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> python3 - &lt;&lt;&#x27;PY&#x27;</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import json</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import shutil</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> root = Path(&#x27;/home/tianbot/RUMA-hf-public-20261019&#x27;)</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> service = json.loads((root / &#x27;upload_service_status.local.json&#x27;).read_text())</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> state = json.loads((root / &#x27;upload_state.local.json&#x27;).read_text())</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> planned = json.loads((root / &#x27;public/shard_plan.json&#x27;).read_text())</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> source_bytes = sum(s[&#x27;source_bytes&#x27;] for s in planned)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> done_bytes = sum(s[&#x27;source_bytes&#x27;] for s in planned if s[&#x27;name&#x27;] in state[&#x27;verified&#x27;])</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> command = Path(&#x27;/proc&#x27;) / str(service[&#x27;pid&#x27;]) / &#x27;cmdline&#x27;</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> alive = command.exists() and b&#x27;evaluation.dataset_capture.upload_service&#x27; in command.read_bytes()</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> cleanup_path = root / &#x27;local_cleanup_status.local.json&#x27;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> cleanup = json.loads(cleanup_path.read_text()) if cleanup_path.exists() else None</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> if cleanup:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     cleanup_command = Path(&#x27;/proc&#x27;) / str(cleanup[&#x27;pid&#x27;]) / &#x27;cmdline&#x27;</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     cleanup[&#x27;process_alive&#x27;] = (cleanup_command.exists()</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         and b&#x27;evaluation.dataset_capture.cleanup_archive&#x27; in cleanup_command.read_bytes())</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> print(json.dumps({</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     &#x27;repo&#x27;: &#x27;https://huggingface.co/datasets/&#x27; + service[&#x27;repo_id&#x27;],</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     &#x27;state&#x27;: service[&#x27;state&#x27;], &#x27;process_alive&#x27;: alive,</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     &#x27;verified_shards&#x27;: len(state[&#x27;verified&#x27;]), &#x27;expected_shards&#x27;: len(planned),</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     &#x27;verified_source_gib&#x27;: round(done_bytes / 1024 ** 3, 2),</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     &#x27;total_source_gib&#x27;: round(source_bytes / 1024 ** 3, 2),</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     &#x27;percent&#x27;: round(100 * done_bytes / source_bytes, 2),</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     &#x27;local_deleted_source_gib&#x27;: round((cleanup or {}).get(&#x27;deleted_bytes&#x27;, 0) / 1024 ** 3, 2),</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     &#x27;disk_free_gib&#x27;: round(shutil.disk_usage(root).free / 1024 ** 3, 2),</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &#x27;error&#x27;: service.get(&#x27;error&#x27;),</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     &#x27;local_cleanup&#x27;: cleanup,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> }, ensure_ascii=False, indent=2))</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> PY</span></pre></body></html>

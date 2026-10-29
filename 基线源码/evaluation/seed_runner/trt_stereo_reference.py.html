@@ -1,0 +1,47 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/trt_stereo_reference.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/trt_stereo_reference.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Archive the controlled FP32 comparison against retained AMP and TRT outputs.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import os</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from pathlib import Path</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import prepare_run,source_hashes,file_hash</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> def main():</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     parser.add_argument(&#x27;--source-run&#x27;,type=Path,required=True);parser.add_argument(&#x27;--fp16-run&#x27;,type=Path,required=True)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     parser.add_argument(&#x27;--fp32-run&#x27;,type=Path,required=True);args=parser.parse_args()</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     locations={&#x27;source_run&#x27;:args.source_run.resolve(),&#x27;trt_fp16&#x27;:args.fp16_run.resolve(),&#x27;trt_fp32&#x27;:args.fp32_run.resolve()}</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     if any(root/&#x27;runs&#x27; not in p.parents for p in locations.values()):parser.error(&#x27;owned artifact runs required&#x27;)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     inputs={str(p.relative_to(root)):file_hash(p) for location in locations.values() for p in location.rglob(&#x27;*&#x27;)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         if p.is_file() and (p.suffix==&#x27;.npz&#x27; or p.name in (&#x27;manifest.json&#x27;,&#x27;trt_comparison.json&#x27;,&#x27;index.json&#x27;))}</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     container=os.environ.get(&#x27;RMUA_CONTAINER&#x27;,&#x27;rmua_noetic&#x27;);rt=&#x27;/workspace/main/runs/ffs_runtime&#x27;</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     image=subprocess.check_output([&#x27;docker&#x27;,&#x27;inspect&#x27;,container,&#x27;--format&#x27;,&#x27;{{.Image}}&#x27;],text=True).strip()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     cfg={&#x27;precision_reference&#x27;:{&#x27;source_run&#x27;:str(locations[&#x27;source_run&#x27;].relative_to(root)),</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         &#x27;candidate_runs&#x27;:{key:str(locations[key].relative_to(root)) for key in (&#x27;trt_fp16&#x27;,&#x27;trt_fp32&#x27;)},&#x27;input_sha256&#x27;:inputs}}</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     run,manifest=prepare_run(root,root/&#x27;runs&#x27;,None,image,cfg);inside=&#x27;/workspace/main/&#x27;+str(run.relative_to(root))</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     module=&#x27;evaluation.metrics.trt_stereo_reference&#x27;;manifest.update(stage=&#x27;P2_CONTROLLED_STEREO_PRECISION_REFERENCE&#x27;,acceptance_eligible=False,control_published=False)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     def save():(run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     save();print(run,flush=True);code=1</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     try:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         with (run/&#x27;worker.log&#x27;).open(&#x27;x&#x27;) as log:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             completed=subprocess.run([&#x27;docker&#x27;,&#x27;exec&#x27;,&#x27;-u&#x27;,&#x27;1000:1000&#x27;,&#x27;-w&#x27;,&#x27;/workspace/main&#x27;,</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 &#x27;-e&#x27;,&#x27;PYTHONPATH=/workspace/main:&#x27;+rt+&#x27;/Fast-FoundationStereo&#x27;,&#x27;-e&#x27;,&#x27;PYTHONNOUSERSITE=1&#x27;,</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 &#x27;-e&#x27;,&#x27;TORCH_COMPILE_DISABLE=1&#x27;,&#x27;-e&#x27;,&#x27;TORCHDYNAMO_DISABLE=1&#x27;,&#x27;-e&#x27;,&#x27;OMP_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 &#x27;-e&#x27;,&#x27;TRITON_LIBCUDA_PATH=/opt/rmua-driver/usr/lib/x86_64-linux-gnu&#x27;,</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 &#x27;-e&#x27;,&#x27;TRITON_CACHE_DIR=&#x27;+rt+&#x27;/cache/triton_driver_bound&#x27;,&#x27;-e&#x27;,&#x27;TORCHINDUCTOR_CACHE_DIR=&#x27;+rt+&#x27;/cache/inductor&#x27;,</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                 container,rt+&#x27;/venv_trt/bin/python&#x27;,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                 &#x27;-m&#x27;,module,&#x27;--run-dir&#x27;,inside],stdout=log,stderr=subprocess.STDOUT,timeout=180)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         code=completed.returncode;manifest[&#x27;run_state&#x27;]=&#x27;COMPUTED&#x27; if code==0 else &#x27;FAILED&#x27;</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     finally:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         manifest[&#x27;terminated_owned_workers&#x27;]=stop_bound_controller(container,module,inside)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         manifest[&#x27;source_sha256_after&#x27;]=source_hashes(root);manifest[&#x27;source_unchanged&#x27;]=manifest[&#x27;source_sha256_before&#x27;]==manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         manifest[&#x27;input_unchanged&#x27;]=inputs=={name:file_hash(root/name) for name in inputs}</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         manifest[&#x27;result_exit_code&#x27;]=code;save()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     return code if manifest[&#x27;source_unchanged&#x27;] and manifest[&#x27;input_unchanged&#x27;] else 2</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a> </span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

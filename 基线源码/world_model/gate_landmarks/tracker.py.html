@@ -1,0 +1,110 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>world_model/gate_landmarks/tracker.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>world_model/gate_landmarks/tracker.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded association of nominal gate candidates in estimated world coordinates.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass, field, replace</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import threading</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from estimation.geometry import rotation</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from interfaces.contracts import finite_vec3</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> @dataclass(frozen=True)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class GateTrack:</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     track_id: int</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     epoch: int</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     center_world_ned: tuple</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     width_m: float</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     height_m: float</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     first_stamp: float</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     last_stamp: float</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     last_valid_until: float</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     observations: int</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     # Repeated matches are association evidence only, not geometric certification.</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     aperture_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     metric_calibration_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     control_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> </span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> class GateTracker:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     &quot;&quot;&quot;Nearest unambiguous associations; historical tracks never renew source leases.&quot;&quot;&quot;</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     def __init__(self, epoch=0, max_gap_s=4., max_distance_m=2., size_tolerance_m=2., capacity=64):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         if (isinstance(epoch, bool) or not isinstance(epoch, int) or epoch &lt; 0</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 or not all(math.isfinite(x) and x &gt; 0 for x in (max_gap_s,max_distance_m,size_tolerance_m))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 or max_gap_s &gt; 10 or max_distance_m &gt; 10 or size_tolerance_m &gt; 10</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 or isinstance(capacity,bool) or not isinstance(capacity,int) or not 1 &lt;= capacity &lt;= 256):</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             raise ValueError(&#x27;invalid gate tracking limits&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         self.epoch=epoch; self.max_gap_s=max_gap_s; self.max_distance_m=max_distance_m</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         self.size_tolerance_m=size_tolerance_m; self.capacity=capacity</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         self._tracks={}; self._last_stamp=None; self._last_now=None; self._next_id=0</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         self._lock=threading.RLock()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def reset(self, epoch):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         with self._lock:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             if isinstance(epoch,bool) or not isinstance(epoch,int) or epoch &lt;= self.epoch:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 raise ValueError(&#x27;gate epoch must increase&#x27;)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             self.epoch=epoch; self._tracks={}; self._last_stamp=None; self._last_now=None; self._next_id=0</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     def ingest(self, candidates, pose, now, epoch):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         &quot;&quot;&quot;Associate one frame atomically, using a same-stamp historical pose.</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> </span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         An empty frame does not refresh any existing track. Each observation may</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         match at most one track and vice versa; ambiguous associations are held.</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         &quot;&quot;&quot;</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         with self._lock:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             if (epoch != self.epoch or pose.epoch != epoch or pose.frame_id != &#x27;world_ned&#x27;</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                     or not math.isfinite(now) or now &lt; pose.stamp or pose.bracket_stamps[1] &gt; now</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                     or (self._last_now is not None and now &lt; self._last_now)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                     or (self._last_stamp is not None and pose.stamp &lt;= self._last_stamp)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                     or pose.position_correction_residual_m &gt; .1 or pose.rotation_correction_residual_rad &gt; .05</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                     or not isinstance(candidates,tuple) or len(candidates)&gt;32):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 raise ValueError(&#x27;invalid gate frame, epoch, history or clock&#x27;)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             prepared=[]</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             for candidate in candidates:</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                 meta=candidate.metadata</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 finite_vec3(candidate.center_body_frd_m)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>                 if (meta.frame_id!=&#x27;body_frd&#x27; or meta.stamp!=pose.stamp or not meta.current(now,epoch)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>                         or not all(math.isfinite(x) and x&gt;0 for x in (candidate.nominal_width_m,candidate.nominal_height_m))):</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                     raise ValueError(&#x27;gate candidate source invalid&#x27;)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 point=np.asarray(pose.position_ned)+rotation(pose.orientation_wxyz)@np.asarray(candidate.center_body_frd_m)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                 if not np.isfinite(point).all():raise ValueError(&#x27;nonfinite world gate&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                 prepared.append((candidate,tuple(float(x) for x in point)))</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             live={k:v for k,v in self._tracks.items() if now-v.last_stamp &lt;= self.max_gap_s}</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             # Build the whole bipartite compatibility graph. Only degree-1 on</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             # both sides is associated; this refuses accidental many-to-one.</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             edges=[]</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             for index,(candidate,point) in enumerate(prepared):</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 for track_id,track in live.items():</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                     if (math.dist(point,track.center_world_ned)&lt;=self.max_distance_m</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                             and abs(candidate.nominal_width_m-track.width_m)&lt;=self.size_tolerance_m</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                             and abs(candidate.nominal_height_m-track.height_m)&lt;=self.size_tolerance_m):</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                         edges.append((index,track_id))</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             degrees_track={k:sum(b==k for _,b in edges) for k in live}</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>             updates=dict(live); next_id=self._next_id; matched=created=ambiguous=0</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>             for i,(candidate,point) in enumerate(prepared):</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 possible=[k for a,k in edges if a==i]</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 if len(possible)==1 and degrees_track[possible[0]]==1:</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                     t=updates[possible[0]]; n=t.observations+1</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                     mean=tuple((a*t.observations+b)/n for a,b in zip(t.center_world_ned,point))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                     updates[t.track_id]=replace(t,center_world_ned=mean,</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                         width_m=(t.width_m*t.observations+candidate.nominal_width_m)/n,</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                         height_m=(t.height_m*t.observations+candidate.nominal_height_m)/n,</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                         last_stamp=pose.stamp,last_valid_until=candidate.metadata.valid_until,observations=n)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                     matched+=1</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                 elif not possible:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                     if len(updates)&gt;=self.capacity:raise ValueError(&#x27;gate track capacity exceeded&#x27;)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                     updates[next_id]=GateTrack(next_id,epoch,point,candidate.nominal_width_m,</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                         candidate.nominal_height_m,pose.stamp,pose.stamp,candidate.metadata.valid_until,1)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                     next_id+=1;created+=1</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                 else:ambiguous+=1</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>             self._tracks=updates; self._next_id=next_id; self._last_stamp=pose.stamp;self._last_now=now</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             return {&#x27;matched&#x27;:matched,&#x27;created&#x27;:created,&#x27;ambiguous&#x27;:ambiguous}</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a> </span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>     def snapshot(self, now, epoch):</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         with self._lock:</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             if (epoch!=self.epoch or not math.isfinite(now) or now&lt;0</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                     or (self._last_now is not None and now&lt;self._last_now)):</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                 raise ValueError(&#x27;gate snapshot clock or epoch mismatch&#x27;)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             self._last_now=now</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             return tuple(t for _,t in sorted(self._tracks.items())</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                          if t.last_stamp&lt;=now&lt;t.last_valid_until and now-t.last_stamp&lt;=self.max_gap_s)</span></pre></body></html>

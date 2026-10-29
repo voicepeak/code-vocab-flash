@@ -1,0 +1,55 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>control/motor_allocator/allocator.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>control/motor_allocator/allocator.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Collective-priority bounded allocator with explicit achieved wrench feedback.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import math</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import numpy as np</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> @dataclass(frozen=True)</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> class Allocation:</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     pwm: tuple</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     achieved_wrench: tuple</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     saturated: bool</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     moment_scale: float</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     min_margin: float</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> class MotorAllocator:</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     def __init__(self, config):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         arm = float(config[&#x27;arm_radius_m&#x27;]) / math.sqrt(2)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         rps_squared = (float(config[&#x27;max_rpm&#x27;])/60)**2</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         self.max_thrust = float(config[&#x27;thrust_coefficient_rps2&#x27;])*rps_squared</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         ratio = float(config[&#x27;torque_coefficient_rps2&#x27;])/float(config[&#x27;thrust_coefficient_rps2&#x27;])</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.ceiling = float(config[&#x27;local_pwm_ceiling&#x27;])</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         signs = np.asarray(config[&#x27;yaw_torque_signs&#x27;], dtype=float)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         if (not all(math.isfinite(v) and v &gt; 0 for v in (arm, self.max_thrust, ratio))</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                 or not 0 &lt; self.ceiling &lt;= 1 or signs.shape != (4,)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                 or not np.all(np.isin(signs, (-1, 1)))):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             raise ValueError(&#x27;invalid motor model&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         # F_body=(0,0,-f). Torque is r cross F; yaw signs are from local pulses.</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.B = np.array(((1., 1., 1., 1.), (-arm, arm, arm, -arm),</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                            (arm, -arm, arm, -arm), tuple(ratio*signs)))</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         self.inverse = np.linalg.inv(self.B)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def allocate(self, thrust, moment):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         request = np.r_[thrust, moment]</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         if request.shape != (4,) or not np.all(np.isfinite(request)) or thrust &lt; 0:</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             raise ValueError(&#x27;invalid wrench&#x27;)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         limit = self.max_thrust*self.ceiling</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         collective = min(float(thrust)/4, limit)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         differential = self.inverse @ np.r_[0., moment]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         scale = 1.</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         for value in differential:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             if value &gt; 0:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                 scale = min(scale, (limit-collective)/value)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             elif value &lt; 0:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                 scale = min(scale, collective/-value)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         forces = np.clip(collective+scale*differential, 0., limit)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         pwm = forces/self.max_thrust</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         achieved = self.B @ forces</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         # Saturation describes a limit applied by the allocator, not whether the</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         # resulting wrench is numerically close to the request. A relative</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         # tolerance can hide small but real clipping near a motor limit and</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         # incorrectly leave the controller&#x27;s integral enabled.</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         saturated = float(thrust) &gt; 4. * limit or scale &lt; 1.</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         margin = float(np.minimum(pwm, self.ceiling-pwm).min())</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         return Allocation(tuple(pwm), tuple(achieved), saturated, float(scale), margin)</span></pre></body></html>

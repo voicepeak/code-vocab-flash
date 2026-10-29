@@ -1,0 +1,81 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_source_archive.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_source_archive.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import hashlib</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from pathlib import Path</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import shutil</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import subprocess</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import tarfile</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import tempfile</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import unittest</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from evaluation.seed_runner.manifest import archive_sources, file_hash, prepare_run, source_hashes</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> @unittest.skipUnless(shutil.which(&#x27;git&#x27;), &#x27;host provenance tests require git&#x27;)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class SourceArchiveTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     def repository(self, root):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         subprocess.check_call([&#x27;git&#x27;, &#x27;init&#x27;, &#x27;-q&#x27;, str(root)])</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         (root / &#x27;.gitignore&#x27;).write_text(&#x27;runs/\nignored_secret\n&#x27;)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         (root / &#x27;control.py&#x27;).write_text(&#x27;original\n&#x27;)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         subprocess.check_call([&#x27;git&#x27;, &#x27;add&#x27;, &#x27;.&#x27;], cwd=root)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         subprocess.check_call([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=Test&#x27;, &#x27;-c&#x27;, &#x27;user.email=test@example.invalid&#x27;,</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>                                &#x27;commit&#x27;, &#x27;-qm&#x27;, &#x27;initial&#x27;], cwd=root)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         (root / &#x27;control.py&#x27;).write_text(&#x27;dirty bytes\n&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         (root / &#x27;new.sh&#x27;).write_text(&#x27;#!/bin/sh\nexit 0\n&#x27;)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         (root / &#x27;new.sh&#x27;).chmod(0o755)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         (root / &#x27;ignored_secret&#x27;).write_text(&#x27;excluded\n&#x27;)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     def test_dirty_and_untracked_bytes_restore_exactly_with_executable_mode(self):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         with tempfile.TemporaryDirectory() as directory:</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             root = Path(directory).resolve()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>             self.repository(root)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             run, manifest = prepare_run(root, root / &#x27;runs&#x27;, 1, &#x27;test-digest&#x27;, {})</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             snapshot = manifest[&#x27;source_archive&#x27;]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             with tarfile.open(run / snapshot[&#x27;path&#x27;]) as archive:</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                 self.assertEqual(set(archive.getnames()), set(manifest[&#x27;source_sha256_before&#x27;]))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 for member in archive:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                     data = archive.extractfile(member).read()</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>                     self.assertEqual(data, (root / member.name).read_bytes())</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>                     self.assertEqual(hashlib.sha256(data).hexdigest(),</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                                      manifest[&#x27;source_sha256_before&#x27;][member.name])</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                     self.assertEqual(member.uid, 0)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                     self.assertEqual(member.mtime, 0)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 self.assertEqual(archive.getmember(&#x27;new.sh&#x27;).mode, 0o755)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             other = root / &#x27;runs/second&#x27;</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             other.mkdir()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             same = archive_sources(root, other, manifest[&#x27;source_sha256_before&#x27;])</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             self.assertEqual(snapshot[&#x27;sha256&#x27;], file_hash(other / same[&#x27;path&#x27;]))</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             with self.assertRaises(FileExistsError):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                 archive_sources(root, other, manifest[&#x27;source_sha256_before&#x27;])</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             self.assertEqual(snapshot[&#x27;sha256&#x27;], same[&#x27;sha256&#x27;])</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             self.assertFalse(list(other.glob(&#x27;*.tmp&#x27;)))</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a> </span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     def test_changed_source_or_source_set_aborts_before_publication(self):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         for change in (&#x27;content&#x27;, &#x27;new_file&#x27;):</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             with self.subTest(change=change), tempfile.TemporaryDirectory() as directory:</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                 root = Path(directory).resolve()</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>                 self.repository(root)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 expected = source_hashes(root)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 run = root / &#x27;runs/case&#x27;</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>                 run.mkdir(parents=True)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>                 if change == &#x27;content&#x27;:</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>                     (root / &#x27;control.py&#x27;).write_text(&#x27;changed again\n&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 else:</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                     (root / &#x27;added.py&#x27;).write_text(&#x27;added\n&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 with self.assertRaises(RuntimeError):</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>                     archive_sources(root, run, expected)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 self.assertFalse(list(run.iterdir()))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> </span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     def test_symlink_and_escaping_names_are_not_archived(self):</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>         with tempfile.TemporaryDirectory() as directory:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             root = Path(directory).resolve()</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             self.repository(root)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             run = root / &#x27;runs/case&#x27;</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             run.mkdir(parents=True)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             (root / &#x27;link&#x27;).symlink_to(root / &#x27;control.py&#x27;)</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             for name in (&#x27;link&#x27;, &#x27;../outside&#x27;, str(root / &#x27;control.py&#x27;)):</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                 with self.subTest(name=name), self.assertRaises(ValueError):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                     archive_sources(root, run, {name: &#x27;irrelevant&#x27;})</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 self.assertFalse(list(run.iterdir()))</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> </span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a> </span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     unittest.main()</span></pre></body></html>

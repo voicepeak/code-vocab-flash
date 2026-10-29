@@ -1,0 +1,84 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/metrics/lidar_observation.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/metrics/lidar_observation.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Offline independent ROS-decoder and endpoint-only observation audit.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import hashlib</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import math</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> def audit(run):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     import rospy</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     from sensor_msgs.msg import PointCloud2, PointField</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     from sensor_msgs.point_cloud2 import read_points</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     summary = json.loads((run / &#x27;lidar_summary.json&#x27;).read_text())</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     schema = json.loads((run / &#x27;lidar_first_message.json&#x27;).read_text())</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     message = PointCloud2()</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     message.header.stamp = rospy.Time.from_sec(schema[&#x27;stamp&#x27;])</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     message.header.frame_id = schema[&#x27;frame_id&#x27;]</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     for key in (&#x27;width&#x27;, &#x27;height&#x27;, &#x27;row_step&#x27;, &#x27;point_step&#x27;, &#x27;is_dense&#x27;, &#x27;is_bigendian&#x27;):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         setattr(message, key, schema[key])</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     message.fields = [PointField(**f) for f in schema[&#x27;fields&#x27;]]</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     message.data = (run / &#x27;lidar_first_message.bin&#x27;).read_bytes()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     rows = [json.loads(s) for s in (run / &#x27;lidar_frames.jsonl&#x27;).read_text().splitlines()]</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     actual = decode_xyz(message, rows[0][&#x27;epoch&#x27;])</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     reference = np.asarray(list(read_points(message, field_names=(&#x27;x&#x27;, &#x27;y&#x27;, &#x27;z&#x27;), skip_nans=False)),</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>                            dtype=float).reshape(-1, 3)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     reference = reference[np.isfinite(reference).all(axis=1)]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     keys = {tuple(math.floor(float(x) / .25) for x in p) for p in reference</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             if 0 &lt; math.hypot(*p) &lt; 30}</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     snapshot = json.loads((run / &#x27;lidar_endpoint_snapshot.json&#x27;).read_text())</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     cells = snapshot[&#x27;cells&#x27;]</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     valid = (bool(rows) and summary[&#x27;fault&#x27;] is None</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>              and len(rows) == summary[&#x27;processed_frames&#x27;]</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>              and np.array_equal(reference, actual.points)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>              and len(keys) == rows[0][&#x27;occupied_voxels&#x27;]</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>              and len(cells) == rows[-1][&#x27;occupied_voxels&#x27;]</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>              and snapshot[&#x27;metadata&#x27;][&#x27;stamp&#x27;] == rows[-1][&#x27;stamp&#x27;]</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>              and snapshot[&#x27;metadata&#x27;][&#x27;epoch&#x27;] == rows[-1][&#x27;epoch&#x27;]</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>              and snapshot[&#x27;metadata&#x27;][&#x27;frame_id&#x27;] == &#x27;lidar&#x27;</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>              and snapshot[&#x27;resolution_m&#x27;] == .25</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>              and len({tuple(c[&#x27;key&#x27;]) for c in cells}) == len(cells)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>              and all(c[&#x27;status&#x27;] == &#x27;OCCUPIED&#x27; and c[&#x27;metadata&#x27;] == snapshot[&#x27;metadata&#x27;] for c in cells)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>              and all(r[&#x27;free_voxels&#x27;] == 0 and not r[&#x27;motion_compensated&#x27;]</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                      and not r[&#x27;world_transform_applied&#x27;] and r[&#x27;frame_id&#x27;] == &#x27;lidar&#x27;</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                      and r[&#x27;input_points&#x27;] == r[&#x27;finite_points&#x27;] + r[&#x27;nonfinite_points&#x27;]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                      and r[&#x27;arrival_wall_monotonic&#x27;] &lt;= r[&#x27;processing_begin_wall_monotonic&#x27;]</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                      &lt;= r[&#x27;processing_end_wall_monotonic&#x27;] for r in rows)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>              and not summary[&#x27;control_published&#x27;] and not summary[&#x27;debug_inputs_used&#x27;]</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>              and summary[&#x27;node_graph&#x27;][&#x27;subscriptions&#x27;] == [&#x27;/airsim_node/drone_1/lidar&#x27;]</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>              and not set(summary[&#x27;node_graph&#x27;][&#x27;publishers&#x27;]) - {&#x27;/rosout&#x27;})</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     durations = [r[&#x27;processing_end_wall_monotonic&#x27;] - r[&#x27;processing_begin_wall_monotonic&#x27;] for r in rows]</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     arrivals = [r[&#x27;arrival_wall_monotonic&#x27;] for r in rows]</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     result = {&#x27;audit_valid&#x27;: bool(valid), &#x27;processed_frames&#x27;: len(rows),</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>               &#x27;first_cloud_matches_ros_reference_decoder&#x27;: bool(np.array_equal(reference, actual.points)),</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>               &#x27;first_cloud_finite_points&#x27;: len(reference),</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>               &#x27;first_cloud_reference_endpoint_voxels&#x27;: len(keys),</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>               &#x27;last_cloud_endpoint_voxels&#x27;: len(cells),</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>               &#x27;processing_p50_p95_p99_max_s&#x27;: [float(x) for x in np.percentile(durations, (50, 95, 99, 100))],</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>               &#x27;processed_arrival_span_s&#x27;: arrivals[-1] - arrivals[0],</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>               &#x27;observed_processed_frequency_hz&#x27;: (len(rows) - 1) / (arrivals[-1] - arrivals[0]) if len(rows) &gt; 1 else None,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>               &#x27;sensor_frame&#x27;: &#x27;lidar&#x27;, &#x27;world_transform_verified&#x27;: False,</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>               &#x27;motion_compensated&#x27;: False, &#x27;free_space_certified&#x27;: False,</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>               &#x27;flight_clearance_eligible&#x27;: False, &#x27;acceptance_eligible&#x27;: False,</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>               &#x27;header_stamp_to_arrival_latency_calibrated&#x27;: False,</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>               &#x27;analysis_source_sha256&#x27;: hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     (run / &#x27;lidar_audit.json&#x27;).write_text(json.dumps(result, indent=2, allow_nan=False) + &#x27;\n&#x27;)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     return result</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a> </span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a> </span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a> def main():</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>     parser.add_argument(&#x27;run&#x27;, type=Path)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     args = parser.parse_args()</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>     result = audit(args.run)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     print(json.dumps(result, indent=2))</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>     return 0 if result[&#x27;audit_valid&#x27;] else 2</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a> </span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     raise SystemExit(main())</span></pre></body></html>

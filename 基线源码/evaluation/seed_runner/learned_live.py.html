@@ -1,0 +1,128 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>evaluation/seed_runner/learned_live.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>evaluation/seed_runner/learned_live.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Own a fresh scene and asynchronous diagnostic GPU pipeline, without control.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import os</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import shutil</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import subprocess</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import time</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from evaluation.seed_runner.controller_cleanup import stop_bound_controller</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from evaluation.seed_runner.manifest import prepare_run,source_hashes,file_hash</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from evaluation.seed_runner.simulator_preflight import verify_local_simulator</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> def main():</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     parser=argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     parser.add_argument(&#x27;--seed&#x27;,type=int,required=True);parser.add_argument(&#x27;--duration&#x27;,type=float,default=10.)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     parser.add_argument(&#x27;--image-age-budget-ms&#x27;,type=int,choices=(150,200),default=150)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     args=parser.parse_args()</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     if args.seed&lt;0 or not math.isfinite(args.duration) or not 0&lt;args.duration&lt;=30:parser.error(&#x27;invalid seed or duration&#x27;)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     root=Path(__file__).resolve().parents[2];rt=&#x27;/workspace/main/runs/ffs_runtime&#x27;;runtime=root/&#x27;runs/ffs_runtime&#x27;</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     vendor=runtime/&#x27;Fast-FoundationStereo&#x27;;checkpoint=runtime/&#x27;model/model_best_bp2_serialize.pth&#x27;</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     profile_path=root/&#x27;configs/fast_foundation_stereo.json&#x27;;profile=json.loads(profile_path.read_text())</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     commit=subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     if (commit!=profile[&#x27;vendor&#x27;][&#x27;commit&#x27;] or subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             or file_hash(checkpoint)!=profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]):raise ValueError(&#x27;pinned candidate provenance differs&#x27;)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     before=verify_local_simulator(root);container=os.environ.get(&#x27;RMUA_CONTAINER&#x27;,&#x27;rmua_noetic&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     image=subprocess.check_output([&#x27;docker&#x27;,&#x27;inspect&#x27;,container,&#x27;--format&#x27;,&#x27;{{.Image}}&#x27;],text=True).strip()</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     config={&#x27;experiment&#x27;:{&#x27;kind&#x27;:&#x27;learned_stereo_read_only&#x27;,&#x27;duration_s&#x27;:args.duration,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         &#x27;image_age_budget_ms&#x27;:args.image_age_budget_ms,&#x27;profile_sha256&#x27;:file_hash(profile_path),</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         &#x27;latest_pending_capacity&#x27;:1,&#x27;in_flight_limit&#x27;:1,&#x27;warmup_before_scene&#x27;:True}}</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     run,manifest=prepare_run(root,root/&#x27;runs&#x27;,args.seed,image,config);inside=&#x27;/workspace/main/&#x27;+str(run.relative_to(root))</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     shutil.copyfile(profile_path,run/&#x27;profile.json&#x27;)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     subprocess.run([&#x27;git&#x27;,&#x27;archive&#x27;,&#x27;--format=tar.gz&#x27;,&#x27;--output=&#x27;+str(run/&#x27;vendor_source.tar.gz&#x27;),commit],cwd=vendor,check=True)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     manifest.update(stage=&#x27;P2_READ_ONLY_LEARNED_STEREO_LATENCY&#x27;,simulator_preflight=before,</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         acceptance_eligible=False,control_published=False,run_state=&#x27;PREPARED&#x27;,</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         model_hashes={checkpoint.name:file_hash(checkpoint)},</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         vendor={&#x27;commit&#x27;:commit,&#x27;source_archive_sha256&#x27;:file_hash(run/&#x27;vendor_source.tar.gz&#x27;),</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                 &#x27;license_sha256&#x27;:file_hash(vendor/&#x27;LICENSE.txt&#x27;)})</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     def save():(run/&#x27;manifest.json&#x27;).write_text(json.dumps(manifest,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     save();print(run,flush=True)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     driver=os.environ.get(&#x27;RMUA_TRITON_LIBCUDA_PATH&#x27;,&#x27;/opt/rmua-driver/usr/lib/x86_64-linux-gnu&#x27;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     docker=[&#x27;docker&#x27;,&#x27;exec&#x27;,&#x27;-u&#x27;,&#x27;1000:1000&#x27;,&#x27;-w&#x27;,&#x27;/workspace/main&#x27;,</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         &#x27;-e&#x27;,&#x27;PYTHONNOUSERSITE=1&#x27;,&#x27;-e&#x27;,&#x27;PYTHONPATH=/workspace/main:&#x27;+rt+&#x27;/Fast-FoundationStereo&#x27;,</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         &#x27;-e&#x27;,&#x27;OMP_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;-e&#x27;,&#x27;UV_CACHE_DIR=&#x27;+rt+&#x27;/uv_cache&#x27;,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         &#x27;-e&#x27;,&#x27;TORCH_HOME=&#x27;+rt+&#x27;/cache/torch&#x27;,&#x27;-e&#x27;,&#x27;CUDA_CACHE_PATH=&#x27;+rt+&#x27;/cache/cuda&#x27;,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         &#x27;-e&#x27;,&#x27;TRITON_LIBCUDA_PATH=&#x27;+driver,&#x27;-e&#x27;,&#x27;TRITON_CACHE_DIR=&#x27;+rt+&#x27;/cache/triton_driver_bound&#x27;,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         &#x27;-e&#x27;,&#x27;TORCHINDUCTOR_CACHE_DIR=&#x27;+rt+&#x27;/cache/inductor&#x27;,container]</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     python=rt+&#x27;/venv/bin/python&#x27;;enter=str(root/&#x27;tools/enter_env.sh&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>     worker_module=&#x27;perception.stereo_depth.live_worker&#x27;;observer_module=&#x27;adapters.ros_noetic.learned_stereo_observer&#x27;</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     monitor_module=&#x27;evaluation.metrics.learned_gpu_monitor&#x27;;marker=&#x27;rmua_learned_live_readiness&#x27;</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     processes={};logs=[];code=1</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     try:</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         probe=&#x27;import hashlib,json,pathlib,sys; p=pathlib.Path(sys.argv[1])/&quot;libcuda.so.1&quot;; print(json.dumps({&quot;python&quot;:sys.version,&quot;libcuda_path&quot;:str(p.resolve()),&quot;libcuda_sha256&quot;:hashlib.sha256(p.read_bytes()).hexdigest()}))&#x27;</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         manifest[&#x27;runtime_provenance&#x27;]={&#x27;packages&#x27;:subprocess.check_output(docker+[rt+&#x27;/uv&#x27;,&#x27;pip&#x27;,&#x27;freeze&#x27;,&#x27;--python&#x27;,python],text=True),</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>             &#x27;driver&#x27;:json.loads(subprocess.check_output(docker+[python,&#x27;-c&#x27;,probe,driver],text=True)),</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             &#x27;portable_python_sha256&#x27;:file_hash(runtime/&#x27;python/cpython-3.12.11-linux-x86_64-gnu/bin/python3.12&#x27;),</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             &#x27;runtime_lock_sha256&#x27;:file_hash(root/&#x27;configs/fast_foundation_stereo_runtime.lock.txt&#x27;)}</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         def start(name,command):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             log=(run/(name+&#x27;.log&#x27;)).open(&#x27;x&#x27;);logs.append(log)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             processes[name]=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             return processes[name]</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         worker=start(&#x27;gpu_worker&#x27;,docker+[python,&#x27;-m&#x27;,worker_module,&#x27;--run-dir&#x27;,inside,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             &#x27;--vendor&#x27;,rt+&#x27;/Fast-FoundationStereo&#x27;,&#x27;--checkpoint&#x27;,rt+&#x27;/model/&#x27;+checkpoint.name])</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         deadline=time.monotonic()+60</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         while not (run/&#x27;gpu_ready.json&#x27;).exists():</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             if worker.poll() is not None:raise RuntimeError(&#x27;GPU initialization failed; see gpu_worker.log&#x27;)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             if time.monotonic()&gt;deadline:raise RuntimeError(&#x27;GPU initialization exceeded 60s&#x27;)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             time.sleep(.1)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>         simulator=start(&#x27;simulator&#x27;,[str(root/&#x27;tools/run_sim.sh&#x27;),str(args.seed),&#x27;offscreen&#x27;])</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>         deadline=time.monotonic()+90</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         while time.monotonic()&lt;deadline:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             if simulator.poll() is not None:raise RuntimeError(&#x27;fresh simulator failed&#x27;)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             command=[enter,&#x27;python3&#x27;,&#x27;-c&#x27;,&#x27;import socket,rospy; socket.setdefaulttimeout(2.); &#x27;</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                 &#x27;from sensor_msgs.msg import Imu; rospy.init_node(&quot;learned_ready&quot;,anonymous=True); &#x27;</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                 &#x27;rospy.wait_for_message(&quot;/airsim_node/drone_1/imu/imu&quot;,Imu,timeout=2)&#x27;,marker,&#x27;--run-dir&#x27;,inside]</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             try:ready=subprocess.run(command,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=8)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             except subprocess.TimeoutExpired:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 stop_bound_controller(container,marker,inside);continue</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             if ready.returncode==0:break</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>         else:raise RuntimeError(&#x27;simulator formal-sensor readiness timeout&#x27;)</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         manifest[&#x27;gpu_processes_during_scene&#x27;]=subprocess.check_output(docker+[&#x27;nvidia-smi&#x27;],text=True)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         monitor=start(&#x27;usage_monitor&#x27;,docker+[python,&#x27;-m&#x27;,monitor_module,&#x27;--run-dir&#x27;,inside])</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>         manifest[&#x27;run_state&#x27;]=&#x27;OBSERVING&#x27;;save()</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         with (run/&#x27;observer.log&#x27;).open(&#x27;x&#x27;) as log:</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>             observer=subprocess.run([enter,&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;python3&#x27;,&#x27;-m&#x27;,observer_module,</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                 &#x27;--run-dir&#x27;,inside,&#x27;--duration&#x27;,str(args.duration),&#x27;--image-age-budget-ms&#x27;,str(args.image_age_budget_ms)],</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 stdout=log,stderr=subprocess.STDOUT,timeout=args.duration+30)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>         manifest[&#x27;observer_exit_code&#x27;]=observer.returncode</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>         worker_code=worker.wait(timeout=15);manifest[&#x27;gpu_worker_exit_code&#x27;]=worker_code</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         code=observer.returncode or worker_code</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         manifest[&#x27;run_state&#x27;]=&#x27;OBSERVED&#x27; if code==0 else &#x27;OBSERVER_FAILED&#x27;</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>     except Exception as error:manifest.update(run_state=&#x27;FAILED&#x27;,error=str(error));code=1</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>     finally:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         cleanup=[]</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         for module in (observer_module,worker_module,monitor_module,marker):</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             try:manifest[&#x27;terminated_&#x27;+module]=stop_bound_controller(container,module,inside)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             except Exception as error:cleanup.append(str(error))</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         if &#x27;simulator&#x27; in processes:</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             try:</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                 if processes[&#x27;simulator&#x27;].poll() is None:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                     subprocess.run([str(root/&#x27;tools/stop_sim.sh&#x27;)],stdout=subprocess.DEVNULL,check=True,timeout=25)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                 processes[&#x27;simulator&#x27;].wait(timeout=15)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             except Exception as error:cleanup.append(&#x27;simulator:&#x27;+str(error))</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>         for name,process in processes.items():</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             try:process.wait(timeout=8)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>             except subprocess.TimeoutExpired:cleanup.append(name+&#x27; did not stop&#x27;)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         for log in logs:log.close()</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         manifest[&#x27;cleanup_errors&#x27;]=cleanup</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         if cleanup:code=1;manifest[&#x27;run_state&#x27;]=&#x27;CLEANUP_FAILED&#x27;</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         if (run/&#x27;online_summary.json&#x27;).exists():</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             with (run/&#x27;audit.log&#x27;).open(&#x27;x&#x27;) as log:</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                 audit=subprocess.run([enter,&#x27;env&#x27;,&#x27;OPENBLAS_NUM_THREADS=1&#x27;,&#x27;python3&#x27;,&#x27;-m&#x27;,&#x27;evaluation.metrics.learned_live&#x27;,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                     &#x27;--run-dir&#x27;,inside],stdout=log,stderr=subprocess.STDOUT,timeout=30)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>             manifest[&#x27;audit_exit_code&#x27;]=audit.returncode;code=code or audit.returncode</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             if audit.returncode and manifest[&#x27;run_state&#x27;]==&#x27;OBSERVED&#x27;:manifest[&#x27;run_state&#x27;]=&#x27;AUDIT_FAILED&#x27;</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>         manifest[&#x27;source_sha256_after&#x27;]=source_hashes(root)</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>         manifest[&#x27;source_unchanged&#x27;]=manifest[&#x27;source_sha256_before&#x27;]==manifest[&#x27;source_sha256_after&#x27;]</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         manifest[&#x27;original_simulator_files_unchanged&#x27;]=before==verify_local_simulator(root)</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>         manifest[&#x27;vendor_unchanged&#x27;]=(not subprocess.check_output([&#x27;git&#x27;,&#x27;status&#x27;,&#x27;--porcelain&#x27;],cwd=vendor,text=True).strip()</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             and subprocess.check_output([&#x27;git&#x27;,&#x27;rev-parse&#x27;,&#x27;HEAD&#x27;],cwd=vendor,text=True).strip()==commit)</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         manifest[&#x27;checkpoint_unchanged&#x27;]=file_hash(checkpoint)==profile[&#x27;checkpoint&#x27;][&#x27;sha256&#x27;]</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         manifest[&#x27;result_exit_code&#x27;]=code;save()</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>     return code if all(manifest[key] for key in (&#x27;source_unchanged&#x27;,&#x27;original_simulator_files_unchanged&#x27;,&#x27;vendor_unchanged&#x27;,&#x27;checkpoint_unchanged&#x27;)) else 2</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a> </span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a> </span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

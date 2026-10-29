@@ -1,0 +1,55 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/integration/test_reference_parent_lifetime.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/integration/test_reference_parent_lifetime.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Own-process cleanup check; no ROS master, simulator or external processes.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import os</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from pathlib import Path</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import selectors</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import signal</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import subprocess</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import sys</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> import unittest</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> @unittest.skipUnless(sys.platform.startswith(&#x27;linux&#x27;),&#x27;Linux parent-death signal contract&#x27;)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class ReferenceLifetimeTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     def test_worker_does_not_outlive_a_terminated_flight_parent(self):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         script=&#x27;&#x27;&#x27;</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> import time</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> from control.reference_worker import BenchmarkSpec,ReferenceWorker</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> w=ReferenceWorker(BenchmarkSpec((0.,0.,-1.),0.))</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> w.start()</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> deadline=time.monotonic()+3</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> while time.monotonic()&lt;deadline:</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     w.submit(10.,0,0.)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     if w.snapshot(10.,0)[0] is not None:break</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     time.sleep(.005)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> else:raise RuntimeError(&#x27;worker not ready&#x27;)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> print(w.process.pid,flush=True)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a> while True:time.sleep(.1)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> &#x27;&#x27;&#x27;</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         root=Path(__file__).resolve().parents[2]</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         parent=subprocess.Popen([sys.executable,&#x27;-c&#x27;,script],cwd=root,stdout=subprocess.PIPE,</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                                 stderr=subprocess.PIPE,text=True)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         worker_pid=None</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         def running(pid):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>             path=Path(&#x27;/proc&#x27;)/str(pid)/&#x27;stat&#x27;</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             try:return path.read_text().split(&#x27;) &#x27;,1)[1].split()[0] not in (&#x27;Z&#x27;,&#x27;X&#x27;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             except FileNotFoundError:return False</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         try:</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             with selectors.DefaultSelector() as poll:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 poll.register(parent.stdout,selectors.EVENT_READ)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                 self.assertTrue(poll.select(timeout=5.),&#x27;flight parent never became ready&#x27;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 line=parent.stdout.readline().strip()</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             self.assertTrue(line.isdigit(),line)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             worker_pid=int(line)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             self.assertTrue(running(worker_pid))</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>             parent.terminate();parent.wait(timeout=2.)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             deadline=time.monotonic()+1.</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             while running(worker_pid) and time.monotonic()&lt;deadline:time.sleep(.01)</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             self.assertFalse(running(worker_pid),&#x27;orphaned reference worker remains active&#x27;)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         finally:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             if parent.poll() is None:parent.terminate();parent.wait(timeout=2.)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             if worker_pid and running(worker_pid):os.kill(worker_pid,signal.SIGTERM)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             parent.stdout.close();parent.stderr.close()</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a> </span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

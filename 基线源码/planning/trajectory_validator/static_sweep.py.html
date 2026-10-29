@@ -1,0 +1,147 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>planning/trajectory_validator/static_sweep.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>planning/trajectory_validator/static_sweep.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Continuous box sweep against three-state voxels; static geometry only.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import dataclass</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from itertools import product</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import sys</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from typing import Optional, Tuple</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from interfaces.contracts import finite_vec3</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from world_model.occupancy.grid import Occupancy</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> @dataclass(frozen=True)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class SweepBounds:</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     # Must enclose the body/rotors in world axes at every permitted attitude.</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     half_extents_m: Tuple[float, float, float]</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     tracking_error_m: float</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     acceleration_bound_m_s2: float</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     max_voxel_tests: int = 20000</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     max_segments: int = 256</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def __post_init__(self):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         finite_vec3(self.half_extents_m)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         if (any(v &lt;= 0 for v in self.half_extents_m)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>                 or not all(math.isfinite(v) and v &gt;= 0 for v in</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                            (self.tracking_error_m, self.acceleration_bound_m_s2))</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                 or isinstance(self.max_voxel_tests, bool) or not isinstance(self.max_voxel_tests, int)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                 or not 1 &lt;= self.max_voxel_tests &lt;= 1000000</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>                 or isinstance(self.max_segments, bool) or not isinstance(self.max_segments, int)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>                 or not 1 &lt;= self.max_segments &lt;= 2048):</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             raise ValueError(&#x27;invalid swept-volume bounds or work budget&#x27;)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> @dataclass(frozen=True)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a> class StaticSweepResult:</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     clear: bool</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     reason: str</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     voxel_tests: int</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     intersected_voxels: int</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     segment_index: Optional[int] = None</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     voxel_key: Optional[Tuple[int, int, int]] = None</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     contact_time: Optional[float] = None</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a> </span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a> def _contact_interval(start, end, lower, upper):</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     &quot;&quot;&quot;Slab intersection on [0,1], including tangency at closed voxel faces.&quot;&quot;&quot;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>     enter, leave = 0., 1.</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>     for a, b, lo, hi in zip(start, end, lower, upper):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         delta = b - a</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         if delta == 0:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             if a &lt; lo or a &gt; hi:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>                 return None</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         else:</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             first, last = (lo - a) / delta, (hi - a) / delta</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             enter, leave = max(enter, min(first, last)), min(leave, max(first, last))</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             if enter &gt; leave:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>                 return None</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     return enter, leave</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a> </span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a> def check_static_sweep(trajectory, snapshot, now, epoch, bounds):</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     &quot;&quot;&quot;Check the remaining trajectory including its terminal pose.</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> </span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     A world-axis box is swept continuously along each position chord. Expand it</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     by the tracking bound plus a_max * sample_dt**2 / 8: the componentwise chord</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     deviation bound for any C2 reference obeying that continuous acceleration</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     bound. Sampled accelerations alone do not prove this producer guarantee.</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     FREE must cover the whole contact interval. Occupied, absent, future, stale</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     or mismatched cells reject. This neither creates FREE evidence nor checks</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>     dynamic objects, road boundaries, braking or executable control authority.</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>     &quot;&quot;&quot;</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     tested = intersected = 0</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>     def result(clear, reason, segment=None, key=None, stamp=None):</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         return StaticSweepResult(clear, reason, tested, intersected, segment, key, stamp)</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>     if not trajectory.metadata.current(now, epoch):</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>         return result(False, &#x27;TRAJECTORY_TIME_OR_EPOCH&#x27;)</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>     if not snapshot.metadata.current(now, epoch):</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>         return result(False, &#x27;MAP_TIME_OR_EPOCH&#x27;)</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     if trajectory.metadata.frame_id != &#x27;world_ned&#x27; or snapshot.metadata.frame_id != &#x27;world_ned&#x27;:</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         return result(False, &#x27;WORLD_FRAME_REQUIRED&#x27;)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>     horizon = trajectory.metadata.valid_until</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>     if not snapshot.metadata.current(horizon, epoch):</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>         return result(False, &#x27;MAP_EXPIRES_BEFORE_HORIZON&#x27;)</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>     samples = trajectory.samples</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>     if len(samples) - 1 &gt; bounds.max_segments or len(snapshot.cells) &gt; 250000:</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>         return result(False, &#x27;INPUT_BUDGET&#x27;)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>     if any(math.hypot(*sample.acceleration_ned) &gt; bounds.acceleration_bound_m_s2 + 1e-9</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>            for sample in samples):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>         return result(False, &#x27;ACCELERATION_BOUND_CONTRADICTION&#x27;)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     cells = {cell.key: cell for cell in snapshot.cells}</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     resolution = snapshot.resolution_m</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     for index, (first, second) in enumerate(zip(samples, samples[1:])):</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         begin, finish = max(now, first.stamp), min(horizon, second.stamp)</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         if begin &gt; finish:</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             continue</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         duration = second.stamp - first.stamp</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         if not math.isfinite(duration):</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>             return result(False, &#x27;NUMERICAL_RANGE&#x27;, index)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         # Use the original sample interval, even when checking only its suffix.</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         padding = bounds.tracking_error_m + bounds.acceleration_bound_m_s2 * duration * duration / 8</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         extents = tuple(v + padding for v in bounds.half_extents_m)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         if not all(math.isfinite(v) for v in extents):</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             return result(False, &#x27;NUMERICAL_RANGE&#x27;, index)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>         def at(stamp):</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             fraction = (stamp - first.stamp) / duration</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             return tuple((1 - fraction) * a + fraction * b</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                          for a, b in zip(first.position_ned, second.position_ned))</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         start, end = at(begin), at(finish)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         if not all(math.isfinite(a) and math.isfinite(b) and math.isfinite(b - a)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                    for a, b in zip(start, end)):</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>             return result(False, &#x27;NUMERICAL_RANGE&#x27;, index)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         # Round outward rather than turn a grazing contact into a clear result.</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         scale = max(1., *(abs(v) for v in start + end + extents))</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         roundoff = 32 * sys.float_info.epsilon * scale</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>         extents = tuple(v + roundoff for v in extents)</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         ranges = []</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         for a, b, extent in zip(start, end, extents):</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>             low, high = (min(a, b) - extent) / resolution, (max(a, b) + extent) / resolution</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>             if not all(math.isfinite(v) and abs(v) &lt;= 2**45 for v in (low, high)):</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                 return result(False, &#x27;NUMERICAL_RANGE&#x27;, index)</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             # Include the cell below an exact lower face: tangency is a hit.</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>             ranges.append(range(math.floor(low) - 1, math.floor(high) + 1))</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>         count = math.prod(len(axis) for axis in ranges)</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         if tested + count &gt; bounds.max_voxel_tests:</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             return result(False, &#x27;VOXEL_BUDGET&#x27;, index)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         for key in product(*ranges):</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             tested += 1</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>             lower = tuple(k * resolution - e for k, e in zip(key, extents))</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>             upper = tuple((k + 1) * resolution + e for k, e in zip(key, extents))</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>             if not all(math.isfinite(v) for v in lower + upper):</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>                 return result(False, &#x27;NUMERICAL_RANGE&#x27;, index)</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             interval = _contact_interval(start, end, lower, upper)</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>             if interval is None:</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>                 continue</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>             intersected += 1</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             enter, leave = (begin + t * (finish - begin) for t in interval)</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>             cell = cells.get(key)</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>             if cell is None or cell.status == Occupancy.UNKNOWN:</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>                 return result(False, &#x27;UNKNOWN_SPACE&#x27;, index, key, enter)</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>             meta = cell.metadata</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>             if meta.frame_id != &#x27;world_ned&#x27;:</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>                 return result(False, &#x27;CELL_FRAME&#x27;, index, key, enter)</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>             if meta.stamp &gt; now or not meta.current(enter, epoch) or not meta.current(leave, epoch):</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>                 return result(False, &#x27;CELL_TIME_OR_EPOCH&#x27;, index, key, enter)</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>             if cell.status != Occupancy.FREE:</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>                 return result(False, &#x27;OCCUPIED_SPACE&#x27;, index, key, enter)</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>     return result(True, &#x27;CLEAR_STATIC_MODEL&#x27;)</span></pre></body></html>

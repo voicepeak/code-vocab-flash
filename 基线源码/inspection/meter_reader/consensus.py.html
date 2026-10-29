@@ -1,0 +1,65 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>inspection/meter_reader/consensus.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>inspection/meter_reader/consensus.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Bounded multi-frame candidate consensus, without report authorization.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from collections import deque</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import dataclass, field</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import math</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from inspection.meter_reader.angular_scale import MeterCandidate</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> </span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> @dataclass(frozen=True)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> class MeterConsensus:</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     status: str</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     device_track_id: str = None</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     value: int = None</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     observations: int = 0</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     source_stamp: float = None</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     source_valid_until: float = None</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     epoch: int = 0</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     report_eligible: bool = field(default=False, init=False)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     device_identity_verified: bool = field(default=False, init=False)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> </span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a> class ConsensusTracker:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     def __init__(self, epoch=0, required=3, history_s=.8, wall_ttl_s=.2):</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         if (isinstance(epoch,bool) or not isinstance(epoch,int) or epoch&lt;0</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                 or isinstance(required,bool) or not isinstance(required,int) or not 2&lt;=required&lt;=10</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>                 or not math.isfinite(history_s) or not .1&lt;=history_s&lt;=2</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>                 or not math.isfinite(wall_ttl_s) or not 0&lt;wall_ttl_s&lt;=.5):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>             raise ValueError(&#x27;invalid consensus limits&#x27;)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.epoch,self.required,self.history_s,self.wall_ttl_s=epoch,required,history_s,wall_ttl_s</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         self._items=deque(maxlen=required);self._last_stamp=None;self._last_wall=None</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     def reset(self,epoch):</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         if isinstance(epoch,bool) or not isinstance(epoch,int) or epoch&lt;=self.epoch:raise ValueError(&#x27;epoch must increase&#x27;)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         self.epoch=epoch;self._items.clear();self._last_stamp=self._last_wall=None</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a> </span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     def observe(self,meta,arrival,now,wall,device,lights,candidate):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         if (not isinstance(meta,Metadata) or not meta.current(now,self.epoch)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>                 or not isinstance(device,str) or not device or len(device)&gt;128</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>                 or not isinstance(lights,tuple) or len(lights)!=3 or any(x is not True and x is not False and x is not None for x in lights)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>                 or not isinstance(candidate,MeterCandidate) or not all(math.isfinite(x) for x in (arrival,wall))</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 or arrival&lt;0 or not 0&lt;=wall-arrival&lt;self.wall_ttl_s or (self._last_wall is not None and arrival&lt;=self._last_wall)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                 or (self._last_stamp is not None and meta.stamp&lt;=self._last_stamp)):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>             raise ValueError(&#x27;invalid or duplicate observation&#x27;)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self._last_stamp,self._last_wall=meta.stamp,arrival</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         if (lights != (True,True,True) or candidate.status!=&#x27;CANDIDATE&#x27;</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 or isinstance(candidate.value,bool) or not isinstance(candidate.value,int) or not 0&lt;=candidate.value&lt;=50):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>             self._items.clear()</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             return MeterConsensus(&#x27;UNCONFIRMED&#x27;,epoch=self.epoch)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         if self._items and (self._items[-1][2]!=device or self._items[-1][3]!=candidate.value</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                             or self._items[-1][0].frame_id != meta.frame_id):self._items.clear()</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         self._items.append((meta,arrival,device,candidate.value))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         while self._items and (meta.stamp-self._items[0][0].stamp&gt;self.history_s</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                                or arrival-self._items[0][1]&gt;self.history_s):self._items.popleft()</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         return self.snapshot(now,wall)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>     def snapshot(self,now,wall):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         if (not self._items or not all(math.isfinite(x) for x in (now,wall))):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             return MeterConsensus(&#x27;UNAVAILABLE&#x27;,epoch=self.epoch)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         meta,arrival,device,value=self._items[-1]</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         if (not meta.current(now,self.epoch) or not 0&lt;=wall-arrival&lt;self.wall_ttl_s</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>                 or now-self._items[0][0].stamp&gt;self.history_s</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>                 or wall-self._items[0][1]&gt;self.history_s):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             return MeterConsensus(&#x27;UNAVAILABLE&#x27;,epoch=self.epoch)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         return MeterConsensus(&#x27;CONSENSUS&#x27; if len(self._items)&gt;=self.required else &#x27;PENDING&#x27;,</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                               device,value,len(self._items),meta.stamp,meta.valid_until,self.epoch)</span></pre></body></html>

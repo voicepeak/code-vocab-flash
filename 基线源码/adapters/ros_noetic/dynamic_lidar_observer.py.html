@@ -1,0 +1,134 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/dynamic_lidar_observer.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/dynamic_lidar_observer.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Read-only online LiDAR obstacle candidate and veto probe.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from collections import Counter</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import math</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import threading</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import time</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from adapters.ros_noetic.flight_sensors import FlightSensors</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from adapters.ros_noetic.lidar_cloud import decode_xyz</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from estimation.history import PoseHistory</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from perception.object_motion.online import OnlineDynamicLidar</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from perception.stereo_depth.geometry import load_nominal_rig</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from perception.stereo_depth.transport import LatestSlot</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from planning.mission.goal_tracker import GoalTracker</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def wait_for_imu(cloud, arrival, snapshot, wall_clock, sleep, stopped, max_wait_s=.03):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     &quot;&quot;&quot;Wait briefly for causal IMU coverage without extending source lifetime.&quot;&quot;&quot;</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     while not stopped():</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         now, epoch, fresh, _ = snapshot()</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         elapsed = wall_clock() - arrival</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         if (not fresh or epoch != cloud.metadata.epoch or now is None</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>                 or now &gt;= cloud.metadata.stamp or elapsed &lt; 0 or elapsed &gt;= max_wait_s):</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>             return</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         sleep(min(.001, max_wait_s - elapsed))</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a> </span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a> def observe(run,duration,settings,planning_diagnostic=False):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     import rospy</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     import rosgraph</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     from sensor_msgs.msg import PointCloud2</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     from geometry_msgs.msg import PoseStamped</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     rospy.init_node(&#x27;rmua_dynamic_lidar_observer&#x27;,anonymous=True,disable_signals=True)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     history=PoseHistory();sensors=FlightSensors(pose_history=history)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     rig=load_nominal_rig(settings);pipeline=OnlineDynamicLidar(history,rig.lidar_pose,planning_diagnostic)</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     goals=GoalTracker();goal_listener=None</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     slot=LatestSlot();stop=threading.Event();faults=[];rows=[];received=0;lock=threading.Lock()</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>     def callback(msg):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         nonlocal received</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         with lock:received+=1</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         slot.put((msg,time.monotonic()))</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     listener=rospy.Subscriber(&#x27;/airsim_node/drone_1/lidar&#x27;,PointCloud2,callback,queue_size=1,buff_size=4000000)</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     def goal_callback(message):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         wall=time.monotonic()</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         with sensors.lock:</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             if not sensors.clock.fresh(wall) or sensors.fault:return</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             epoch=sensors.clock.epoch</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>             if epoch&gt;goals.epoch:goals.reset(epoch)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             p=message.pose.position</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             try:goals.observe((p.x,p.y,p.z),message.header.stamp.to_sec(),message.header.frame_id,</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                               wall,sensors.clock.stamp,epoch)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>             except (ValueError,ArithmeticError):pass</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     if planning_diagnostic:</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         goal_listener=rospy.Subscriber(&#x27;/airsim_node/end_goal&#x27;,PoseStamped,goal_callback,queue_size=1)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     def goal_snapshot():</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         wall=time.monotonic()</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         with sensors.lock:</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             return goals.snapshot(wall,sensors.clock.epoch,sensors.clock.fresh(wall) and not sensors.fault)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     def snapshot():</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         with sensors.lock:</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>             fresh=sensors.clock.fresh(time.monotonic()) and not sensors.fault</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             state=sensors.estimator.snapshot() if sensors.estimator.initialized and sensors.estimator.stamp is not None else None</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             return sensors.clock.stamp,sensors.clock.epoch,fresh,state</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     def worker():</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         try:</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             with (run/&#x27;dynamic_lidar_results.jsonl&#x27;).open(&#x27;x&#x27;) as output:</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>                 while not stop.is_set():</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>                     item=slot.take()</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>                     if item is None:time.sleep(.002);continue</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>                     message,arrival=item;started=time.monotonic();now,epoch,fresh,_=snapshot()</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>                     if not fresh:</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>                         row={&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;STALE_IMU_CLOCK&#x27;,&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>                     else:</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>                         try:</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>                             cloud=decode_xyz(message,epoch)</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                             wait_started=time.monotonic()</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                             wait_for_imu(cloud,arrival,snapshot,time.monotonic,time.sleep,stop.is_set)</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                             waited=time.monotonic()-wait_started</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                             row=pipeline.process(cloud,arrival,snapshot,time.monotonic,goal_snapshot if planning_diagnostic else None)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                             row[&#x27;imu_wait_s&#x27;]=waited</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                         except (ValueError,ArithmeticError) as error:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                             row={&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;DECODE_&#x27;+str(error),&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                     row.update(processing_s=time.monotonic()-started)</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                     output.write(json.dumps(row,allow_nan=False)+&#x27;\n&#x27;);output.flush();rows.append(row)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         except Exception as error:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>             with lock:faults.append(&#x27;WORKER:&#x27;+str(error))</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>     thread=threading.Thread(target=worker,daemon=True);thread.start()</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>     graph=None;started=time.monotonic()</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>     try:</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>         while time.monotonic()-started&lt;duration and not rospy.is_shutdown():</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>             with sensors.lock:</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                 if sensors.fault:raise RuntimeError(sensors.fault)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>             with lock:</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                 if faults:raise RuntimeError(faults[0])</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>             time.sleep(.02)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>     except Exception as error:</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>         with lock:faults.append(str(error))</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>     finally:</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>         stop.set();slot.close();thread.join(10.)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         if thread.is_alive():faults.append(&#x27;WORKER_DID_NOT_STOP&#x27;)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>         try:</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             pubs,subs,_=rosgraph.Master(rospy.get_name()).getSystemState();node=rospy.get_name()</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             graph={&#x27;subscriptions&#x27;:sorted(t for t,nodes in subs if node in nodes),</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                    &#x27;publishers&#x27;:sorted(t for t,nodes in pubs if node in nodes)}</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>             expected=sorted([&#x27;/airsim_node/drone_1/lidar&#x27;,&#x27;/airsim_node/drone_1/gps&#x27;,</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                              &#x27;/airsim_node/drone_1/imu/imu&#x27;,&#x27;/airsim_node/initial_pose&#x27;])</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>             if planning_diagnostic:expected=sorted(expected+[&#x27;/airsim_node/end_goal&#x27;])</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>             if graph[&#x27;subscriptions&#x27;]!=expected or set(graph[&#x27;publishers&#x27;])-{&#x27;/rosout&#x27;}:faults.append(&#x27;GRAPH_POLICY&#x27;)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         except Exception as error:faults.append(&#x27;GRAPH_AUDIT:&#x27;+str(error))</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         listener.unregister()</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         if goal_listener is not None:goal_listener.unregister()</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         sensors.close()</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     summary={&#x27;faults&#x27;:faults,&#x27;received&#x27;:received,&#x27;slot&#x27;:slot.stats(),&#x27;results&#x27;:len(rows),</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>              &#x27;statuses&#x27;:dict(Counter(row[&#x27;status&#x27;] for row in rows)),</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>              &#x27;veto_reasons&#x27;:dict(Counter(row[&#x27;dynamic_check&#x27;][&#x27;reason&#x27;] for row in rows if row[&#x27;status&#x27;]==&#x27;PROCESSED&#x27;)),</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>              &#x27;node_graph&#x27;:graph,&#x27;settings_sha256&#x27;:rig.settings_sha256,&#x27;control_published&#x27;:False,</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>              &#x27;debug_inputs_used&#x27;:False,&#x27;control_eligible&#x27;:False,&#x27;acceptance_eligible&#x27;:False,</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>              &#x27;planning_diagnostic&#x27;:planning_diagnostic}</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>     (run/&#x27;dynamic_lidar_summary.json&#x27;).write_text(json.dumps(summary,indent=2,allow_nan=False)+&#x27;\n&#x27;)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>     return 0 if rows and not faults else 2</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a> </span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a> </span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a> def main():</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>     p=argparse.ArgumentParser(description=__doc__);p.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>     p.add_argument(&#x27;--duration&#x27;,type=float,default=8.);p.add_argument(&#x27;--settings&#x27;,default=&#x27;/workspace/main/configs/simulator_settings.json&#x27;)</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>     p.add_argument(&#x27;--planning-diagnostic&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>     a=p.parse_args()</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     if not math.isfinite(a.duration) or not 0&lt;a.duration&lt;=30:p.error(&#x27;duration must be in (0,30]&#x27;)</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>     return observe(a.run_dir,a.duration,a.settings,a.planning_diagnostic)</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a> </span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a> </span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a> if __name__==&#x27;__main__&#x27;:raise SystemExit(main())</span></pre></body></html>

@@ -1,0 +1,171 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>adapters/ros_noetic/vel_experiment.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>adapters/ros_noetic/vel_experiment.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Separate-scene bounded VEL baseline. Never imports or publishes RotorPWM.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import argparse</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> from dataclasses import asdict</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import json</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import math</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from pathlib import Path</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> import time</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from adapters.ros_noetic.flight_sensors import FlightSensors</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from control.control_authority.lease import ControlLease, check_graph</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from control.pwm_publisher.guard import CommandGuard</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> from control.reference import benchmark_reference,benchmark_yaw</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> from control.vel_benchmark.controller import VelocityCommand, body_velocity</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> from estimation.geometry import rotation</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> from interfaces.contracts import Health</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> from control.control_authority.graph_monitor import GraphMonitor</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> </span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> def run_experiment(run, duration, step,yaw_motion=False,braking=False):</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     import rosgraph</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     import rospy</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     from airsim_ros.msg import VelCmd</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     rospy.init_node(&#x27;rmua_next_vel_benchmark&#x27;, anonymous=True, disable_signals=True)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     master = rosgraph.Master(rospy.get_name())</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     rows, fault = [], None</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     latest_state,latest_raw,latest_elapsed=None,None,None</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     fresh_read=False</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     fault_observation=None</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>     last_published_wall=None</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     connections = 0</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     def graph(require_self):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         pubs, _, _ = master.getSystemState()</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         check_graph(dict(pubs), rospy.get_name(), &#x27;VEL&#x27;, require_self)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     with ControlLease(rospy.get_param(&#x27;/run_id&#x27;), &#x27;VEL&#x27;):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         graph(False)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         sensors = FlightSensors()</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         publisher = None</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         monitor = None</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>         try:</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             deadline = time.monotonic()+5</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             while time.monotonic() &lt; deadline:</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>                 try:</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>                     state, raw = sensors.read()</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>                     if state.health == Health.OK:</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>                         break</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 except (ValueError, RuntimeError):</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                     pass</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                 time.sleep(.01)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>             else:</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 raise RuntimeError(&#x27;NO_HEALTHY_STATE&#x27;)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>             publisher = rospy.Publisher(&#x27;/airsim_node/drone_1/vel_body_cmd&#x27;, VelCmd, queue_size=1)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             deadline = time.monotonic()+2</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>             while publisher.get_num_connections() != 1 and time.monotonic() &lt; deadline:</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>                 time.sleep(.01)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>             connections = publisher.get_num_connections()</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>             if connections != 1:</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                 raise RuntimeError(&#x27;VEL_SUBSCRIBER_MD5_OR_COUNT&#x27;)</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>             graph(True)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>             _, subscribers, _ = master.getSystemState()</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>             inputs = sorted(topic for topic, nodes in subscribers if rospy.get_name() in nodes)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>             config = json.loads((Path(__file__).resolve().parents[2]/&#x27;configs/official_baseline.yaml&#x27;).read_text())</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             if any(topic not in config[&#x27;sensors&#x27;] for topic in inputs):</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>                 raise RuntimeError(&#x27;INPUT_WHITELIST_POLICY&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>             (run/&#x27;runtime_input_audit.json&#x27;).write_text(json.dumps({&#x27;node&#x27;:rospy.get_name(),</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>                 &#x27;topics&#x27;:inputs,&#x27;debug_inputs&#x27;:False},indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             monitor=GraphMonitor(lambda:graph(True))</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>             monitor.start()</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             state, raw = sensors.read()</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>             origin = np.array(state.position_ned)</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>             R = rotation(state.orientation_wxyz)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a>             yaw = math.atan2(R[1, 0], R[0, 0])</span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>             guard = CommandGuard(sensors.clock.epoch, minimum_period=.0105)</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>             start = time.monotonic()</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>             start_stamp = state.metadata.stamp</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             next_tick = start</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             sequence = 0</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             while time.monotonic()-start &lt; duration:</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>                 now = time.monotonic()</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>                 fresh_read=False</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>                 state, raw = sensors.read()</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>                 latest_state,latest_raw,latest_elapsed=state,raw,now-start</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>                 fresh_read=True</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                 if state.health != Health.OK:</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                     raise RuntimeError(&#x27;STATE_HEALTH_&#x27;+state.health.value)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>                 if rotation(state.orientation_wxyz)[2,2] &lt; math.cos(.35):</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                     raise RuntimeError(&#x27;TILT_LIMIT&#x27;)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 if np.linalg.norm(np.array(state.position_ned)-origin) &gt; 1.8:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                     raise RuntimeError(&#x27;POSITION_LIMIT&#x27;)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 if np.linalg.norm(state.velocity_ned) &gt; 4:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                     raise RuntimeError(&#x27;SPEED_LIMIT&#x27;)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a>                 if np.linalg.norm(state.angular_velocity_body) &gt; 1.:</span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>                     raise RuntimeError(&#x27;ANGULAR_RATE_LIMIT&#x27;)</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>                 monitor.check()</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>                 sim_elapsed = state.metadata.stamp-start_stamp</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                 reference, velocity, _ = benchmark_reference(origin, sim_elapsed, step,braking)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>                 yaw_command,yaw_rate=benchmark_yaw(yaw,sim_elapsed,yaw_motion)</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>                 values = body_velocity(state, reference, velocity, yaw_command,yaw_rate)</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>                 command = VelocityCommand(state.metadata.stamp, state.metadata.epoch, sequence, values)</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>                 with sensors.lock:</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>                     accepted_wall = time.monotonic()</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>                     allowed = guard.accept(command, sensors.clock, accepted_wall)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>                 if allowed:</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>                     msg = VelCmd()</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>                     msg.header.stamp = rospy.Time.from_sec(command.stamp)</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>                     msg.header.seq = sequence</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>                     msg.vx, msg.vy, msg.vz, msg.yawRate = values</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>                     msg.va, msg.stop = 4, 0</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>                     publisher.publish(msg)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>                     published_wall=time.monotonic()</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>                     last_published_wall=published_wall</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>                     guard.published(published_wall)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>                     rows.append({&#x27;wall_elapsed&#x27;:now-start,&#x27;guard_accept_wall_elapsed&#x27;:accepted_wall-start,</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>                         &#x27;publish_wall_elapsed&#x27;:published_wall-start, &#x27;command&#x27;:asdict(command),</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>                         &#x27;sim_elapsed&#x27;:sim_elapsed,</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>                         &#x27;yaw_reference&#x27;:yaw_command,&#x27;yaw_rate_reference&#x27;:yaw_rate,</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>                         &#x27;raw&#x27;:raw,&#x27;reference&#x27;:reference,</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>                         &#x27;state&#x27;:{k:v for k,v in asdict(state).items() if k != &#x27;metadata&#x27;}})</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a>                     sequence += 1</span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>                 next_tick += .02</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>                 delay = next_tick-time.monotonic()</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>                 if delay &lt; -.1:</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a>                     raise RuntimeError(&#x27;CONTROL_DEADLINE&#x27;)</span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>                 time.sleep(max(0.,delay))</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         except Exception as error:</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>             fault = str(error)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>             failed_wall=time.monotonic()</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a>             fault_observation={&#x27;reason&#x27;:fault,&#x27;fresh_read_in_fault_iteration&#x27;:fresh_read,</span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a>                 &#x27;wall_elapsed_at_last_read&#x27;:latest_elapsed,</span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a>                 &#x27;wall_since_last_publication_s&#x27;:None if last_published_wall is None else failed_wall-last_published_wall,</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>                 &#x27;state&#x27;:asdict(latest_state) if latest_state else None,&#x27;raw&#x27;:latest_raw}</span>
+<span class="line" id="L131"><a class="ln" href="#L131">  131</a>         finally:</span>
+<span class="line" id="L132"><a class="ln" href="#L132">  132</a>             if monitor:</span>
+<span class="line" id="L133"><a class="ln" href="#L133">  133</a>                 monitor.close()</span>
+<span class="line" id="L134"><a class="ln" href="#L134">  134</a>             if publisher:</span>
+<span class="line" id="L135"><a class="ln" href="#L135">  135</a>                 publisher.unregister()</span>
+<span class="line" id="L136"><a class="ln" href="#L136">  136</a>             sensors.close()</span>
+<span class="line" id="L137"><a class="ln" href="#L137">  137</a>     (run/&#x27;vel_telemetry.jsonl&#x27;).write_text(&#x27;&#x27;.join(json.dumps(row)+&#x27;\n&#x27; for row in rows))</span>
+<span class="line" id="L138"><a class="ln" href="#L138">  138</a>     if fault_observation is not None:</span>
+<span class="line" id="L139"><a class="ln" href="#L139">  139</a>         (run/&#x27;fault_observation.json&#x27;).write_text(json.dumps(fault_observation,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L140"><a class="ln" href="#L140">  140</a>     result = {&#x27;commands&#x27;:len(rows),&#x27;fault&#x27;:fault,&#x27;control_mode&#x27;:&#x27;VEL&#x27;,</span>
+<span class="line" id="L141"><a class="ln" href="#L141">  141</a>               &#x27;connected_subscribers&#x27;:connections,&#x27;message_md5&#x27;:VelCmd._md5sum,</span>
+<span class="line" id="L142"><a class="ln" href="#L142">  142</a>               &#x27;duration_s&#x27;:duration,&#x27;step&#x27;:step,&#x27;official_result&#x27;:&#x27;UNKNOWN&#x27;,</span>
+<span class="line" id="L143"><a class="ln" href="#L143">  143</a>               &#x27;reference_clock&#x27;:&#x27;IMU&#x27;,</span>
+<span class="line" id="L144"><a class="ln" href="#L144">  144</a>               &#x27;graph_monitor&#x27;:monitor.summary() if monitor else None,</span>
+<span class="line" id="L145"><a class="ln" href="#L145">  145</a>               &#x27;yaw_motion&#x27;:yaw_motion,</span>
+<span class="line" id="L146"><a class="ln" href="#L146">  146</a>               &#x27;braking&#x27;:braking,</span>
+<span class="line" id="L147"><a class="ln" href="#L147">  147</a>               &#x27;host_scene_stop_required&#x27;:True}</span>
+<span class="line" id="L148"><a class="ln" href="#L148">  148</a>     (run/&#x27;vel_summary.json&#x27;).write_text(json.dumps(result,indent=2)+&#x27;\n&#x27;)</span>
+<span class="line" id="L149"><a class="ln" href="#L149">  149</a>     print(json.dumps(result),flush=True)</span>
+<span class="line" id="L150"><a class="ln" href="#L150">  150</a>     return 0 if rows and fault is None else 2</span>
+<span class="line" id="L151"><a class="ln" href="#L151">  151</a> </span>
+<span class="line" id="L152"><a class="ln" href="#L152">  152</a> </span>
+<span class="line" id="L153"><a class="ln" href="#L153">  153</a> def main():</span>
+<span class="line" id="L154"><a class="ln" href="#L154">  154</a>     parser = argparse.ArgumentParser(description=__doc__)</span>
+<span class="line" id="L155"><a class="ln" href="#L155">  155</a>     parser.add_argument(&#x27;--run-dir&#x27;,type=Path,required=True)</span>
+<span class="line" id="L156"><a class="ln" href="#L156">  156</a>     parser.add_argument(&#x27;--hover-seconds&#x27;,type=float,required=True)</span>
+<span class="line" id="L157"><a class="ln" href="#L157">  157</a>     parser.add_argument(&#x27;--step&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L158"><a class="ln" href="#L158">  158</a>     parser.add_argument(&#x27;--yaw-motion&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L159"><a class="ln" href="#L159">  159</a>     parser.add_argument(&#x27;--braking&#x27;,action=&#x27;store_true&#x27;)</span>
+<span class="line" id="L160"><a class="ln" href="#L160">  160</a>     args=parser.parse_args()</span>
+<span class="line" id="L161"><a class="ln" href="#L161">  161</a>     if not 3 &lt;= args.hover_seconds &lt;= 20 or (args.step and args.hover_seconds &lt; 10):</span>
+<span class="line" id="L162"><a class="ln" href="#L162">  162</a>         parser.error(&#x27;bounded VEL duration must be [3,20], step &gt;=10&#x27;)</span>
+<span class="line" id="L163"><a class="ln" href="#L163">  163</a>     if (args.braking or args.yaw_motion) and args.hover_seconds &lt; 10:</span>
+<span class="line" id="L164"><a class="ln" href="#L164">  164</a>         parser.error(&#x27;braking/yaw identification requires &gt;=10s&#x27;)</span>
+<span class="line" id="L165"><a class="ln" href="#L165">  165</a>     if args.braking and args.step:</span>
+<span class="line" id="L166"><a class="ln" href="#L166">  166</a>         parser.error(&#x27;braking and position step are separate experiments&#x27;)</span>
+<span class="line" id="L167"><a class="ln" href="#L167">  167</a>     return run_experiment(args.run_dir,args.hover_seconds,args.step,args.yaw_motion,args.braking)</span>
+<span class="line" id="L168"><a class="ln" href="#L168">  168</a> </span>
+<span class="line" id="L169"><a class="ln" href="#L169">  169</a> </span>
+<span class="line" id="L170"><a class="ln" href="#L170">  170</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L171"><a class="ln" href="#L171">  171</a>     raise SystemExit(main())</span></pre></body></html>

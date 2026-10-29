@@ -1,0 +1,67 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_transport.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_transport.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> import socket</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import struct</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import threading</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> import unittest</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> </span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import numpy as np</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> from perception.stereo_depth.transport import (LatestSlot,MAX_HEADER,MAX_PAYLOAD,</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     send_packet,receive_packet,encode_images,decode_images,encode_disparity,decode_disparity,digest,freshness_reason)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> </span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> class StereoTransportTests(unittest.TestCase):</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     def test_pending_replacement_does_not_replace_consumed_inflight_item(self):</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>         slot=LatestSlot();slot.put(&#x27;first&#x27;);inflight=slot.take()</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>         for n in range(100):slot.put(n)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         self.assertEqual(inflight,&#x27;first&#x27;);self.assertEqual(slot.take(),99)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         self.assertIsNone(slot.take());self.assertEqual(slot.stats()[&#x27;superseded&#x27;],99)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         slot.put(&#x27;stop&#x27;);slot.close();self.assertFalse(slot.put(&#x27;late&#x27;));self.assertIsNone(slot.take())</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         self.assertEqual(slot.stats()[&#x27;discarded_on_close&#x27;],1)</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     def test_stream_packet_handles_fragmented_large_payload_without_pickle(self):</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         left,right=socket.socketpair();left.settimeout(2);right.settimeout(2)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         body=b&#x27;abc123&#x27;*100000</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         thread=threading.Thread(target=send_packet,args=(left,{&#x27;tag&#x27;:&#x27;image&#x27;},body));thread.start()</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         try:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             header,received=receive_packet(right);self.assertEqual(header,{&#x27;tag&#x27;:&#x27;image&#x27;});self.assertEqual(received,body)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         finally:left.close();right.close();thread.join(2)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a> </span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     def test_oversized_descriptors_and_truncated_packet_are_rejected_before_allocation(self):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         for sizes in ((MAX_HEADER+1,0),(1,MAX_PAYLOAD+1)):</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>             left,right=socket.socketpair()</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>             try:</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                 left.sendall(struct.pack(&#x27;!II&#x27;,*sizes))</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>                 with self.assertRaises(ValueError):receive_packet(right)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             finally:left.close();right.close()</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         left,right=socket.socketpair();left.sendall(b&#x27;abc&#x27;);left.close()</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>         try:</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             with self.assertRaises(EOFError):receive_packet(right)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         finally:right.close()</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a> </span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     def test_image_bytes_are_exact_and_corruption_is_rejected(self):</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         a=np.arange(720*960*3,dtype=np.uint8).reshape(720,960,3);b=a[:,:,::-1]</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         payload=encode_images(a,b);header={&#x27;image_shape&#x27;:[720,960,3],&#x27;input_sha256&#x27;:digest(payload)}</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         x,y=decode_images(header,payload);np.testing.assert_array_equal(x,a);np.testing.assert_array_equal(y,b)</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         with self.assertRaises(ValueError):decode_images(header,payload[:-1]+b&#x27;x&#x27;)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>     def test_disparity_transport_preserves_unknown_and_rejects_nonfinite_valid_values(self):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>         valid=np.zeros((720,960),bool);valid[10:20,10:20]=True</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>         disparity=np.where(valid,8.,np.nan).astype(np.float32)</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         restored,mask=decode_disparity(encode_disparity(disparity,valid))</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         np.testing.assert_array_equal(mask,valid);self.assertTrue(np.isnan(restored[~mask]).all())</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         self.assertTrue((restored[mask]==8).all())</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         disparity[11,11]=np.inf</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         with self.assertRaises(ValueError):encode_disparity(disparity,valid)</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> </span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     def test_late_result_cannot_refresh_lease_and_clock_reset_or_stall_is_rejected(self):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         meta=Metadata(10.,10.2,4,&#x27;image&#x27;,&#x27;front_stereo&#x27;)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         self.assertIsNone(freshness_reason(meta,10.19,4,True,30.,30.19))</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         self.assertEqual(freshness_reason(meta,10.2,4,True,30.,30.19),&#x27;SOURCE_LEASE_NOT_CURRENT&#x27;)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         self.assertEqual(freshness_reason(meta,10.19,5,True,30.,30.19),&#x27;OTHER_EPOCH&#x27;)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>         self.assertEqual(freshness_reason(meta,10.19,4,False,30.,30.19),&#x27;STALE_IMU_CLOCK&#x27;)</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertEqual(freshness_reason(meta,10.19,4,True,30.,30.25),&#x27;WALL_EXPIRED&#x27;)</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertEqual(meta.valid_until,10.2)</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a> </span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a> </span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> if __name__==&#x27;__main__&#x27;:unittest.main()</span></pre></body></html>

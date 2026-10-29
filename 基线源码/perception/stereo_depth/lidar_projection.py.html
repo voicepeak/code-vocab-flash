@@ -1,0 +1,69 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/lidar_projection.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/lidar_projection.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Nominal LiDAR/camera header-pose alignment, without per-point timing.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from estimation.geometry import rotation</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from perception.stereo_depth.geometry import points</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> </span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> def project_lidar_into_stereo(sensor_points, scan_pose, left_pose, right_pose, rig):</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>     poses = (scan_pose, left_pose, right_pose)</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>     if (len({pose.epoch for pose in poses}) != 1</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>             or any(pose.frame_id != &#x27;world_ned&#x27; for pose in poses)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>             or max(abs(scan_pose.stamp - pose.stamp) for pose in poses[1:]) &gt; .05):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         raise ValueError(&#x27;incompatible historical poses for nominal projection&#x27;)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     sensor_points = points(sensor_points, 3)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a>     ranges = np.hypot(np.hypot(sensor_points[:, 0], sensor_points[:, 1]), sensor_points[:, 2])</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     finite = np.isfinite(ranges)</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>     keep = np.zeros(len(sensor_points), dtype=bool)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     keep[finite] = (ranges[finite] &gt; 0) &amp; (ranges[finite] &lt; 30)</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>     world = np.full(sensor_points.shape, np.nan)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>     body_at_scan = rig.lidar_pose.to_body(sensor_points[keep])</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     world[keep] = body_at_scan @ rotation(scan_pose.orientation_wxyz).T + scan_pose.position_ned</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     outputs = []</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     valid = keep.copy()</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     for camera, pose in ((rig.left, left_pose), (rig.right, right_pose)):</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         body = np.full(sensor_points.shape, np.nan)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         body[keep] = (world[keep] - pose.position_ned) @ rotation(pose.orientation_wxyz)</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>         uv, depth, inside = camera.project_body(body)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         valid &amp;= inside</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         outputs.extend((uv, depth))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     return outputs[0], outputs[1], outputs[2], outputs[3], valid</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a> </span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a> def sparse_visible(uv, depth, valid, width, height):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>     &quot;&quot;&quot;Nearest retained return per pixel; not a complete visibility proof.&quot;&quot;&quot;</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     visible = np.zeros(len(uv), dtype=bool)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     indices = np.flatnonzero(valid)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     if not len(indices):return visible</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>     pixel = np.floor(uv[indices]).astype(np.int64)</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     if np.any(pixel &lt; 0) or np.any(pixel[:, 0] &gt;= width) or np.any(pixel[:, 1] &gt;= height):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         raise ValueError(&#x27;out-of-view samples cannot enter sparse z-buffer&#x27;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>     keys = pixel[:, 1] * width + pixel[:, 0]</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>     nearest = np.full(width * height, np.inf)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     np.minimum.at(nearest, keys, depth[indices])</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>     visible[indices] = depth[indices] &lt;= nearest[keys] + 1e-8</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     return visible</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a> </span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a> </span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a> def sample_disparity(uv, disparity, valid_pixels, candidates):</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>     &quot;&quot;&quot;Bilinear sampling only when all four neighbors are valid.&quot;&quot;&quot;</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     if disparity.ndim != 2 or disparity.shape != valid_pixels.shape:</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         raise ValueError(&#x27;disparity and mask shapes differ&#x27;)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>     h, w = disparity.shape</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>     valid = np.zeros(len(uv), dtype=bool)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>     initial = np.flatnonzero(candidates)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>     if len(initial):</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         valid[initial] = ((uv[initial, 0] &gt;= 0) &amp; (uv[initial, 0] &lt; w - 1)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>                           &amp; (uv[initial, 1] &gt;= 0) &amp; (uv[initial, 1] &lt; h - 1))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>     indices = np.flatnonzero(valid)</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     values = np.full(len(uv), np.nan)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>     if not len(indices):return values, valid</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>     xy = np.floor(uv[indices]).astype(np.int64)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>     x, y = xy[:, 0], xy[:, 1]</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     good = valid_pixels[y, x] &amp; valid_pixels[y, x + 1] &amp; valid_pixels[y + 1, x] &amp; valid_pixels[y + 1, x + 1]</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>     valid[indices] = good</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>     indices, x, y = indices[good], x[good], y[good]</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>     dx, dy = uv[indices, 0] - x, uv[indices, 1] - y</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>     values[indices] = ((1-dx)*(1-dy)*disparity[y,x] + dx*(1-dy)*disparity[y,x+1]</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>                        + (1-dx)*dy*disparity[y+1,x] + dx*dy*disparity[y+1,x+1])</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>     return values, valid</span></pre></body></html>

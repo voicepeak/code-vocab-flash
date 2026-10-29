@@ -1,0 +1,121 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_stereo_geometry.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_stereo_geometry.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import FrozenInstanceError, replace</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import hashlib</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import json</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from pathlib import Path</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> import tempfile</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> import unittest</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> import numpy as np</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> from perception.stereo_depth.geometry import load_nominal_rig, SensorPose</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> from perception.stereo_depth.epipolar import measure_sparse_epipolar</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a> </span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> SETTINGS = Path(__file__).resolve().parents[2] / &#x27;configs/simulator_settings.json&#x27;</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a> </span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a> class StereoGeometryTests(unittest.TestCase):</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>     def test_configuration_provenance_and_nominal_flags(self):</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         rig = load_nominal_rig(SETTINGS)</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         self.assertEqual(rig.settings_sha256, hashlib.sha256(SETTINGS.read_bytes()).hexdigest())</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         self.assertAlmostEqual(rig.left.fx, 960 / (2 * np.tan(np.pi / 6)))</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         self.assertAlmostEqual(rig.baseline_m, .3)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>         self.assertFalse(rig.metric_calibration_verified)</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         self.assertFalse(rig.current_control_eligible)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>         with self.assertRaises(FrozenInstanceError): rig.metric_calibration_verified = True</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> </span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     def test_front_projection_and_triangulation_recover_known_body_points(self):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         rig = load_nominal_rig(SETTINGS)</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         body = np.array(((10., 0., 0.), (8., 1., .3), (5., -.5, -.3)))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         left, z, vl = rig.left.project_body(body)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>         right, _, vr = rig.right.project_body(body)</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>         self.assertTrue(vl.all() and vr.all())</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>         np.testing.assert_allclose(z, body[:, 0] - .175)</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         recovered, valid, sensitivity = rig.triangulate_body(left, right)</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>         self.assertTrue(valid.all())</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         np.testing.assert_allclose(recovered, body, atol=1e-12)</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>         np.testing.assert_allclose(sensitivity, z ** 2 / (rig.left.fx * .3))</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     def test_rear_camera_rotation_and_baseline_keep_left_right_sign(self):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         rig = load_nominal_rig(SETTINGS, &#x27;back&#x27;)</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>         body = np.array(((-10., 0., 0.), (-8., 1., .3)))</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>         left, _, vl = rig.left.project_body(body)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         right, _, vr = rig.right.project_body(body)</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         self.assertTrue(vl.all() and vr.all())</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         self.assertTrue((left[:, 0] &gt; right[:, 0]).all())</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>         recovered, valid, _ = rig.triangulate_body(left, right)</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         self.assertTrue(valid.all())</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>         np.testing.assert_allclose(recovered, body, atol=1e-12)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     def test_lidar_sensor_offset_and_optical_axes_are_explicit(self):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         rig = load_nominal_rig(SETTINGS)</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>         body = rig.lidar_pose.to_body(np.array(((2., 0., .3),)))</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>         np.testing.assert_allclose(body, ((2., 0., .25),))</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a>         optical = rig.left.body_to_optical(body)</span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a>         np.testing.assert_allclose(optical, ((.15, .25, 1.825),))</span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a>         np.testing.assert_allclose(rig.left.optical_to_body(optical), body)</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>         np.testing.assert_allclose(rig.lidar_pose.from_body(body), ((2., 0., .3),))</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a> </span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>     def test_bad_projection_disparity_vertical_error_and_distance_stay_unknown(self):</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         rig = load_nominal_rig(SETTINGS)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         with np.errstate(all=&#x27;raise&#x27;):</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a>             uv, _, valid = rig.left.project_body(np.array(((-1., 0., 0.), (1., 100., 0.), (np.nan, 0., 0.), (np.inf, 0., 0.))))</span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>         self.assertFalse(valid.any())</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         self.assertTrue(np.isnan(uv).all())</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>         left = np.array(((480., 360.),) * 5)</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>         right = np.array(((480., 360.), (481., 360.), (470., 365.), (479., 360.), (np.nan, 360.)))</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a>         with np.errstate(all=&#x27;raise&#x27;):</span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>             body, valid, sensitivity = rig.triangulate_body(left, right)</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         self.assertFalse(valid.any())</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         self.assertTrue(np.isnan(body).all() and np.isnan(sensitivity).all())</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> </span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     def test_nonparallel_or_incompatible_configuration_is_rejected(self):</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         original = json.loads(SETTINGS.read_text())</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         for mutation in (&#x27;yaw&#x27;, &#x27;width&#x27;, &#x27;baseline&#x27;, &#x27;lidar_frame&#x27;, &#x27;duplicate_scene&#x27;):</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>             data = json.loads(json.dumps(original))</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a>             vehicle = data[&#x27;Vehicles&#x27;][&#x27;drone_1&#x27;]; camera = vehicle[&#x27;Cameras&#x27;][&#x27;front_right&#x27;]</span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a>             if mutation == &#x27;yaw&#x27;: camera[&#x27;Yaw&#x27;] = 1.</span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a>             if mutation == &#x27;width&#x27;: camera[&#x27;CaptureSettings&#x27;][0][&#x27;Width&#x27;] = 640</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>             if mutation == &#x27;baseline&#x27;: camera[&#x27;Y&#x27;] = -.15</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>             if mutation == &#x27;lidar_frame&#x27;: vehicle[&#x27;Sensors&#x27;][&#x27;lidar&#x27;][&#x27;DataFrame&#x27;] = &#x27;VehicleInertialFrame&#x27;</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>             if mutation == &#x27;duplicate_scene&#x27;: camera[&#x27;CaptureSettings&#x27;].append(camera[&#x27;CaptureSettings&#x27;][0])</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a>             with tempfile.TemporaryDirectory() as root:</span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>                 path = Path(root) / &#x27;settings.json&#x27;;path.write_text(json.dumps(data))</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>                 with self.assertRaises(ValueError): load_nominal_rig(path)</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a> </span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>     def test_immutable_pose_rejects_reflections_and_nonunit_rotation(self):</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>         for rows in (((-1., 0., 0.), (0., 1., 0.), (0., 0., 1.)),</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                      ((2., 0., 0.), (0., 1., 0.), (0., 0., 1.))):</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>             with self.assertRaises(ValueError): SensorPose((0., 0., 0.), rows)</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a> </span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a> </span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a> class SparseEpipolarTests(unittest.TestCase):</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>     def images(self, vertical=0):</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>         rng = np.random.RandomState(44)</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>         left = rng.randint(0, 256, (240, 400)).astype(np.uint8)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a>         right = np.roll(left, (-vertical, -12), axis=(0, 1))</span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>         return left, right</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a> </span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>     def test_known_horizontal_and_vertical_shifts_are_measured_without_vertical_prefilter(self):</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         for vertical in (0, 8):</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             result, left, right, mask, fundamental = measure_sparse_epipolar(*self.images(vertical))</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>             self.assertGreater(result[&#x27;reciprocal_ratio_matches&#x27;], 100)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a>             self.assertAlmostEqual(result[&#x27;vertical_residual_all_p50_p95_p99_max_px&#x27;][0], vertical, delta=.2)</span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a>             self.assertFalse(result[&#x27;vertical_prefilter_applied&#x27;])</span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a>             self.assertFalse(result[&#x27;rectification_verified&#x27;])</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>             self.assertEqual(left.shape, right.shape)</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a> </span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>     def test_blank_images_have_no_invented_correspondences(self):</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         image = np.zeros((240, 400), np.uint8)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a>         result, left, right, mask, fundamental = measure_sparse_epipolar(image, image)</span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>         self.assertEqual(result[&#x27;reciprocal_ratio_matches&#x27;], 0)</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         self.assertEqual(result[&#x27;fundamental_inliers&#x27;], 0)</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>         self.assertIsNone(result[&#x27;vertical_residual_all_p50_p95_p99_max_px&#x27;])</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a>         self.assertIsNone(fundamental)</span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a> </span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>     def test_incompatible_images_are_rejected(self):</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>         with self.assertRaises(ValueError):measure_sparse_epipolar(np.zeros((4,4,3),np.uint8), np.zeros((4,4,3),np.uint8))</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> </span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a> </span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a> if __name__ == &#x27;__main__&#x27;:</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>     unittest.main()</span></pre></body></html>

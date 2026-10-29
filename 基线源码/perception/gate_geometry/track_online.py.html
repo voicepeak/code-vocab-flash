@@ -1,0 +1,50 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/gate_geometry/track_online.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/gate_geometry/track_online.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Link timely online gate proposals to historical pose and world tracks.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> from dataclasses import asdict</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> from estimation.history import HistoryUnavailable</span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from interfaces.contracts import Metadata</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from perception.gate_geometry.stereo_gate import GateCandidate</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from perception.stereo_depth.transport import freshness_reason</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from world_model.gate_landmarks.tracker import GateTracker</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> class OnlineGateTracks:</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     def __init__(self, history, tracker=None):</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>         self.history = history</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>         self.tracker = tracker or GateTracker(epoch=history.epoch)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def process(self, row, pair, arrival, clock_snapshot, wall_clock):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         &quot;&quot;&quot;Associate only an unexpired candidate using a causal history lookup.&quot;&quot;&quot;</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>         if row[&#x27;status&#x27;] != &#x27;GATE_CANDIDATES&#x27; or not row[&#x27;timing_current&#x27;]:</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>             return {&#x27;status&#x27;:&#x27;SOURCE_UNAVAILABLE&#x27;,&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>         now, epoch, fresh = clock_snapshot(); wall = wall_clock()</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>         reason = freshness_reason(pair.metadata, now, epoch, fresh, arrival, wall)</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         if reason:</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>             return {&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;INPUT_&#x27;+reason,&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>         try:</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>             pose = self.history.lookup(pair.metadata.stamp, now, wall, epoch)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>         except HistoryUnavailable as error:</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>             return {&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;POSE_&#x27;+str(error),&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         candidates=[]</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         try:</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>             for data in row[&#x27;candidates&#x27;]:</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>                 meta = dict(data[&#x27;metadata&#x27;]); meta[&#x27;covariance_or_bounds&#x27;]=tuple(meta[&#x27;covariance_or_bounds&#x27;])</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>                 candidates.append(GateCandidate(Metadata(**meta),tuple(tuple(x) for x in data[&#x27;image_edges_px&#x27;]),</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>                     tuple(data[&#x27;center_body_frd_m&#x27;]),data[&#x27;nominal_width_m&#x27;],data[&#x27;nominal_height_m&#x27;],</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>                     tuple(data[&#x27;edge_disparities_px&#x27;]),tuple(data[&#x27;edge_support&#x27;])))</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             result = self.tracker.ingest(tuple(candidates), pose, now, epoch)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>             # Recheck time after pose lookup and association; do not publish a</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             # snapshot based on a lease that elapsed while processing.</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>             check_now, check_epoch, check_fresh = clock_snapshot(); check_wall = wall_clock()</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>             reason = freshness_reason(pair.metadata, check_now, check_epoch, check_fresh, arrival, check_wall)</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>             if reason:</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>                 return {&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;OUTPUT_&#x27;+reason,&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>             tracks=self.tracker.snapshot(check_now,check_epoch)</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>         except (ValueError,ArithmeticError) as error:</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>             return {&#x27;status&#x27;:&#x27;REJECTED&#x27;,&#x27;reason&#x27;:&#x27;TRACK_&#x27;+str(error),&#x27;control_eligible&#x27;:False}</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         return {&#x27;status&#x27;:&#x27;TRACKED&#x27;,&#x27;association&#x27;:result,&#x27;tracks&#x27;:[asdict(track) for track in tracks],</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>                 &#x27;pose_stamp&#x27;:pose.stamp,&#x27;pose_bracket_stamps&#x27;:pose.bracket_stamps,</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>                 &#x27;source_stamp&#x27;:pair.metadata.stamp,&#x27;source_valid_until&#x27;:pair.metadata.valid_until,</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>                 &#x27;source_epoch&#x27;:pair.metadata.epoch,&#x27;source_arrival_wall&#x27;:arrival,</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a>                 &#x27;check_imu_stamp&#x27;:check_now,&#x27;check_epoch&#x27;:check_epoch,&#x27;check_wall&#x27;:check_wall,</span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>                 &#x27;clock_fresh_at_check&#x27;:check_fresh,&#x27;control_eligible&#x27;:False}</span></pre></body></html>

@@ -1,0 +1,130 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>tests/unit/test_baseline.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>tests/unit/test_baseline.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> from dataclasses import FrozenInstanceError</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import math</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> import unittest</span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> from interfaces.contracts import Health, Metadata, StateEstimate, Trajectory, TrajectorySample</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a> from world_model.occupancy.grid import Cell, Occupancy, OccupancySnapshot</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> from planning.speed_envelope.braking import speed_limit, stopping_distance</span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a> from control.safety_supervisor.preflight import check_inputs</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a> </span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a> </span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a> def metadata(stamp=1.0, until=2.0, epoch=1, frame=&quot;world_ned&quot;):</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     return Metadata(stamp, until, epoch, &quot;test&quot;, frame, (0.01,))</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a> </span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a> </span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> def state(health=Health.OK, frame=&quot;world_ned&quot;):</span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     return StateEstimate(metadata(frame=frame), (0., 0., -2.), (0., 0., 0.),</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>                          (1., 0., 0., 0.), (0., 0., 0.), health)</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a> </span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a> </span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a> def trajectory():</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a>     def point(stamp):</span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>         return TrajectorySample(stamp, (0., 0., -2.), (0., 0., 0.), (0., 0., 0.), 0.)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     return Trajectory(metadata(), (point(1.), point(2.)))</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a> </span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a> </span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a> class ContractTests(unittest.TestCase):</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     def test_reset_and_clock_rollback_invalidate_old_data(self):</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>         m = metadata()</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         self.assertTrue(m.current(1.5, 1))</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>         for now, epoch in ((0.9, 1), (2., 1), (1.5, 2), (math.nan, 1)):</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>             self.assertFalse(m.current(now, epoch))</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a> </span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def test_nonfinite_and_mutable_metadata_rejected(self):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>             Metadata(math.nan, 2., 0, &quot;imu&quot;)</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>             Metadata(1., 2., 0, &quot;imu&quot;, covariance_or_bounds=[1.])</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a> </span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>     def test_snapshots_are_immutable(self):</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>         with self.assertRaises(FrozenInstanceError):</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>             state().position_ned = (5., 0., 0.)</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a> </span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>     def test_trajectory_must_cover_validity_and_increase(self):</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>         points = trajectory().samples</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L46"><a class="ln" href="#L46">   46</a>             Trajectory(metadata(), tuple(reversed(points)))</span>
+<span class="line" id="L47"><a class="ln" href="#L47">   47</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L48"><a class="ln" href="#L48">   48</a>             Trajectory(metadata(until=3.), points)</span>
+<span class="line" id="L49"><a class="ln" href="#L49">   49</a> </span>
+<span class="line" id="L50"><a class="ln" href="#L50">   50</a>     def test_invalid_attitude_rejected(self):</span>
+<span class="line" id="L51"><a class="ln" href="#L51">   51</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L52"><a class="ln" href="#L52">   52</a>             StateEstimate(metadata(), (0., 0., 0.), (0., 0., 0.),</span>
+<span class="line" id="L53"><a class="ln" href="#L53">   53</a>                           (0., 0., 0., 0.), (0., 0., 0.), Health.OK)</span>
+<span class="line" id="L54"><a class="ln" href="#L54">   54</a> </span>
+<span class="line" id="L55"><a class="ln" href="#L55">   55</a> </span>
+<span class="line" id="L56"><a class="ln" href="#L56">   56</a> class OccupancyTests(unittest.TestCase):</span>
+<span class="line" id="L57"><a class="ln" href="#L57">   57</a>     def test_unobserved_space_is_unknown(self):</span>
+<span class="line" id="L58"><a class="ln" href="#L58">   58</a>         grid = OccupancySnapshot(metadata(), 1., (Cell((0, 0, 0), Occupancy.FREE, metadata()),))</span>
+<span class="line" id="L59"><a class="ln" href="#L59">   59</a>         self.assertEqual(grid.query((0.2, 0., 0.), 1.5, 1), Occupancy.FREE)</span>
+<span class="line" id="L60"><a class="ln" href="#L60">   60</a>         self.assertEqual(grid.query((2., 0., 0.), 1.5, 1), Occupancy.UNKNOWN)</span>
+<span class="line" id="L61"><a class="ln" href="#L61">   61</a>         self.assertEqual(grid.query((-0.1, 0., 0.), 1.5, 1), Occupancy.UNKNOWN)</span>
+<span class="line" id="L62"><a class="ln" href="#L62">   62</a> </span>
+<span class="line" id="L63"><a class="ln" href="#L63">   63</a>     def test_expired_and_previous_epoch_cells_are_unknown(self):</span>
+<span class="line" id="L64"><a class="ln" href="#L64">   64</a>         for cell_meta in (metadata(until=1.4), metadata(epoch=0)):</span>
+<span class="line" id="L65"><a class="ln" href="#L65">   65</a>             grid = OccupancySnapshot(metadata(), 1., (Cell((0, 0, 0), Occupancy.FREE, cell_meta),))</span>
+<span class="line" id="L66"><a class="ln" href="#L66">   66</a>             self.assertEqual(grid.query((0., 0., 0.), 1.5, 1), Occupancy.UNKNOWN)</span>
+<span class="line" id="L67"><a class="ln" href="#L67">   67</a> </span>
+<span class="line" id="L68"><a class="ln" href="#L68">   68</a>     def test_occupied_is_not_free(self):</span>
+<span class="line" id="L69"><a class="ln" href="#L69">   69</a>         grid = OccupancySnapshot(metadata(), 1., (Cell((0, 0, 0), Occupancy.OCCUPIED, metadata()),))</span>
+<span class="line" id="L70"><a class="ln" href="#L70">   70</a>         self.assertEqual(grid.query((0., 0., 0.), 1.5, 1), Occupancy.OCCUPIED)</span>
+<span class="line" id="L71"><a class="ln" href="#L71">   71</a> </span>
+<span class="line" id="L72"><a class="ln" href="#L72">   72</a>     def test_cell_from_another_frame_cannot_authorize_free_space(self):</span>
+<span class="line" id="L73"><a class="ln" href="#L73">   73</a>         cell = Cell((0, 0, 0), Occupancy.FREE, metadata(frame=&#x27;camera_optical&#x27;))</span>
+<span class="line" id="L74"><a class="ln" href="#L74">   74</a>         grid = OccupancySnapshot(metadata(), 1., (cell,))</span>
+<span class="line" id="L75"><a class="ln" href="#L75">   75</a>         self.assertEqual(grid.query((0., 0., 0.), 1.5, 1), Occupancy.UNKNOWN)</span>
+<span class="line" id="L76"><a class="ln" href="#L76">   76</a> </span>
+<span class="line" id="L77"><a class="ln" href="#L77">   77</a> </span>
+<span class="line" id="L78"><a class="ln" href="#L78">   78</a> class BrakingTests(unittest.TestCase):</span>
+<span class="line" id="L79"><a class="ln" href="#L79">   79</a>     def test_design_high_speed_example(self):</span>
+<span class="line" id="L80"><a class="ln" href="#L80">   80</a>         self.assertAlmostEqual(stopping_distance(40., 0.35, 8., 0.), 114.)</span>
+<span class="line" id="L81"><a class="ln" href="#L81">   81</a>         self.assertLess(speed_limit(30., 0.35, 8., 2.), 20.)</span>
+<span class="line" id="L82"><a class="ln" href="#L82">   82</a> </span>
+<span class="line" id="L83"><a class="ln" href="#L83">   83</a>     def test_speed_bound_respects_stopping_distance(self):</span>
+<span class="line" id="L84"><a class="ln" href="#L84">   84</a>         for distance in (0., 1., 5., 30., 120.):</span>
+<span class="line" id="L85"><a class="ln" href="#L85">   85</a>             for delay in (0., 0.35, 2.):</span>
+<span class="line" id="L86"><a class="ln" href="#L86">   86</a>                 speed = speed_limit(distance, delay, 5., 2.)</span>
+<span class="line" id="L87"><a class="ln" href="#L87">   87</a>                 if distance &gt; 2.:</span>
+<span class="line" id="L88"><a class="ln" href="#L88">   88</a>                     self.assertAlmostEqual(stopping_distance(speed, delay, 5., 2.), distance)</span>
+<span class="line" id="L89"><a class="ln" href="#L89">   89</a>                 else:</span>
+<span class="line" id="L90"><a class="ln" href="#L90">   90</a>                     self.assertEqual(speed, 0.)</span>
+<span class="line" id="L91"><a class="ln" href="#L91">   91</a> </span>
+<span class="line" id="L92"><a class="ln" href="#L92">   92</a>     def test_invalid_deceleration_and_nonfinite_inputs(self):</span>
+<span class="line" id="L93"><a class="ln" href="#L93">   93</a>         for deceleration in (0., -1., math.nan):</span>
+<span class="line" id="L94"><a class="ln" href="#L94">   94</a>             with self.assertRaises(ValueError):</span>
+<span class="line" id="L95"><a class="ln" href="#L95">   95</a>                 speed_limit(30., 0.35, deceleration, 2.)</span>
+<span class="line" id="L96"><a class="ln" href="#L96">   96</a> </span>
+<span class="line" id="L97"><a class="ln" href="#L97">   97</a>     def test_overflow_cannot_produce_nonfinite_speed_or_distance(self):</span>
+<span class="line" id="L98"><a class="ln" href="#L98">   98</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L99"><a class="ln" href="#L99">   99</a>             speed_limit(1e308, 0., 1e308, 0.)</span>
+<span class="line" id="L100"><a class="ln" href="#L100">  100</a>         with self.assertRaises(ValueError):</span>
+<span class="line" id="L101"><a class="ln" href="#L101">  101</a>             stopping_distance(1e308, 1., 1., 0.)</span>
+<span class="line" id="L102"><a class="ln" href="#L102">  102</a>         self.assertEqual(speed_limit(0., 0., 1e308, 0.), 0.)</span>
+<span class="line" id="L103"><a class="ln" href="#L103">  103</a> </span>
+<span class="line" id="L104"><a class="ln" href="#L104">  104</a> </span>
+<span class="line" id="L105"><a class="ln" href="#L105">  105</a> class SafetyPreconditionsTests(unittest.TestCase):</span>
+<span class="line" id="L106"><a class="ln" href="#L106">  106</a>     def test_control_modes_cannot_mix(self):</span>
+<span class="line" id="L107"><a class="ln" href="#L107">  107</a>         result = check_inputs(state(), trajectory(), 1.5, 1, 1, 1)</span>
+<span class="line" id="L108"><a class="ln" href="#L108">  108</a>         self.assertIn(&quot;CONTROL_PUBLISHER_CONFLICT&quot;, result.reasons)</span>
+<span class="line" id="L109"><a class="ln" href="#L109">  109</a>         self.assertFalse(result.prerequisites_met)</span>
+<span class="line" id="L110"><a class="ln" href="#L110">  110</a> </span>
+<span class="line" id="L111"><a class="ln" href="#L111">  111</a>     def test_missing_or_duplicate_publishers(self):</span>
+<span class="line" id="L112"><a class="ln" href="#L112">  112</a>         for count in (0, 2):</span>
+<span class="line" id="L113"><a class="ln" href="#L113">  113</a>             self.assertFalse(check_inputs(state(), trajectory(), 1.5, 1, count, 0).prerequisites_met)</span>
+<span class="line" id="L114"><a class="ln" href="#L114">  114</a> </span>
+<span class="line" id="L115"><a class="ln" href="#L115">  115</a>     def test_degraded_localization_rejected(self):</span>
+<span class="line" id="L116"><a class="ln" href="#L116">  116</a>         self.assertIn(&quot;STATE_HEALTH&quot;, check_inputs(</span>
+<span class="line" id="L117"><a class="ln" href="#L117">  117</a>             state(Health.DEGRADED), trajectory(), 1.5, 1, 1, 0).reasons)</span>
+<span class="line" id="L118"><a class="ln" href="#L118">  118</a> </span>
+<span class="line" id="L119"><a class="ln" href="#L119">  119</a>     def test_frame_mismatch_rejected(self):</span>
+<span class="line" id="L120"><a class="ln" href="#L120">  120</a>         self.assertIn(&quot;FRAME_MISMATCH&quot;, check_inputs(</span>
+<span class="line" id="L121"><a class="ln" href="#L121">  121</a>             state(frame=&quot;camera_optical&quot;), trajectory(), 1.5, 1, 1, 0).reasons)</span>
+<span class="line" id="L122"><a class="ln" href="#L122">  122</a> </span>
+<span class="line" id="L123"><a class="ln" href="#L123">  123</a>     def test_reset_rejects_both_state_and_trajectory(self):</span>
+<span class="line" id="L124"><a class="ln" href="#L124">  124</a>         reasons = check_inputs(state(), trajectory(), 1.5, 2, 1, 0).reasons</span>
+<span class="line" id="L125"><a class="ln" href="#L125">  125</a>         self.assertIn(&quot;STATE_TIME_OR_EPOCH&quot;, reasons)</span>
+<span class="line" id="L126"><a class="ln" href="#L126">  126</a>         self.assertIn(&quot;TRAJECTORY_TIME_OR_EPOCH&quot;, reasons)</span>
+<span class="line" id="L127"><a class="ln" href="#L127">  127</a> </span>
+<span class="line" id="L128"><a class="ln" href="#L128">  128</a> </span>
+<span class="line" id="L129"><a class="ln" href="#L129">  129</a> if __name__ == &quot;__main__&quot;:</span>
+<span class="line" id="L130"><a class="ln" href="#L130">  130</a>     unittest.main()</span></pre></body></html>

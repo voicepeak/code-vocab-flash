@@ -1,0 +1,45 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>perception/stereo_depth/epipolar.py · RUMA 基线源码</title><style>body{font:14px system-ui,sans-serif;margin:0;background:#f6f8f7;color:#24372d}header{padding:16px 22px;background:#fff;border-bottom:1px solid #dce6df;overflow-wrap:anywhere}header strong{display:block;font-size:16px}header small{color:#718178}pre{margin:0;padding:16px 0;font:13px/1.6 monospace;white-space:pre;overflow:auto}.line{display:block;min-width:max-content;padding-right:24px}.line:target{background:#fff1bd}.ln{display:inline-block;text-align:right;user-select:none;color:#90a49a;text-decoration:none;margin-right:12px} .ln:hover{color:#167350}</style></head><body><header><strong>perception/stereo_depth/epipolar.py</strong><small>RUMA 原始索引基线提交 89db38d81af5ce5cd6dfffb8d594cd1e9a6092dd · 点击行号可复制定位链接</small></header><pre><span class="line" id="L1"><a class="ln" href="#L1">    1</a> &quot;&quot;&quot;Sparse image correspondence diagnostics without a metric calibration claim.&quot;&quot;&quot;</span>
+<span class="line" id="L2"><a class="ln" href="#L2">    2</a> import numpy as np</span>
+<span class="line" id="L3"><a class="ln" href="#L3">    3</a> </span>
+<span class="line" id="L4"><a class="ln" href="#L4">    4</a> </span>
+<span class="line" id="L5"><a class="ln" href="#L5">    5</a> def measure_sparse_epipolar(left_gray, right_gray):</span>
+<span class="line" id="L6"><a class="ln" href="#L6">    6</a>     import cv2</span>
+<span class="line" id="L7"><a class="ln" href="#L7">    7</a> </span>
+<span class="line" id="L8"><a class="ln" href="#L8">    8</a>     if (left_gray.dtype != np.uint8 or right_gray.dtype != np.uint8</span>
+<span class="line" id="L9"><a class="ln" href="#L9">    9</a>             or left_gray.ndim != 2 or left_gray.shape != right_gray.shape):</span>
+<span class="line" id="L10"><a class="ln" href="#L10">   10</a>         raise ValueError(&#x27;matching grayscale byte images required&#x27;)</span>
+<span class="line" id="L11"><a class="ln" href="#L11">   11</a>     orb = cv2.ORB_create(nfeatures=2000, fastThreshold=10)</span>
+<span class="line" id="L12"><a class="ln" href="#L12">   12</a>     kl, dl = orb.detectAndCompute(left_gray, None)</span>
+<span class="line" id="L13"><a class="ln" href="#L13">   13</a>     kr, dr = orb.detectAndCompute(right_gray, None)</span>
+<span class="line" id="L14"><a class="ln" href="#L14">   14</a>     matcher = cv2.BFMatcher(cv2.NORM_HAMMING)</span>
+<span class="line" id="L15"><a class="ln" href="#L15">   15</a> </span>
+<span class="line" id="L16"><a class="ln" href="#L16">   16</a>     def reciprocal_candidates(a, b):</span>
+<span class="line" id="L17"><a class="ln" href="#L17">   17</a>         if a is None or b is None or len(b) &lt; 2:</span>
+<span class="line" id="L18"><a class="ln" href="#L18">   18</a>             return {}</span>
+<span class="line" id="L19"><a class="ln" href="#L19">   19</a>         return {m.queryIdx: m for group in matcher.knnMatch(a, b, k=2) if len(group) == 2</span>
+<span class="line" id="L20"><a class="ln" href="#L20">   20</a>                 for m, n in [group] if m.distance &lt; .75 * n.distance}</span>
+<span class="line" id="L21"><a class="ln" href="#L21">   21</a> </span>
+<span class="line" id="L22"><a class="ln" href="#L22">   22</a>     forward, backward = reciprocal_candidates(dl, dr), reciprocal_candidates(dr, dl)</span>
+<span class="line" id="L23"><a class="ln" href="#L23">   23</a>     matches = [m for m in forward.values() if m.trainIdx in backward and backward[m.trainIdx].trainIdx == m.queryIdx]</span>
+<span class="line" id="L24"><a class="ln" href="#L24">   24</a>     left = np.asarray([kl[m.queryIdx].pt for m in matches], dtype=np.float32).reshape(-1, 2)</span>
+<span class="line" id="L25"><a class="ln" href="#L25">   25</a>     right = np.asarray([kr[m.trainIdx].pt for m in matches], dtype=np.float32).reshape(-1, 2)</span>
+<span class="line" id="L26"><a class="ln" href="#L26">   26</a>     # Do not prefilter vertical residuals: that would make the check circular.</span>
+<span class="line" id="L27"><a class="ln" href="#L27">   27</a>     fundamental, mask = (None, None)</span>
+<span class="line" id="L28"><a class="ln" href="#L28">   28</a>     if len(matches) &gt;= 8:</span>
+<span class="line" id="L29"><a class="ln" href="#L29">   29</a>         fundamental, mask = cv2.findFundamentalMat(left, right, cv2.FM_RANSAC, 1., .999)</span>
+<span class="line" id="L30"><a class="ln" href="#L30">   30</a>     inliers = mask.ravel().astype(bool) if fundamental is not None and mask is not None else np.zeros(len(matches), dtype=bool)</span>
+<span class="line" id="L31"><a class="ln" href="#L31">   31</a>     disparity = left[:, 0] - right[:, 0]</span>
+<span class="line" id="L32"><a class="ln" href="#L32">   32</a>     vertical = np.abs(left[:, 1] - right[:, 1])</span>
+<span class="line" id="L33"><a class="ln" href="#L33">   33</a>     def quantiles(values):</span>
+<span class="line" id="L34"><a class="ln" href="#L34">   34</a>         return [float(x) for x in np.percentile(values, (50, 95, 99, 100))] if len(values) else None</span>
+<span class="line" id="L35"><a class="ln" href="#L35">   35</a>     h, w = left_gray.shape</span>
+<span class="line" id="L36"><a class="ln" href="#L36">   36</a>     bins = {(min(3, int(x * 4 / w)), min(2, int(y * 3 / h))) for x, y in left[inliers]}</span>
+<span class="line" id="L37"><a class="ln" href="#L37">   37</a>     report = {&#x27;left_features&#x27;: len(kl), &#x27;right_features&#x27;: len(kr), &#x27;reciprocal_ratio_matches&#x27;: len(matches),</span>
+<span class="line" id="L38"><a class="ln" href="#L38">   38</a>               &#x27;fundamental_inliers&#x27;: int(inliers.sum()), &#x27;inlier_spatial_bins_4x3&#x27;: len(bins),</span>
+<span class="line" id="L39"><a class="ln" href="#L39">   39</a>               &#x27;vertical_residual_all_p50_p95_p99_max_px&#x27;: quantiles(vertical),</span>
+<span class="line" id="L40"><a class="ln" href="#L40">   40</a>               &#x27;vertical_residual_inliers_p50_p95_p99_max_px&#x27;: quantiles(vertical[inliers]),</span>
+<span class="line" id="L41"><a class="ln" href="#L41">   41</a>               &#x27;positive_disparity_inliers&#x27;: int(((disparity &gt; 0) &amp; inliers).sum()),</span>
+<span class="line" id="L42"><a class="ln" href="#L42">   42</a>               &#x27;zero_or_negative_disparity_inliers&#x27;: int(((disparity &lt;= 0) &amp; inliers).sum()),</span>
+<span class="line" id="L43"><a class="ln" href="#L43">   43</a>               &#x27;vertical_prefilter_applied&#x27;: False, &#x27;rectification_verified&#x27;: False,</span>
+<span class="line" id="L44"><a class="ln" href="#L44">   44</a>               &#x27;metric_calibration_verified&#x27;: False, &#x27;acceptance_eligible&#x27;: False}</span>
+<span class="line" id="L45"><a class="ln" href="#L45">   45</a>     return report, left, right, inliers, fundamental</span></pre></body></html>
