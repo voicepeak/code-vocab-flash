@@ -603,5 +603,6 @@
   "alive": "known",
   "aliyuncs": "unknown",
   "all": "known",
-  "allclose": "unknown"
+  "allclose": "unknown",
+  "alloc": "unknown"
 }
