@@ -616,5 +616,15 @@
   "alpha": "unknown",
   "already": "known",
   "also": "known",
-  "altered": "unknown"
+  "altered": "unknown",
+  "always": "known",
+  "ambiguity": "unknown",
+  "ambiguous": "unknown",
+  "among": "unknown",
+  "amount": "unknown",
+  "amp": "unknown",
+  "analysis": "known",
+  "analytic": "unknown",
+  "analyzer": "unknown",
+  "ancestors": "unknown"
 }
